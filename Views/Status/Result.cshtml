@@ -1,0 +1,340 @@
+﻿@model List<MachineStatusUpdate.Models.SVN_Equipment_Info_History_Test>
+
+
+@{
+    ViewData["Title"] = "Danh sách State Records";
+}
+
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="~/css/result.css" asp-append-version="true" />
+ 
+</head>
+
+<body>
+<div class="container-fluid mt-4">
+    <!-- Bộ lọc tìm kiếm -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card filter-section">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-search me-2"></i>Tìm kiếm</h5>
+                </div>
+                <div class="card-body">
+                    <form method="get" action="@Url.Action("Result", "Status")">
+                        <div class="row g-3">       
+                            <div class="col-md-3">
+                                <label class="form-label">Code:</label>
+                                <input type="text" class="form-control" name="Code" value="@ViewBag.Code"
+                                       placeholder="Nhập mã máy(Code)...">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">State:</label>
+                                <input type="text" class="form-control" name="State" value="@ViewBag.State"
+                                       placeholder="Nhập trạng thái(State)...">       
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Operation:</label>
+                                <input type="text" class="form-control" name="Operation" value="@ViewBag.Operation"
+                                       placeholder="Nhập chuyền (Operation)...">
+                            </div>
+                             <div class="col-md-3">
+                                <label class="form-label">From:</label>
+                                <input type="date" class="form-control" name="fromInsDateTime" value="@ViewBag.FromInsDateTime" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">To:</label>
+                                <input type="date" class="form-control" name="toInsDateTime" value="@ViewBag.ToInsDateTime" />
+                            </div>
+
+                            <div class="col-md-3">
+                               <label class="form-label">Số bản ghi/trang:</label>
+                                <select class="form-control" name="pageSize" id="pageSizeSelect" onchange="document.getElementById('searchForm').submit();">
+                                    <option value="10">10</option>
+                                    <option value="25">25</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-primary me-2">
+                                    <i class="fas fa-search me-1"></i>Tìm kiếm
+                                </button>
+                                <a href="@Url.Action("Result", "Status")" class="btn btn-secondary">
+                                    <i class="fas fa-refresh me-1"></i>Xóa bộ lọc
+                                </a>
+
+                                 <a style="margin-left: 9px;" href="@Url.Action("ExportToExcel", "Status", new { 
+                                    code = @ViewBag.Code, 
+                                    state = @ViewBag.State,
+                                    operation = @ViewBag.Operation,
+                                    fromInsDateTime = @ViewBag.FromInsDateTime,
+                                    toInsDateTime = @ViewBag.ToInsDateTime
+        
+                                })" class="btn btn-success">
+                                    <i class="fas fa-file-excel me-1"></i>Xuất Excel
+                                </a>
+                            </div>
+                        </div>
+                        <input type="hidden" name="page" value="1" id="pageInput">
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>  
+    
+ <!-- Bảng dữ liệu -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-table me-2"></i>Danh sách kết quả</h5>
+                    @if (ViewBag.TotalRecords != null && ViewBag.TotalRecords > 0)
+                    {
+                        <small class="text-muted">
+                            Tổng: <strong>@ViewBag.TotalRecords</strong> bản ghi
+                        </small>
+                    }
+                </div>
+                <div class="card-body">
+                    @if (ViewBag.ErrorMessage != null)
+                    {
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            @ViewBag.ErrorMessage
+                        </div>
+                    }
+
+                    @if (Model != null && Model.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover" id="stateTable">
+                                <thead>
+                                <tr>
+                                    <th>Code</th>
+                                    <th>Name</th>
+                                    <th>State</th>
+                                    <th>Operation</th>
+                                    <th>EstimateTime</th>
+                                    <th>Description</th>
+                                    <th>Image</th>
+                                    <th>Datetime</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                @foreach (var item in Model)
+                                {
+                                    <tr>
+                                        <td>@(string.IsNullOrWhiteSpace(item.Code) ? Html.Raw("<span class='text-null'>NULL</span>") : item.Code)</td>
+                                        <td>@(string.IsNullOrWhiteSpace(item.Name) ? Html.Raw("<span class='text-null'>NULL</span>") : item.Name)</td>
+                                        <td>
+                @if (!string.IsNullOrWhiteSpace(item.State))
+                {
+                    <span class="badge 
+                          @(item.State == "Run" ? "bg-success" :
+                            item.State == "Fault" ? "bg-warning" : 
+                            item.State == "Adjust" ? "bg-primary" : 
+                            item.State == "Item" ? "bg-light text-dark" : 
+                            item.State == "Main" ? "bg-secondary" : 
+                            item.State == "Stop" ? "bg-danger" : 
+                            item.State == "Deve" ? "bg-dark" : "bg-secondary")">
+                        @item.State
+                    </span>
+                }
+                else
+                {
+                    <span class="text-null">NULL</span>
+                }
+            </td>
+                                        <td>@(string.IsNullOrWhiteSpace(item.Operation) ? Html.Raw("<span class='text-null'>NULL</span>") : item.Operation)</td>
+                                        <td>@(string.IsNullOrWhiteSpace(item.EstimateTime) ? Html.Raw("<span class='text-null'>NULL</span>") : item.EstimateTime)</td>
+                                        <td>
+                                            @if (!string.IsNullOrWhiteSpace(item.Description))
+                                            {
+                                                <span class="text-truncate d-inline-block" style="max-width: 150px;" title="@item.Description">
+                                                    @item.Description
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-null">NULL</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (!string.IsNullOrWhiteSpace(item.Image))
+                                            {
+                                                <img src="@item.Image" class="image-preview" alt="Image"
+                                                     onclick="showImageModal('@item.Image')" />
+                                            }
+                                            else
+                                            {
+                                                <span class="text-null">NULL</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @(item.Datetime.HasValue
+                                                ? item.Datetime.Value.ToString("dd/MM/yyyy HH:mm:ss")
+                                                : Html.Raw("<span class='text-null'>NULL</span>"))
+                                        </td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Pagination -->
+                        @if (ViewBag.TotalPages != null && ViewBag.TotalPages > 1)
+                        {
+                            <div class="pagination-container">
+                                <div class="pagination-info">
+                                    Hiển thị @((ViewBag.CurrentPage - 1) * ViewBag.PageSize + 1) - @(Math.Min(ViewBag.CurrentPage * ViewBag.PageSize, ViewBag.TotalRecords)) 
+                                    trong tổng số @ViewBag.TotalRecords bản ghi
+                                </div>
+                                
+                                <nav aria-label="Pagination">
+                                    <ul class="pagination custom-pagination mb-0">
+                                        @if (ViewBag.HasPreviousPage)
+                                        {
+                                            <li class="page-item">
+                                                <a class="page-link" href="@GetPageUrl(1)">
+                                                    <i class="fas fa-angle-double-left"></i>
+                                                </a>
+                                            </li>
+                                            <li class="page-item">
+                                                <a class="page-link" href="@GetPageUrl(ViewBag.CurrentPage - 1)">
+                                                    <i class="fas fa-angle-left"></i>
+                                                </a>
+                                            </li>
+                                        }
+
+                                        @{
+                                            int startPage = Math.Max(1, ViewBag.CurrentPage - 2);
+                                            int endPage = Math.Min(ViewBag.TotalPages, ViewBag.CurrentPage + 2);
+                                        }
+
+                                        @for (int i = startPage; i <= endPage; i++)
+                                        {
+                                            <li class="page-item @(i == ViewBag.CurrentPage ? "active" : "")">
+                                                <a class="page-link" href="@GetPageUrl(i)">@i</a>
+                                            </li>
+                                        }
+
+                                        @if (ViewBag.HasNextPage)
+                                        {
+                                            <li class="page-item">
+                                                <a class="page-link" href="@GetPageUrl(ViewBag.CurrentPage + 1)">
+                                                    <i class="fas fa-angle-right"></i>
+                                                </a>
+                                            </li>
+                                            <li class="page-item">
+                                                <a class="page-link" href="@GetPageUrl(ViewBag.TotalPages)">
+                                                    <i class="fas fa-angle-double-right"></i>
+                                                </a>
+                                            </li>
+                                        }
+                                    </ul>
+                                </nav>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="alert alert-info text-center">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Không có dữ liệu để hiển thị. Vui lòng thử lại với bộ lọc khác.
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal hiển thị ảnh -->
+<div class="modal fade" id="imageModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Xem ảnh</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="modalImage" src="" class="img-fluid" style="max-height: 500px;" />
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+
+<script>
+    $(document).ready(function () {
+        $('#stateTable').DataTable({
+            responsive: true,
+            pageLength: 25,
+            order: [[11, 'desc']], // Sort by Datetime desc
+            language: {
+                search: "Tìm kiếm:",
+                lengthMenu: "Hiển thị _MENU_ bản ghi",
+                info: "Hiển thị _START_ đến _END_ trong tổng số _TOTAL_ bản ghi",
+                infoEmpty: "Hiển thị 0 đến 0 trong tổng số 0 bản ghi",
+                infoFiltered: "(được lọc từ _MAX_ bản ghi)",
+                paginate: { first: "Đầu", last: "Cuối", next: "Tiếp", previous: "Trước" },
+                emptyTable: "Không có dữ liệu trong bảng"
+            },
+            columnDefs: [
+                { targets: [10], orderable: false } // Image column không sort được
+            ]
+        });
+    });
+
+
+    document.addEventListener('DOMContentLoaded', function() {
+        var currentPageSize = @(ViewBag.PageSize ?? 25);
+        var selectElement = document.getElementById('pageSizeSelect');
+        if (selectElement) {
+            selectElement.value = currentPageSize;
+        }
+    });
+
+
+    function showImageModal(imageSrc) {
+        $('#modalImage').attr('src', imageSrc);
+        $('#imageModal').modal('show');
+    }
+
+
+     @functions {
+        private string GetPageUrl(int page)
+        {
+            var routeValues = new Dictionary<string, object>
+            {
+                { "page", page },
+                { "pageSize", ViewBag.PageSize ?? 25 },
+                { "code", ViewBag.Code ?? "" },
+                { "state", ViewBag.State ?? "" },
+                { "operation", ViewBag.Operation ?? "" },
+                { "fromInsDateTime", ViewBag.FromInsDateTime ?? "" },
+                { "toInsDateTime", ViewBag.ToInsDateTime ?? "" }
+            };
+            
+            return Url.Action("Result", "Status", routeValues);
+        }
+    }
+
+</script>
+</body>
+</html>

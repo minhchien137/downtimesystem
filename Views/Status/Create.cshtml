@@ -1,0 +1,401 @@
+﻿@model MachineStatusUpdate.Models.SVN_Equipment_Info_History_Test
+
+<link rel="stylesheet" href="~/css/create-form.css" asp-append-version="true" />
+
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="confirmation-modal" id="confirmationModal">
+    <div class="modal-content">
+        <div class="modal-text">Bạn có muốn xác nhận không ?</div>
+        <div class="modal-buttons">
+            <button class="btn-yes" id="btnConfirmYes">Có</button>
+            <button class="btn-no" id="btnConfirmNo">Không</button>
+        </div>
+    </div>
+</div>
+
+<div class="status-form-container">
+    <div class="form-header">
+        <h1 class="form-title">Nhập trạng thái máy</h1>
+    </div>
+
+    <form asp-action="Create" id="statusForm">
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="form-label">Mã Machine</label>
+                <div class="input-group" style="display:flex; gap:5px; align-items:center;">
+                    <input id="Code" name="Code" class="form-control" placeholder="Nhập mã machine..." />
+                    <button type="button" id="btnUploadQR"
+                        style="width:38px; height:41.8px; border: 1px solid #82d7ff; border-radius:5px; background-color:rgb(147, 213, 254); color:white; cursor:pointer;">
+                        📸
+                    </button>
+                    <input type="file" id="qrInput" accept="image/*" style="display:none;" />
+                </div>
+                <div style="margin-top: 5px;">
+                    <button type="button"
+                        style="width:60px; height:30px; border:none; font-size:14px; color:white; border-radius:6px; background-color:#fa6d6d;"
+                        onclick="deleteCodeField('Code')">Xóa</button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Trạng thái</label>
+                <div class="input-group">
+                    <select id="State" name="State" class="form-control">
+                        <option value="">-- Chọn trạng thái --</option>
+                        <option value="Run">Run (Chạy)</option>
+                        <option value="Fault">Fault (Lỗi)</option>
+                        <option value="Adjust">Adjust (Điều chỉnh)</option>
+                        <option value="Item">Item (Đổi model)</option>
+                        <option value="Maint">Maint (Bảo trì)</option>
+                        <option value="Stop">Stop (Dừng)</option>
+                        <option value="Devel">Devel (Phát triển)</option>
+                    </select>
+                </div>
+                <div style="margin-top: 5px;">
+                    <button type="button"
+                        style="width:60px; height:30px; border:none; font-size:14px; color:white; border-radius:6px; background-color:#fa6d6d;"
+                        onclick="deleteStateField('State')">Xóa</button>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="form-group full-width">
+            <label class="form-label">Thời gian ước lượng</label>
+            <input id="EstimateTime" name="EstimateTime" class="form-control" type="time" step="60" />
+        </div>
+
+        <div class="form-group full-width">
+            <label class="form-label">Mô tả (tùy chọn)</label>
+            <textarea id="Description" name="Description" class="form-control" placeholder="Nhập mô tả..."
+                rows="4"></textarea>
+        </div>
+
+
+        <div class="form-group full-width">
+            <label class="form-label">Ảnh (tùy chọn)</label>
+            <div class="image-upload-container">
+                <div class="image-upload-area" id="imageUploadArea"
+                    onclick="document.getElementById('imageInput').click()">
+                    <div class="upload-text">Nhấp để chọn ảnh</div>
+                    <div class="upload-hint">Hỗ trợ: JPG, PNG, GIF, BMP (tối đa 5MB)</div>
+                </div>
+                <input type="file" id="imageInput" name="imageFile" accept="image/*" />
+                <div id="imagePreview" style="display: none;">
+                    <img id="previewImg" class="image-preview" />
+                    <div class="file-info" id="fileInfo" style="display: none;"></div>
+                    <div class="image-actions">
+                        <button type="button" class="btn-remove" onclick="removeImage()">Xóa ảnh</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="btn-container">
+            <button type="button" id="btnSaveToDB" class="btn btn-primary">
+                Lưu trạng thái
+            </button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <script>
+        let selectedFile = null;
+
+        // --- Upload QR/Barcode ---
+        document.getElementById("btnUploadQR").addEventListener("click", function () {
+            document.getElementById("qrInput").click();
+        });
+
+        document.getElementById("qrInput").addEventListener("change", function (e) {
+            if (e.target.files.length > 0) {
+                const file = e.target.files[0];
+                const formData = new FormData();
+                formData.append("qrImage", file);
+
+                fetch('/Status/DecodeQR', {
+                    method: 'POST',
+                    body: formData
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            document.getElementById("Code").value = data.code;
+                            showToast("Đã đọc mã từ QR/Barcode!", 'success', 2000);
+                            validateCodeExists(data.code);
+                        } else {
+                            showToast(data.message || "Không đọc được mã!", 'error', 2000);
+                        }
+                    })
+                    .catch(err => {
+                        console.error("Decode error:", err);
+                        showToast("Lỗi khi xử lý ảnh!", 'error', 2000);
+                    })
+                    .finally(() => {
+                        e.target.value = ''; // reset input file
+                    });
+            }
+        });
+
+        // Code validation on blur
+        document.getElementById('Code').addEventListener('blur', function () {
+            const code = this.value.trim();
+            if (code) {
+                validateCodeExists(code);
+            }
+        });
+
+        // Validate code exists
+        function validateCodeExists(code) {
+            if (!code || code.trim() === '') return;
+
+            fetch('/Status/ValidateCode', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ code: code })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.exists) {
+                        showToast('Không tồn tại mã máy này trong hệ thống!', 'error', 3000);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error validating code:', error);
+                });
+        }
+
+        // Toast functions
+        function showToast(message, type = 'success', duration = 2000) {
+            const toastContainer = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+
+            let icon = '';
+            switch (type) {
+                case 'success':
+                    icon = '✓';
+                    break;
+                case 'error':
+                    icon = '✕';
+                    break;
+                default:
+                    icon = 'ℹ';
+            }
+
+            toast.innerHTML = `
+                                                                                                                                                                                                                                                                        <span class="toast-icon">${icon}</span>
+                                                                                                                                                                                                                                                                        ${message}
+                                                                                                                                                                                                                                                                        <button class="toast-close" onclick="closeToast(this)">&times;</button>
+                                                                                                                                                                                                                                                                        <div class="toast-progress"></div>
+                                                                                                                                                                                                                                                                    `;
+
+            toastContainer.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.display = 'block';
+            }, 10);
+
+            setTimeout(() => {
+                hideToast(toast);
+            }, duration);
+
+            return toast;
+        }
+
+        function hideToast(toast) {
+            toast.classList.add('hide');
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 200);
+        }
+
+        function closeToast(button) {
+            const toast = button.closest('.toast');
+            hideToast(toast);
+        }
+
+        // Image handling functions
+        function handleImageSelect(file) {
+            if (!file) return;
+
+            const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/bmp'];
+            if (!allowedTypes.includes(file.type)) {
+                showToast('Chỉ cho phép upload ảnh với định dạng: JPG, PNG, GIF, BMP', 'error', 3000);
+                return;
+            }
+
+            if (file.size > 5 * 1024 * 1024) {
+                showToast('Kích thước ảnh không được vượt quá 5MB', 'error', 3000);
+                return;
+            }
+
+            selectedFile = file;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                document.getElementById('previewImg').src = e.target.result;
+                document.getElementById('fileInfo').textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+                document.getElementById('imagePreview').style.display = 'block';
+                document.getElementById('imageUploadArea').style.display = 'none';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function removeImage() {
+            selectedFile = null;
+            document.getElementById('imageInput').value = '';
+            document.getElementById('imagePreview').style.display = 'none';
+            document.getElementById('imageUploadArea').style.display = 'block';
+        }
+
+        // Drag and drop functionality
+        const imageUploadArea = document.getElementById('imageUploadArea');
+
+        imageUploadArea.addEventListener('dragover', function (e) {
+            e.preventDefault();
+            this.classList.add('dragover');
+        });
+
+        imageUploadArea.addEventListener('dragleave', function (e) {
+            e.preventDefault();
+            this.classList.remove('dragover');
+        });
+
+        imageUploadArea.addEventListener('drop', function (e) {
+            e.preventDefault();
+            this.classList.remove('dragover');
+
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleImageSelect(files[0]);
+            }
+        });
+
+        document.getElementById('imageInput').addEventListener('change', function (e) {
+            if (e.target.files.length > 0) {
+                handleImageSelect(e.target.files[0]);
+            }
+        });
+
+        // Auto-focus first input
+        document.addEventListener('DOMContentLoaded', function () {
+            const codeInput = document.getElementById('Code');
+            if (codeInput) {
+                codeInput.focus();
+            }
+        });
+
+        // Confirmation modal functions
+        function showConfirmationModal() {
+            document.getElementById('confirmationModal').style.display = 'block';
+        }
+
+        function hideConfirmationModal() {
+            document.getElementById('confirmationModal').style.display = 'none';
+        }
+
+        // Save function
+        function performSave() {
+            const code = document.getElementById("Code").value.trim();
+            const status = document.getElementById("State").value.trim();
+            const description = document.getElementById("Description").value.trim();
+            const estimateTime = document.getElementById("EstimateTime").value.trim();
+
+            const btn = document.getElementById("btnSaveToDB");
+            btn.disabled = true;
+            btn.textContent = "Đang lưu...";
+
+            const formData = new FormData();
+            formData.append('Code', code);
+            formData.append('State', status);
+            formData.append('EstimateTime', estimateTime);
+            formData.append('Description', description);
+
+            const imageInput = document.getElementById('imageInput');
+            if (imageInput.files.length > 0) {
+                formData.append('imageFile', imageInput.files[0]);
+            }
+
+            fetch('/Status/Create', {
+                method: 'POST',
+                body: formData
+            })
+                .then(res => {
+                    if (!res.ok) {
+                        throw new Error("Lưu trạng thái không thành công!");
+                    }
+                    return res.json();
+                })
+                .then(response => {
+                    if (response.success) {
+                        showToast(response.message || "Lưu trạng thái thành công!", 'success', 2500);
+
+                        // Reset form
+                        document.getElementById("statusForm").reset();
+                        document.getElementById("Code").value = '';
+                        document.getElementById("State").value = '';
+                        document.getElementById("Description").value = '';
+                        removeImage();
+                    } else {
+                        showToast(response.message || "Lưu trạng thái không thành công!", 'error', 2500);
+                    }
+                })
+                .catch(err => {
+                    console.error("Error:", err);
+                    showToast("Lưu trạng thái không thành công!", 'error', 2500);
+                })
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.textContent = "Lưu trạng thái";
+                });
+        }
+
+        // Event listeners
+        document.getElementById("btnSaveToDB").addEventListener("click", function (e) {
+            e.preventDefault();
+
+            const code = document.getElementById("Code").value.trim();
+            const status = document.getElementById("State").value.trim();
+
+            if (!code || !status) {
+                showToast("Vui lòng điền đầy đủ thông tin bắt buộc!", 'error', 2000);
+                return;
+            }
+
+            showConfirmationModal();
+        });
+
+        document.getElementById("btnConfirmYes").addEventListener("click", function () {
+            hideConfirmationModal();
+            performSave();
+        });
+
+        document.getElementById("btnConfirmNo").addEventListener("click", function () {
+            hideConfirmationModal();
+        });
+
+        document.getElementById("confirmationModal").addEventListener("click", function (e) {
+            if (e.target === this) {
+                hideConfirmationModal();
+            }
+        });
+
+        // Clear input functions
+        function deleteCodeField(inputId) {
+            document.getElementById(inputId).value = '';
+        }
+
+        function deleteStateField(inputId) {
+            document.getElementById(inputId).selectedIndex = 0; // Reset về option đầu tiên (trống)
+        }
+    </script>
+}

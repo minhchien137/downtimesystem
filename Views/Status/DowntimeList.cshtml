@@ -1,0 +1,506 @@
+@model IEnumerable<MachineStatusUpdate.Models.SVN_Downtime_Info>
+@{
+    ViewData["Title"] = "Danh sách Downtime";
+    var ops = (IEnumerable<string>)ViewBag.OperationOptions ?? Enumerable.Empty<string>();
+    string qOp = ViewBag.Operation as string ?? "";
+    string qFrom = ViewBag.FromDate as string ?? "";
+    string qTo = ViewBag.ToDate as string ?? "";
+    int currentPage = ViewBag.CurrentPage ?? 1;
+    int totalPages = ViewBag.TotalPages ?? 0;
+    bool hasPrev = ViewBag.HasPreviousPage ?? false;
+    bool hasNext = ViewBag.HasNextPage ?? false;
+}
+
+<style>
+    /* Base styles */
+    * {
+        box-sizing: border-box;
+    }
+
+    .container {
+        padding: 0 16px;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    h2 {
+        font-size: 24px;
+        margin-bottom: 20px;
+    }
+
+    /* Filter bar - Desktop first */
+    .filter-bar {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin: 18px 0;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .filter-bar label {
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 6px;
+        color: #374151;
+    }
+
+    .filter-bar .form-control,
+    .filter-bar select {
+        height: 40px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        padding: 0 12px;
+        font-size: 14px;
+    }
+
+    .filter-actions {
+        display: flex;
+        align-items: flex-end;
+        gap: 8px;
+    }
+
+    .btn {
+        border: 0;
+        border-radius: 10px;
+        padding: 10px 14px;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 14px;
+        white-space: nowrap;
+        transition: all 0.2s;
+        text-decoration: none;
+        display: inline-block;
+        text-align: center;
+    }
+
+    .btn-primary {
+        background: #0d6efd;
+        color: #fff;
+    }
+
+    .btn-primary:hover {
+        background: #0b5ed7;
+    }
+
+    .btn-secondary {
+        background: #e5e7eb;
+        color: #111827;
+    }
+
+    .btn-secondary:hover {
+        background: #d1d5db;
+    }
+
+    .btn-success {
+        background: #22c55e;
+        color: #fff;
+    }
+
+    .btn-success:hover {
+        background: #16a34a;
+    }
+
+    /* Table styles - Desktop */
+    .table-wrap {
+        overflow: auto;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        background: #fff;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, .06);
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 900px;
+    }
+
+    th,
+    td {
+        border-bottom: 1px solid #f1f5f9;
+        padding: 12px;
+        font-size: 14px;
+        text-align: left;
+    }
+
+    th {
+        background: #f8fafc;
+        font-weight: 700;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    tr:hover {
+        background: #f1f9ff;
+    }
+
+    .state-stop {
+        color: #ef4444;
+        font-weight: 600;
+    }
+
+    .state-run {
+        color: #22c55e;
+        font-weight: 600;
+    }
+
+    /* Card view for mobile - hidden by default */
+    .card-view {
+        display: none;
+    }
+
+    .downtime-card {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, .04);
+    }
+
+    .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 12px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .card-title {
+        font-weight: 700;
+        font-size: 16px;
+        color: #111827;
+    }
+
+    .card-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        font-size: 14px;
+    }
+
+    .card-label {
+        font-weight: 600;
+        color: #6b7280;
+    }
+
+    .card-value {
+        color: #111827;
+        text-align: right;
+    }
+
+    /* Pagination */
+    .pager {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        align-items: center;
+        margin-top: 20px;
+        flex-wrap: wrap;
+    }
+
+    .page-info {
+        font-size: 14px;
+        color: #6b7280;
+        font-weight: 600;
+    }
+
+    .no-data {
+        text-align: center;
+        padding: 40px 20px;
+        color: #6b7280;
+        font-size: 16px;
+    }
+
+    /* Tablet styles */
+    @@media (max-width: 1024px) {
+        .filter-bar {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .filter-actions {
+            grid-column: span 2;
+            justify-content: stretch;
+        }
+
+        .filter-actions .btn {
+            flex: 1;
+        }
+
+        table {
+            min-width: 800px;
+        }
+
+        th,
+        td {
+            padding: 10px 8px;
+            font-size: 13px;
+        }
+    }
+
+    /* Mobile styles */
+    @@media (max-width: 768px) {
+        .container {
+            padding: 0 12px;
+        }
+
+        h2 {
+            font-size: 20px;
+            margin-bottom: 16px;
+        }
+
+        .filter-bar {
+            grid-template-columns: 1fr;
+            gap: 12px;
+            margin: 12px 0;
+        }
+
+        .filter-actions {
+            grid-column: 1;
+            flex-direction: column;
+        }
+
+        .filter-actions .btn {
+            width: 100%;
+        }
+
+        /* Hide table, show cards on mobile */
+        .table-wrap {
+            display: none;
+        }
+
+        .card-view {
+            display: block;
+        }
+
+        .pager {
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 10px 16px;
+            font-size: 13px;
+        }
+
+        .page-info {
+            width: 100%;
+            text-align: center;
+        }
+    }
+
+    /* Small mobile */
+    @@media (max-width: 480px) {
+        h2 {
+            font-size: 18px;
+        }
+
+        .downtime-card {
+            padding: 12px;
+        }
+
+        .card-title {
+            font-size: 14px;
+        }
+
+        .card-row {
+            font-size: 13px;
+        }
+
+        .btn {
+            font-size: 12px;
+            padding: 8px 12px;
+        }
+    }
+</style>
+
+<div class="container">
+    <h2>📋 Danh sách Downtime</h2>
+
+    <form method="get" asp-action="DowntimeList">
+        <div class="filter-bar">
+            <div class="filter-group">
+                <label>From</label>
+                <input type="date" name="fromDate" value="@qFrom" class="form-control" />
+            </div>
+            <div class="filter-group">
+                <label>To</label>
+                <input type="date" name="toDate" value="@qTo" class="form-control" />
+            </div>
+            <div class="filter-group">
+                <label>Operation</label>
+                <select name="operation" class="form-control">
+                    <option value="">-- Tất cả --</option>
+                    @foreach (var op in ops)
+                    {
+                        <option value="@op" selected="@(op == qOp ? "selected" : null)">@op</option>
+                    }
+                </select>
+            </div>
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-primary">🔍 Lọc</button>
+                <a class="btn btn-secondary" href="@Url.Action("DowntimeList", "Status")">🔄 Xoá lọc</a>
+                <a class="btn btn-success"
+                    href="@Url.Action("ExportDowntimeListToExcel", "Status", new { operation = qOp, fromDate = qFrom, toDate = qTo })">
+                    📥 Excel
+                </a>
+            </div>
+        </div>
+    </form>
+
+    <!-- Desktop/Tablet Table View -->
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>SVN Code</th>
+                    <th>Operation</th>
+                    <th>ISS Code</th>
+                    <th>Tên lỗi</th>
+                    <th>State</th>
+                    <th>Mô tả</th>
+                    <th>Thời gian</th>
+                    <th>Ước tính</th>
+                    <th>Ảnh</th>
+                </tr>
+            </thead>
+            <tbody>
+                @{
+                    var i = (currentPage - 1) * (ViewBag.PageSize ?? 25);
+                }
+                @if (!Model.Any())
+                {
+                    <tr>
+                        <td colspan="10" class="no-data">Không có dữ liệu</td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var item in Model)
+                    {
+                        i++;
+                        <tr>
+                            <td>@i</td>
+                            <td>@item.SVNCode</td>
+                            <td>@item.Operation</td>
+                            <td>@item.ISS_Code</td>
+                            <td>@item.ErrorName</td>
+                            <td
+                                class="@(string.Equals(item.State, "Stop", StringComparison.OrdinalIgnoreCase) ? "state-stop" : "state-run")">
+                                @item.State
+                            </td>
+                            <td>@item.Description</td>
+                            <td>@(item.Datetime?.ToString("dd/MM/yyyy HH:mm") ?? "-")</td>
+                            <td>@(string.IsNullOrEmpty(item.EstimateTime) ? "-" : item.EstimateTime)</td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(item.Image))
+                                {
+                                    <a href="@Url.Content(item.Image)" target="_blank">Xem ảnh</a>
+                                }
+                                else
+                                {
+                                    <span>-</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+
+
+    <!-- Mobile Card View -->
+    <div class="card-view">
+        @if (!Model.Any())
+        {
+            <div class="no-data">Không có dữ liệu</div>
+        }
+        else
+        {
+            i = (currentPage - 1) * (ViewBag.PageSize ?? 25);
+            foreach (var item in Model)
+            {
+                i++;
+                <div class="downtime-card">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">@item.SVNCode</div>
+                            <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">#@i</div>
+                        </div>
+                        <span
+                            class="@(string.Equals(item.State, "Stop", StringComparison.OrdinalIgnoreCase) ? "state-stop" : "state-run")">
+                            @item.State
+                        </span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">Operation:</span>
+                        <span class="card-value">@item.Operation</span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">ISS Code:</span>
+                        <span class="card-value">@item.ISS_Code</span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">Tên lỗi:</span>
+                        <span class="card-value">@item.ErrorName</span>
+                    </div>
+                    @if (!string.IsNullOrEmpty(item.Description))
+                    {
+                        <div class="card-row">
+                            <span class="card-label">Mô tả:</span>
+                            <span class="card-value">@item.Description</span>
+                        </div>
+                    }
+                    <div class="card-row">
+                        <span class="card-label">Thời gian:</span>
+                        <span class="card-value">@(item.Datetime?.ToString("dd/MM/yyyy HH:mm") ?? "-")</span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">Ước tính:</span>
+                        <span class="card-value">@(string.IsNullOrEmpty(item.EstimateTime) ? "-" : item.EstimateTime)</span>
+                    </div>
+                    @if (!string.IsNullOrEmpty(item.Image))
+                    {
+                        <div class="card-row">
+                            <span class="card-label">Ảnh:</span>
+                            <span class="card-value">
+                                <a href="@Url.Content(item.Image)" target="_blank" style="color: #0d6efd; text-decoration: none;">
+                                    📷 Xem ảnh
+                                </a>
+                            </span>
+                        </div>
+                    }
+                </div>
+            }
+        }
+    </div>
+
+    <!-- Pagination -->
+    @if (totalPages > 1)
+    {
+        <div class="pager">
+            @if (hasPrev)
+            {
+                <a class="btn btn-secondary"
+                    href="@Url.Action("DowntimeList", new { operation = qOp, fromDate = qFrom, toDate = qTo, page = currentPage - 1, pageSize = ViewBag.PageSize })">
+                    ← Trước
+                </a>
+            }
+            <span class="page-info">Trang @currentPage / @totalPages</span>
+            @if (hasNext)
+            {
+                <a class="btn btn-secondary"
+                    href="@Url.Action("DowntimeList", new { operation = qOp, fromDate = qFrom, toDate = qTo, page = currentPage + 1, pageSize = ViewBag.PageSize })">
+                    Sau →
+                </a>
+            }
+        </div>
+    }
+</div>

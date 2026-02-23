@@ -1,0 +1,328 @@
+@model List<MachineStatusUpdate.Models.SVN_Equipment_Status_Update>
+@using System.Text.Json
+@{
+    ViewData["Title"] = "Báo cáo Status Update";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<link rel="stylesheet" href="~/css/report.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" />
+
+<style>
+    /* CSS tùy chỉnh cho bảng */
+    .table-bordered-centered th,
+    .table-bordered-centered td {
+        border: 1px solid #dee2e6;
+        text-align: center;
+        vertical-align: middle;
+    }
+
+    /* CSS cho biểu đồ */
+    .chart-section {
+        margin-top: 20px;
+    }
+</style>
+
+<div class="container mt-3">
+    <div class="card filter-section">
+        <h5>🔍 Tìm kiếm dữ liệu</h5>
+        <form method="get" asp-action="StatusUpdateReport" class="row g-3">
+            <div class="col-md-3">
+                <label for="filterDate" class="form-label">Ngày:</label>
+                <input type="date" name="filterDate" id="filterDate" value="@ViewBag.FilterDate" class="form-control" />
+            </div>
+            <div class="col-md-3">
+                <label for="operation" class="form-label">Operation:</label>
+                <input type="text" name="operation" id="operation" value="@ViewBag.Operation" class="form-control"
+                    placeholder="Nhập tên Operation..." />
+            </div>
+            <div class="col-md-8 d-flex align-items-end gap-2">
+                <button type="submit" class="btn btn-primary">Lọc</button>
+                <a asp-action="StatusUpdateReport" class="btn btn-secondary">Xóa bộ lọc</a>
+                <a asp-action="ExportStatusUpdateToExcel" asp-route-filterDate="@ViewBag.FilterDate"
+                    asp-route-operation="@ViewBag.Operation" class="btn btn-success">Xuất Excel</a>
+            </div>
+        </form>
+    </div>
+
+    @if (Model != null && Model.Any())
+    {
+        <div class="card p-3 mt-3">
+            <h5>Báo cáo Status Update</h5>
+            <div class="table-responsive">
+                <table class="table table-striped table-hover mt-3 table-bordered-centered">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Name</th>
+                            <th>Operation</th>
+                            <th>Start Time</th>
+                            <th>Duration (minutes)</th>
+                            <th>Total Duration (minutes)</th>
+                            <th>Datetime</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model)
+                        {
+                            <tr>
+                                <td>@item.Name</td>
+                                <td>@item.Operation</td>
+                                <td>@item.StartTime</td>
+                                <td>@Math.Round(item.Duration, 2)</td>
+                                <td>@Math.Round(item.TotalDuration, 2)</td>
+                                <td>@item.Datetime.ToString("yyyy-MM-dd")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card chart-section">
+            <h5>📊 Chart</h5>
+            <div class="card-body">
+                <canvas id="myBarChart"></canvas>
+            </div>
+        </div>
+
+        @if (ViewBag.TotalPages > 1)
+        {
+            <div class="row mt-3 d-flex justify-content-between align-items-center">
+                <div class="col-md-auto">
+                    <span>Tổng bản ghi: @ViewBag.TotalRecords</span>
+                </div>
+                <div class="col-md-auto">
+                    <label for="pageSize" class="form-label mb-0">Số bản ghi/trang:</label>
+                    <select id="pageSize" class="form-select d-inline-block w-auto" onchange="changePageSize(this.value)">
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+                <div class="col-md-auto">
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination mb-0">
+                            <li class="page-item @(ViewBag.CurrentPage > 1 ? "" : "disabled")">
+                                <a class="page-link"
+                                    href="@Url.Action("StatusUpdateReport", new { filterDate = ViewBag.FilterDate, operation = ViewBag.Operation, page = ViewBag.CurrentPage - 1, pageSize = ViewBag.PageSize })">Trước</a>
+                            </li>
+                            <li class="page-item disabled">
+                                <span class="page-link">Trang @ViewBag.CurrentPage / @ViewBag.TotalPages</span>
+                            </li>
+                            <li class="page-item @(ViewBag.CurrentPage < ViewBag.TotalPages ? "" : "disabled")">
+                                <a class="page-link"
+                                    href="@Url.Action("StatusUpdateReport", new { filterDate = ViewBag.FilterDate, operation = ViewBag.Operation, page = ViewBag.CurrentPage + 1, pageSize = ViewBag.PageSize })">Sau</a>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="alert alert-warning mt-3">
+            Không có dữ liệu để hiển thị.
+        </div>
+    }
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var currentPageSize = @(ViewBag.PageSize ?? 10);
+        var selectElement = document.getElementById('pageSize');
+        if (selectElement) selectElement.value = currentPageSize;
+
+        // Lấy filter từ server (nếu null -> rỗng)
+        var filterDate = '@(ViewBag.FilterDate ?? "")';
+        var filterOperation = '@(ViewBag.Operation ?? "")';
+        if (filterDate === 'null') filterDate = '';
+        if (filterOperation === 'null') filterOperation = '';
+
+        // Nếu chưa chọn ngày -> mặc định hôm nay
+        if (!filterDate) {
+            filterDate = new Date().toISOString().split('T')[0]; // yyyy-MM-dd
+        }
+
+        // Lấy dữ liệu JSON an toàn từ server (nếu Model null -> trả list rỗng)
+        var chartData = [];
+        try {
+            chartData = @Html.Raw(Json.Serialize(Model ?? new List<MachineStatusUpdate.Models.SVN_Equipment_Status_Update>()));
+        } catch (e) {
+            console.error('Lỗi khi parse JSON từ server:', e);
+            chartData = [];
+        }
+
+        console.log('Raw chartData:', chartData);
+        console.log('Applied filters: date=', filterDate, 'operation=', filterOperation);
+
+        // helper lấy chuỗi yyyy-MM-dd từ nhiều định dạng khác nhau
+        function toDateKey(val) {
+            if (val === null || val === undefined) return null;
+            // nếu đã là Date object
+            if (val instanceof Date) return val.toISOString().split('T')[0];
+            // nếu là number (ticks / ms)
+            if (typeof val === 'number') {
+                var dnum = new Date(val);
+                if (!isNaN(dnum)) return dnum.toISOString().split('T')[0];
+                return null;
+            }
+            // nếu là string
+            if (typeof val === 'string') {
+                var s = val.trim();
+                if (s === '') return null;
+                // ISO like "2025-09-06T00:00:00..." 
+                if (s.indexOf('T') !== -1) return s.split('T')[0];
+                // SQL style "2025-09-06 00:00:00.000" -> split by space
+                if (s.indexOf(' ') !== -1) return s.split(' ')[0];
+                // fallback: take first 10 chars if looks like yyyy-MM-dd...
+                if (s.length >= 10) return s.substr(0, 10);
+                // last resort: try Date parse
+                var d = new Date(s);
+                if (!isNaN(d)) return d.toISOString().split('T')[0];
+                return null;
+            }
+            // fallback try to construct date
+            try {
+                var dd = new Date(val);
+                if (!isNaN(dd)) return dd.toISOString().split('T')[0];
+            } catch (e) { }
+            return null;
+        }
+
+        if (chartData && chartData.length > 0) {
+            var filteredData = chartData.slice(); // clone
+
+            // Filter date
+            if (filterDate && filterDate !== '') {
+                filteredData = filteredData.filter(x => {
+                    // try several property names
+                    var raw = x.Datetime || x.datetime || x.DateTime || x.dateTime || x.Date || x.date;
+                    var itemDate = toDateKey(raw);
+                    return itemDate === filterDate;
+                });
+            }
+
+            // Filter operation (case-insensitive, safe when undefined)
+            if (filterOperation && filterOperation !== '') {
+                var opFilter = filterOperation.toString().toLowerCase();
+                filteredData = filteredData.filter(x => {
+                    var op = (x.Operation || x.operation || '').toString().toLowerCase();
+                    return op.indexOf(opFilter) !== -1;
+                });
+            }
+
+            console.log('Filtered data length:', filteredData.length, filteredData.slice(0, 5));
+
+            // Build chart or show no-data
+            var canvas = document.getElementById('myBarChart');
+            if (!canvas) return;
+            var ctx = canvas.getContext('2d');
+
+            if (filteredData.length > 0) {
+                // Nhóm dữ liệu theo Operation + Name
+                var groupedData = {};
+                filteredData.forEach(item => {
+                    var operation = item.Operation || item.operation || 'Unknown';
+                    var name = item.Name || item.name || 'Unknown';
+                    var duration = Number(item.Duration || item.duration || 0) || 0;
+                    var totalDuration = Number(item.TotalDuration || item.totalDuration || 0) || 0;
+
+                    if (!groupedData[operation]) groupedData[operation] = {};
+                    if (!groupedData[operation][name]) groupedData[operation][name] = { duration: 0, totalDuration: 0 };
+                    groupedData[operation][name].duration += duration;
+                    groupedData[operation][name].totalDuration += totalDuration;
+                });
+
+                var labels = [], durationData = [], totalDurationData = [];
+                Object.keys(groupedData).sort().forEach(operation => {
+                    Object.keys(groupedData[operation]).sort().forEach(name => {
+                        labels.push(`${operation} - ${name}`);
+                        durationData.push(groupedData[operation][name].duration);
+                        totalDurationData.push(groupedData[operation][name].totalDuration);
+                    });
+                });
+
+                var titleDate = filterDate && filterDate !== '' ? filterDate : 'Tất cả ngày';
+                var titleOperation = filterOperation && filterOperation !== '' ? filterOperation : 'Tất cả Operation';
+
+                // destroy previous chart instance nếu cần (nếu bạn load script nhiều lần trong SPA)
+                if (window._myBarChartInstance) {
+                    try { window._myBarChartInstance.destroy(); } catch (e) { }
+                }
+
+                window._myBarChartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: "Duration (phút)",
+                                data: durationData,
+                                backgroundColor: 'rgba(255, 99, 132, 0.6)',
+                                borderColor: 'rgba(255, 99, 132, 1)',
+                                borderWidth: 1
+                            },
+                            {
+                                label: "Total Duration (giờ)",
+                                data: totalDurationData,
+                                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                                borderColor: 'rgba(54, 162, 235, 1)',
+                                borderWidth: 1
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    afterLabel: function (context) {
+                                        var label = context.chart.data.labels[context.dataIndex] || '';
+                                        var parts = label.split(' - ');
+                                        var operation = parts[0] || '';
+                                        var name = parts[1] || '';
+
+                                        var details = filteredData
+                                            .filter(x => (x.Operation === operation || x.operation === operation) && (x.Name === name || x.name === name))
+                                            .map(x => `Start: ${x.StartTime || x.startTime || ''}, Duration: ${Number(x.Duration || x.duration || 0).toFixed(2)}p, Total: ${Number(x.TotalDuration || x.totalDuration || 0).toFixed(2)}h`);
+                                        return details;
+                                    }
+                                }
+                            },
+                            legend: { display: true, position: 'top' },
+                            title: { display: true, text: `Biểu đồ tóm tắt trạng thái - ${titleDate} - ${titleOperation}` }
+                        },
+                        scales: {
+                            x: { title: { display: true, text: 'Operation - Machine Name' } },
+                            y: { beginAtZero: true, title: { display: true, text: 'Thời gian (giờ)' } }
+                        }
+                    }
+                });
+            } else {
+                // show no-data chart
+                if (window._myBarChartInstance) {
+                    try { window._myBarChartInstance.destroy(); } catch (e) { }
+                }
+                window._myBarChartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: { labels: ['Không có dữ liệu'], datasets: [{ label: 'Không có dữ liệu', data: [0] }] },
+                    options: { responsive: true, plugins: { title: { display: true, text: `Không có dữ liệu${filterDate ? ' cho ngày ' + filterDate : ''}${filterOperation ? ' cho operation ' + filterOperation : ''}` } } }
+                });
+            }
+        } else {
+            console.warn('Không có dữ liệu gốc để vẽ chart');
+        }
+
+    });
+
+    function changePageSize(pageSize) {
+        var url = new URL(window.location.href);
+        url.searchParams.set("pageSize", pageSize);
+        url.searchParams.set("page", 1);
+        window.location.href = url.toString();
+    }
+</script>

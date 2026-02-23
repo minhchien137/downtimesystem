@@ -1,0 +1,47 @@
+html {
+  font-size: 14px;
+}
+
+.nav-link.custom-highlight {
+    font-weight: bold; 
+    color: #4187d1 !important; 
+    font-size: 1.1rem;
+    transition: color 0.3s ease; 
+}
+
+.nav-link.custom-highlight:hover {
+    color: #0056b3 !important; /* Darker color on hover */
+    text-decoration: underline; /* Underlines the text on hover */
+}
+
+
+@media (min-width: 768px) {
+  html {
+    font-size: 16px;
+  }
+
+  .nav-link.custom-highlight {
+        font-size: 1rem; /* Adjusts font size for smaller screens */
+        padding: 0.5rem 0; /* Adjusts padding for better spacing */
+    }
+
+    .nav-link.custom-highlight:hover {
+    color: #0056b3 !important; /* Darker color on hover */
+    text-decoration: underline; /* Underlines the text on hover */
+}
+}
+
+.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
+  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+}
+
+html {
+  position: relative;
+  min-height: 100%;
+}
+
+body {
+  margin-bottom: 60px;
+}
+
+

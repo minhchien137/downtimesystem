@@ -1,0 +1,341 @@
+@model List<MachineStatusUpdate.Models.SVN_Equipment_Status_Update_Detail>
+@{
+    ViewData["Title"] = "Báo cáo chi tiết Downtime";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .pagination-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 20px;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .pagination-info {
+        font-size: 13px;
+        color: #6c757d;
+    }
+
+    .custom-pagination .page-link {
+        color: #6a9ef8;
+        border-color: #dee2e6;
+        padding: 6px 10px;
+        font-size: 13px;
+        min-width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+    }
+
+    .custom-pagination .page-item.active .page-link {
+        background-color: #6a9ef8;
+        border-color: #6a9ef8;
+        font-weight: 600;
+    }
+
+    .custom-pagination .page-link:hover {
+        color: #4b6fac;
+        background-color: #f8f9fa;
+        border-color: #4b6fac;
+    }
+
+    .custom-pagination .page-link i {
+        font-size: 11px;
+    }
+
+    .custom-pagination .page-item {
+        margin: 0 1px;
+    }
+
+    .page-size-selector {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+    }
+
+    .page-size-selector select {
+        width: auto;
+        min-width: 60px;
+        padding: 4px 8px;
+        font-size: 13px;
+        height: 32px;
+    }
+</style>
+
+<link rel="stylesheet" href="~/css/report.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" />
+
+<div class="container mt-3">
+    <div class="card filter-section">
+        <h5 class="mb-3">🔍 Tìm kiếm</h5>
+        <form method="get" asp-action="DowntimeDetailReport" class="row g-3">
+            <div class="col-md-2">
+                <label for="code">Code:</label>
+                <input type="text" name="code" value="@ViewBag.Code" class="form-control"
+                    placeholder="Nhập mã máy..." />
+            </div>
+            <div class="col-md-2">
+                <label for="state">State:</label>
+                <input type="text" name="state" value="@ViewBag.State" class="form-control"
+                    placeholder="Nhập trạng thái..." />
+            </div>
+            <div class="col-md-2">
+                <label for="operation">Operation:</label>
+                <input type="text" name="operation" value="@ViewBag.Operation" class="form-control"
+                    placeholder="Nhập tên chuyền..." />
+            </div>
+            <div class="col-md-2">
+                <label for="fromInsDateTime">From:</label>
+                <input type="date" name="fromInsDateTime" value="@ViewBag.fromInsDateTime" class="form-control" />
+            </div>
+            <div class="col-md-2">
+                <label for="toInsDateTime">To:</label>
+                <input type="date" name="toInsDateTime" value="@ViewBag.toInsDateTime" class="form-control" />
+            </div>
+
+            <div class="col-md-4 d-flex align-items-end gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search"></i> Lọc
+                </button>
+                <a asp-action="DowntimeDetailReport" class="btn btn-secondary">
+                    <i class="bi bi-x-circle"></i> Xóa bộ lọc
+                </a>
+                <a asp-action="ExportDowntimeDetailToExcel" asp-route-code="@ViewBag.Code"
+                    asp-route-state="@ViewBag.State" asp-route-operation="@ViewBag.Operation"
+                    asp-route-fromInsDateTime="@ViewBag.fromInsDateTime"
+                    asp-route-toInsDateTime="@ViewBag.toInsDateTime" class="btn btn-success">
+                    <i class="bi bi-file-earmark-excel"></i> Xuất Excel
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <div class="card mt-3 p-3">
+        <h5>📋 Báo cáo chi tiết Downtime</h5>
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover mt-2">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Operation</th>
+                        <th>State</th>
+                        <th>Estimate Time</th>
+                        <th>Start Time</th>
+                        <th>End Time (min)</th>
+                        <th>Duration (min)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model != null && Model.Any())
+                    {
+                        foreach (var item in Model)
+                        {
+                            <tr>
+                                <td class="text-center">@item.Id</td>
+                                <td class="text-center">@item.Name</td>
+                                <td class="text-center">@item.Operation</td>
+                                <td class="text-center">
+                                    <span
+                                        class="badge @(item.State == "Run" ? "bg-success" :
+                                                                                                                                                                                                                           item.State == "Fault" ? "bg-warning" :
+                                                                                                                                                                                                                           item.State == "Adjust" ? "bg-primary" :
+                                                                                                                                                                                                                           item.State == "Item" ? "bg-light text-dark" :
+                                                                                                                                                                                                                           item.State == "Main" ? "bg-secondary" :
+                                                                                                                                                                                                                           item.State == "Stop" ? "bg-danger" :
+                                                                                                                                                                                                                           item.State == "Deve" ? "bg-dark" : "bg-secondary")">
+                                        @item.State
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    @if (!string.IsNullOrEmpty(item.EstimateTime))
+                                    {
+                                        if (double.TryParse(item.EstimateTime, out double estimateMinutes))
+                                        {
+                                            <span class="@(estimateMinutes < 0 ? "text-danger" : "text-primary")">
+                                                @Math.Round(estimateMinutes, 1)
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            @item.EstimateTime
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                                <td class="text-center">
+                                    @if (!string.IsNullOrEmpty(item.FromTime))
+                                    {
+                                        if (DateTime.TryParse(item.FromTime, out DateTime fromTime))
+                                        {
+                                            @fromTime.ToString("yyyy-MM-dd HH:mm:ss")
+                                        }
+                                        else
+                                        {
+                                            @item.FromTime
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                                <td class="text-center">
+                                    @if (!string.IsNullOrEmpty(item.ToTime))
+                                    {
+                                        if (double.TryParse(item.ToTime, out double toTimeMinutes))
+                                        {
+                                            <span class="text-primary">
+                                                @Math.Round(toTimeMinutes, 1)
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-primary">
+                                                @item.ToTime
+                                            </span>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                                <td class="text-center">
+                                    @if (item.DurationMinutes > 0)
+                                    {
+                                        <span class="text-primary">
+                                            @Math.Round(item.DurationMinutes, 1)
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="8" class="text-center text-muted">Không có dữ liệu</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (ViewBag.TotalPages != null && ViewBag.TotalPages > 1)
+        {
+            <div class="pagination-container">
+                <div class="page-size-selector">
+                    <span>Số bản ghi/trang:</span>
+                    <select id="pageSize" onchange="changePageSize(this.value)" class="form-select form-select-sm">
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+
+                <div class="pagination-info">
+                    Hiển thị @((ViewBag.CurrentPage - 1) * ViewBag.PageSize + 1) - @(Math.Min(ViewBag.CurrentPage *
+                                    ViewBag.PageSize, ViewBag.TotalRecords))
+                    trong tổng số @ViewBag.TotalRecords bản ghi
+                </div>
+
+                <nav aria-label="Pagination">
+                    <ul class="pagination custom-pagination mb-0">
+                        @if (ViewBag.HasPreviousPage)
+                        {
+                            <li class="page-item">
+                                <a class="page-link" href="@GetPageUrl(1)">
+                                    <i class="bi bi-arrow-bar-left"></i>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="@GetPageUrl(ViewBag.CurrentPage - 1)">
+                                    <i class="bi bi-arrow-left"></i>
+                                </a>
+                            </li>
+                        }
+
+                        @{
+                            int startPage = Math.Max(1, ViewBag.CurrentPage - 2);
+                            int endPage = Math.Min(ViewBag.TotalPages, ViewBag.CurrentPage + 2);
+                        }
+
+                        @for (int i = startPage; i <= endPage; i++)
+                        {
+                            <li class="page-item @(i == ViewBag.CurrentPage ? "active" : "")">
+                                <a class="page-link" href="@GetPageUrl(i)">@i</a>
+                            </li>
+                        }
+
+                        @if (ViewBag.HasNextPage)
+                        {
+                            <li class="page-item">
+                                <a class="page-link" href="@GetPageUrl(ViewBag.CurrentPage + 1)">
+                                    <i class="bi bi-arrow-right"></i>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="@GetPageUrl(ViewBag.TotalPages)">
+                                    <i class="bi bi-arrow-bar-right"></i>
+                                </a>
+                            </li>
+                        }
+                    </ul>
+                </nav>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var currentPageSize = @(ViewBag.PageSize ?? 10);
+            var selectElement = document.getElementById('pageSize');
+            if (selectElement) {
+                selectElement.value = currentPageSize;
+            }
+        });
+
+        function changePageSize(pageSize) {
+            var url = new URL(window.location.href);
+            url.searchParams.set("pageSize", pageSize);
+            url.searchParams.set("page", 1);
+            window.location.href = url.toString();
+        }
+    </script>
+}
+
+@functions {
+    private string GetPageUrl(int page)
+    {
+        var routeValues = new Dictionary<string, object>
+{
+{ "page", page },
+{ "pageSize", ViewBag.PageSize ?? 10 },
+{ "code", ViewBag.Code ?? "" },
+{ "state", ViewBag.State ?? "" },
+{ "operation", ViewBag.Operation ?? "" },
+{ "fromInsDateTime", ViewBag.fromInsDateTime ?? "" },
+{ "toInsDateTime", ViewBag.toInsDateTime ?? "" }
+};
+
+        return Url.Action("DowntimeDetailReport", "Status", routeValues);
+    }
+}

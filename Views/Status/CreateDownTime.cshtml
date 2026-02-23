@@ -1,0 +1,803 @@
+@model MachineStatusUpdate.Models.SVN_Downtime_Info
+@{
+    ViewData["Title"] = "Downtime Input";
+    var ops = (IEnumerable<string>)ViewBag.OperationOptions ?? Enumerable.Empty<string>();
+}
+
+<!-- ====== CSS (self-contained giống style Create) ====== -->
+<style>
+    :root {
+        --primary: #0d6efd;
+        --danger: #fa6d6d;
+        --ok: #22c55e;
+        --warn: #f59e0b;
+        --border: #e5e7eb;
+        --text: #111827;
+        --muted: #6b7280;
+        --bg: #ffffff;
+    }
+
+    body {
+        font-family: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+    }
+
+    .status-form-container {
+        max-width: 880px;
+        margin: 28px auto;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, .06);
+        overflow: hidden;
+    }
+
+    .form-header {
+        padding: 18px 22px;
+        background: linear-gradient(0deg, #f7fbff, #ffffff);
+        border-bottom: 1px solid var(--border);
+    }
+
+    .form-title {
+        margin: 0;
+        font-weight: 700;
+        color: var(--text)
+    }
+
+    .form-sub {
+        margin: 4px 0 0;
+        color: var(--muted);
+        font-size: 14px;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+        padding: 22px;
+    }
+
+    .full-width {
+        grid-column: 1 / -1;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .form-label {
+        font-weight: 600;
+        margin-bottom: 6px;
+        color: var(--text)
+    }
+
+    .form-control,
+    select,
+    textarea {
+        width: 100%;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-size: 14.5px;
+        transition: border .2s, box-shadow .2s;
+        background: #fff;
+    }
+
+    .form-control:focus,
+    select:focus,
+    textarea:focus {
+        outline: none;
+        border-color: #82d7ff;
+        box-shadow: 0 0 0 3px rgba(130, 215, 255, .25)
+    }
+
+    textarea {
+        min-height: 110px;
+        resize: vertical
+    }
+
+    .btn-container {
+        padding: 10px 22px 22px;
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+    }
+
+    .btn {
+        border: 0;
+        border-radius: 10px;
+        padding: 10px 16px;
+        cursor: pointer;
+        font-weight: 600;
+    }
+
+    .btn-primary {
+        background: var(--primary);
+        color: #fff;
+    }
+
+    .btn-primary:disabled {
+        opacity: .75;
+        cursor: not-allowed;
+    }
+
+    .btn-danger {
+        background: var(--danger);
+        color: #fff;
+    }
+
+    .helper-row {
+        display: flex;
+        gap: 8px;
+        margin-top: 6px
+    }
+
+    .tiny-btn {
+        background: var(--danger);
+        color: #fff;
+        border: 0;
+        border-radius: 8px;
+        padding: 6px 10px;
+        font-size: 12px;
+        cursor: pointer;
+    }
+
+    /* Toast */
+    .toast-container {
+        position: fixed;
+        top: 18px;
+        right: 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        z-index: 9999
+    }
+
+    .toast {
+        display: none;
+        min-width: 280px;
+        background: #fff;
+        border: 1px solid var(--border);
+        border-left: 6px solid var(--ok);
+        padding: 12px 14px;
+        border-radius: 12px;
+        box-shadow: 0 10px 28px rgba(0, 0, 0, .08);
+        position: relative;
+        overflow: hidden
+    }
+
+    .toast.error {
+        border-left-color: var(--danger)
+    }
+
+    .toast .toast-icon {
+        font-weight: 700;
+        margin-right: 8px
+    }
+
+    .toast .toast-close {
+        position: absolute;
+        right: 10px;
+        top: 6px;
+        border: 0;
+        background: transparent;
+        font-size: 18px;
+        cursor: pointer
+    }
+
+    .toast .toast-progress {
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        height: 3px;
+        width: 100%;
+        background: rgba(13, 110, 253, .12);
+        animation: toastbar 2.1s linear forwards
+    }
+
+    @@keyframes toastbar {
+        from {
+            transform: translateX(0)
+        }
+
+        to {
+            transform: translateX(-100%)
+        }
+    }
+
+    .toast.hide {
+        opacity: 0;
+        transform: translateY(-6px);
+        transition: all .18s ease
+    }
+
+    /* Confirm modal */
+    .confirmation-modal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, .28);
+        z-index: 9998;
+        align-items: center;
+        justify-content: center
+    }
+
+    .modal-content {
+        background: #fff;
+        width: min(420px, 92vw);
+        border-radius: 14px;
+        padding: 18px;
+        border: 1px solid var(--border);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, .16)
+    }
+
+    .modal-text {
+        font-weight: 600;
+        font-size: 16px;
+        margin-bottom: 14px
+    }
+
+    .modal-buttons {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end
+    }
+
+    .btn-yes {
+        background: var(--primary);
+        color: #fff;
+        border: 0;
+        border-radius: 10px;
+        padding: 10px 14px;
+        cursor: pointer
+    }
+
+    .btn-no {
+        background: #e5e7eb;
+        color: #111827;
+        border: 0;
+        border-radius: 10px;
+        padding: 10px 14px;
+        cursor: pointer
+    }
+
+    /* Validation summary */
+    .text-danger {
+        color: #b91c1c
+    }
+
+    @@media (max-width: 720px) {
+        .form-grid {
+            grid-template-columns: 1fr;
+            padding: 16px
+        }
+    }
+
+    .form-control.disabled,
+    .form-control:disabled {
+        background: #f3f4f6;
+        color: #6b7280;
+        cursor: not-allowed;
+    }
+
+    /* ====== Image upload (CreateDownTime) ====== */
+    .image-upload-container {
+        width: 100%;
+    }
+
+    #imageInputDT {
+        display: none;
+        /* ẩn input file – click vào vùng upload để chọn ảnh */
+    }
+
+    .image-upload-area {
+        border: 2px dashed var(--border);
+        border-radius: 12px;
+        background: linear-gradient(0deg, #f9fbff, #ffffff);
+        min-height: 160px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        flex-direction: column;
+        cursor: pointer;
+        transition: border-color .2s ease, box-shadow .2s ease, background .2s ease, transform .08s ease;
+        padding: 18px;
+    }
+
+    .image-upload-area:hover {
+        border-color: #82d7ff;
+        box-shadow: 0 4px 18px rgba(0, 0, 0, .06);
+    }
+
+    .image-upload-area:active {
+        transform: translateY(1px);
+    }
+
+    .image-upload-area.dragover {
+        border-color: var(--primary);
+        background: rgba(13, 110, 253, .04);
+        box-shadow: 0 6px 22px rgba(13, 110, 253, .12);
+    }
+
+    .image-upload-area .upload-text {
+        font-weight: 700;
+        color: var(--text);
+        font-size: 15px;
+    }
+
+    .image-upload-area .upload-hint {
+        color: var(--muted);
+        font-size: 13px;
+    }
+
+    /* Preview box */
+    #imagePreviewDT {
+        margin-top: 10px;
+        padding: 12px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: #fff;
+        box-shadow: 0 8px 22px rgba(0, 0, 0, .06);
+    }
+
+    .image-preview {
+        display: block;
+        max-width: 100%;
+        max-height: 300px;
+        width: auto;
+        height: auto;
+        object-fit: contain;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+    }
+
+    .file-info {
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 13px;
+        word-break: break-word;
+    }
+
+    .image-actions {
+        margin-top: 10px;
+        display: flex;
+        gap: 8px;
+    }
+
+    /* “Xóa ảnh” dùng style tiny-btn có sẵn; thêm hover nhẹ */
+    .image-actions .tiny-btn:hover {
+        filter: brightness(0.98);
+    }
+
+    /* Mobile */
+    @@media (max-width: 720px) {
+        .image-upload-area {
+            min-height: 140px;
+            padding: 14px;
+        }
+
+        .image-preview {
+            max-height: 240px;
+        }
+    }
+</style>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="confirmation-modal" id="confirmationModal">
+    <div class="modal-content">
+        <div class="modal-text">Bạn có muốn xác nhận lưu downtime?</div>
+        <div class="modal-buttons">
+            <button class="btn-yes" id="btnConfirmYes">Có</button>
+            <button class="btn-no" id="btnConfirmNo">Không</button>
+        </div>
+    </div>
+</div>
+
+<div class="status-form-container">
+    <div class="form-header">
+        <h1 class="form-title">Nhập Downtime</h1>
+        <div class="form-sub">Chọn Operation trong ngày, trạng thái và mô tả (tùy chọn)</div>
+    </div>
+
+    @* <form id="downtimeForm" asp-controller="Status" asp-action="CreateDownTime" method="post"> *@
+    <form id="downtimeForm" asp-controller="Status" asp-action="CreateDownTime" method="post"
+        enctype="multipart/form-data">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="All" class="text-danger" style="padding: 0 22px 0;"></div>
+
+        <div class="form-grid">
+            <!-- SVN Code -->
+            <div class="form-group">
+                <label class="form-label" for="SVNCode">SVN Code</label>
+                <input asp-for="Code" type="text" id="SVNCode" name="Code" class="form-control"
+                    placeholder="Nhập mã SVN..." required />
+                <span asp-validation-for="Code" class="text-danger"></span>
+            </div>
+
+            <!-- Operation dropdown -->
+            <div class="form-group">
+                <label class="form-label">Operation</label>
+                <select id="Operation" name="Operation" class="form-control" required>
+                    <option value="">-- Chọn operation (hôm nay) --</option>
+                    @foreach (var op in ops)
+                    {
+                        <option value="@op">@op</option>
+                    }
+                </select>
+            </div>
+
+            <!-- ISS code -->
+            <div class="form-group">
+                <label class="form-label" for="IssCode">Lý do</label>
+                <select id="IssCode" name="IssCode" class="form-control" required>
+                    <option value="">-- Chọn lý do --</option>
+                    @foreach (var r in (IEnumerable<dynamic>)ViewBag.ReasonOptions)
+                    {
+                        <!-- Lưu code vào cột IssCode, hiển thị tên + code -->
+                        <option value="@r.Reason_Code">@r.Reason_Name (@r.Reason_Code)</option>
+                    }
+                </select>
+            </div>
+
+            <!-- Thời gian -->
+            <div class="form-group">
+                <label id="timeLabel" class="form-label" for="Datetime">Thời gian</label>
+                <input asp-for="Datetime" type="datetime-local" class="form-control" id="Datetime" required
+                    value="@(Model?.Datetime?.ToString("yyyy-MM-ddTHH:mm") ?? DateTime.Now.ToString("yyyy-MM-ddTHH:mm"))" />
+                <span asp-validation-for="Datetime" class="text-danger"></span>
+            </div>
+
+            <!-- Ước tính thời gian (không bắt buộc) -->
+            <div class="form-group">
+                <label class="form-label" for="EstimateTime">Thời gian ước tính (tùy chọn)</label>
+                <input asp-for="EstimateTime" type="time" class="form-control" id="EstimateTime" name="EstimateTime"
+                    step="60" placeholder="hh:mm" />
+                <span asp-validation-for="EstimateTime" class="text-danger"></span>
+            </div>
+
+            <!-- Description -->
+            <div class="form-group">
+                <label class="form-label" for="Description">Mô tả (tùy chọn)</label>
+                <input asp-for="Description" id="Description" name="Description" class="form-control"
+                    placeholder="Nhập ghi chú hoặc chi tiết..." />
+                <span asp-validation-for="Description" class="text-danger"></span>
+            </div>
+            <!-- Ảnh (tùy chọn) -->
+            <div class="form-group full-width">
+                <label class="form-label">Ảnh (tùy chọn)</label>
+                <div class="image-upload-container">
+                    <div class="image-upload-area" id="imageUploadAreaDT"
+                        onclick="document.getElementById('imageInputDT').click()">
+                        <div class="upload-text">Nhấp để chọn ảnh</div>
+                        <div class="upload-hint">Hỗ trợ: JPG, PNG, GIF, BMP (tối đa 5MB)</div>
+                    </div>
+                    <input type="file" id="imageInputDT" name="imageFile" accept="image/*" />
+                    <div id="imagePreviewDT" style="display:none;">
+                        <img id="previewImgDT" class="image-preview" />
+                        <div class="file-info" id="fileInfoDT" style="display:none;"></div>
+                        <div class="image-actions">
+                            <button type="button" class="btn tiny-btn" onclick="removeImageDT()">Xóa ảnh</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="btn-container">
+            <button type="button" id="btnRun" class="btn btn-primary" style="display:none;">Run</button>
+            <button type="button" id="btnStop" class="btn btn-danger" style="display:none;">Stop</button>
+        </div>
+    </form>
+</div>
+<script>
+    "use strict";
+
+    function formatLocal(d) {
+        const pad = n => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    /* ===================== Toast ===================== */
+    function showToast(message, type = 'success', duration = 2100) {
+        const wrap = document.getElementById('toastContainer');
+        const el = document.createElement('div');
+        el.className = `toast ${type === 'error' ? 'error' : ''}`;
+        const icon = type === 'error' ? '✕' : '✓';
+        el.innerHTML = `
+      <span class="toast-icon">${icon}</span>
+      ${message}
+      <button class="toast-close" onclick="closeToast(this)">&times;</button>
+      <div class="toast-progress" style="animation-duration:${duration}ms"></div>
+  `;
+        wrap.appendChild(el);
+        setTimeout(() => { el.style.display = 'block'; }, 10);
+        setTimeout(() => { hideToast(el); }, duration);
+    }
+    function hideToast(el) { el.classList.add('hide'); setTimeout(() => el.remove(), 180); }
+    function closeToast(btn) { hideToast(btn.closest('.toast')); }
+
+    /* ============ DOM references ============ */
+    const opEl = document.getElementById('Operation');
+    const IssCodeEl = document.getElementById('IssCode');
+    const timeEl = document.getElementById('Datetime');
+    const estimateEl = document.getElementById('EstimateTime');
+    const timeLabel = document.getElementById('timeLabel');
+    const svnCodeEl = document.getElementById('SVNCode');
+    const descEl = document.getElementById('Description');
+
+    const btnRun = document.getElementById('btnRun');
+    const btnStop = document.getElementById('btnStop');
+
+    function updateDatetimeRange() {
+        if (!timeEl) return;
+        const now = new Date();
+        const before = new Date(now.getTime() - 15 * 60 * 1000);
+        const after = new Date(now.getTime() + 15 * 60 * 1000);
+
+        timeEl.min = formatLocal(before);
+        timeEl.max = formatLocal(after);
+    }
+
+    /* ============ Helpers UI ============ */
+    function hideButtons() {
+        btnRun.style.display = 'none';
+        btnStop.style.display = 'none';
+    }
+    function showRun() { btnRun.style.display = 'inline-block'; btnStop.style.display = 'none'; }
+    function showStop() { btnStop.style.display = 'inline-block'; btnRun.style.display = 'none'; }
+
+    function setReasonEnabled(enabled) {
+        if (!IssCodeEl) return;
+        IssCodeEl.disabled = !enabled;
+        IssCodeEl.classList.toggle('disabled', !enabled);
+    }
+    function setEstimateEnabled(enabled) {
+        if (!estimateEl) return;
+        estimateEl.disabled = !enabled;
+        estimateEl.classList.toggle('disabled', !enabled);
+    }
+
+    /* ============ Reset inputs sau khi lưu thành công ============ */
+    function resetInputs() {
+        if (opEl) opEl.selectedIndex = 0;
+        if (IssCodeEl) {
+            if (IssCodeEl.tagName.toLowerCase() === 'select') IssCodeEl.selectedIndex = 0;
+            else IssCodeEl.value = '';
+            setReasonEnabled(true);
+        }
+        if (timeEl) timeEl.value = formatLocal(new Date());
+        if (estimateEl) {
+            estimateEl.value = '';
+            setEstimateEnabled(true);
+        }
+        if (svnCodeEl) svnCodeEl.value = '';
+        if (descEl) descEl.value = '';
+        removeImageDT();
+        hideButtons();
+    }
+
+    /* ============ Load trạng thái operation ============ */
+    async function onOperationChanged() {
+        updateDatetimeRange();
+        hideButtons();
+        setReasonEnabled(true);
+        setEstimateEnabled(true);
+
+        const op = (opEl?.value || '').trim();
+        if (!op) return;
+
+        try {
+            const url = `/Status/GetLatestDowntimeForOperation?operation=${encodeURIComponent(op)}`;
+            const res = await fetch(url, { method: 'GET' });
+            if (!res.ok) { showToast('Không kiểm tra được trạng thái gần nhất!', 'error', 2400); return; }
+            const data = await res.json();
+
+            if (!data?.exists) {
+                showStop();
+                if (timeLabel) timeLabel.textContent = 'Thời gian bắt đầu dừng';
+                setReasonEnabled(true);
+                setEstimateEnabled(true);
+                if (IssCodeEl && IssCodeEl.tagName.toLowerCase() === 'select') IssCodeEl.selectedIndex = 0;
+                return;
+            }
+
+            const stateNorm = String(data.state || '').trim().toLowerCase();
+
+            if (stateNorm === 'run') {
+                showStop();
+                if (timeLabel) timeLabel.textContent = 'Thời gian bắt đầu dừng';
+                setReasonEnabled(true);
+                setEstimateEnabled(true);
+            } else if (stateNorm === 'stop') {
+                showRun();
+                if (timeLabel) timeLabel.textContent = 'Thời gian kết thúc dừng';
+                const oldDesc = (data.issCode || '').trim();
+                if (IssCodeEl) {
+                    if (IssCodeEl.tagName.toLowerCase() === 'select') {
+                        let opt = Array.from(IssCodeEl.options).find(o => o.value === oldDesc);
+                        if (!opt) {
+                            const temp = document.createElement('option');
+                            temp.value = oldDesc;
+                            temp.textContent = oldDesc || '(trống)';
+                            temp.dataset.temp = '1';
+                            IssCodeEl.appendChild(temp);
+                        }
+                        IssCodeEl.value = oldDesc;
+                    } else IssCodeEl.value = oldDesc;
+                }
+                setReasonEnabled(false);
+                setEstimateEnabled(false);
+            } else {
+                showStop();
+                setReasonEnabled(true);
+                setEstimateEnabled(true);
+            }
+        } catch (e) {
+            console.error(e);
+            showToast('Lỗi tra cứu trạng thái!', 'error', 2400);
+        }
+    }
+
+    timeEl?.addEventListener('change', () => {
+        const selected = new Date(timeEl.value);
+        const now = new Date();
+        const diffMinutes = Math.abs((selected - now) / 60000);
+        if (diffMinutes > 15) {
+            showToast('Thời gian chỉ được trong ±15 phút hiện tại!', 'error', 2400);
+            timeEl.value = formatLocal(new Date());
+        }
+    });
+
+    // ======== Upload/Preview ảnh cho Downtime ========
+    let selectedFileDT = null;
+
+    function handleImageSelectDT(file) {
+        if (!file) return;
+
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/bmp'];
+        if (!allowedTypes.includes(file.type)) {
+            showToast('Chỉ cho phép upload ảnh: JPG, PNG, GIF, BMP', 'error', 3000);
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            showToast('Kích thước ảnh không được vượt quá 5MB', 'error', 3000);
+            return;
+        }
+
+        selectedFileDT = file;
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            document.getElementById('previewImgDT').src = e.target.result;
+            document.getElementById('fileInfoDT').textContent =
+                `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+            document.getElementById('imagePreviewDT').style.display = 'block';
+            document.getElementById('imageUploadAreaDT').style.display = 'none';
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function removeImageDT() {
+        selectedFileDT = null;
+        const input = document.getElementById('imageInputDT');
+        if (input) input.value = '';
+        document.getElementById('imagePreviewDT').style.display = 'none';
+        document.getElementById('imageUploadAreaDT').style.display = 'block';
+    }
+
+    // Drag & Drop
+    const imageUploadAreaDT = document.getElementById('imageUploadAreaDT');
+    imageUploadAreaDT.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        this.classList.add('dragover');
+    });
+    imageUploadAreaDT.addEventListener('dragleave', function (e) {
+        e.preventDefault();
+        this.classList.remove('dragover');
+    });
+    imageUploadAreaDT.addEventListener('drop', function (e) {
+        e.preventDefault();
+        this.classList.remove('dragover');
+        const files = e.dataTransfer.files;
+        if (files.length > 0) handleImageSelectDT(files[0]);
+    });
+
+    document.getElementById('imageInputDT').addEventListener('change', function (e) {
+        if (e.target.files.length > 0) handleImageSelectDT(e.target.files[0]);
+    });
+
+    /* ============ POST save ============ */
+    async function performSave(nextState) {
+        const op = (opEl?.value || '').trim();
+        if (!op) { showToast('Vui lòng chọn Operation!', 'error', 2200); return; }
+        const svnCode = (svnCodeEl?.value || '').trim();
+
+        if (!svnCode) {
+            showToast('Vui lòng nhập SVN Code trước khi gửi!', 'error', 2400);
+            svnCodeEl?.focus();
+            return;
+        }
+
+        if (nextState === 'Stop') {
+            const d = (IssCodeEl?.value || '').trim();
+            if (!d) { showToast('Vui lòng chọn/nhập Lý do cho STOP!', 'error', 2400); return; }
+        }
+
+        const fd = new FormData();
+        fd.append('Operation', op);
+        fd.append('State', nextState);
+        fd.append('ISS_Code', (IssCodeEl?.value || '').trim());
+        fd.append('SVnCode', (svnCodeEl?.value || '').trim());
+        fd.append('Description', (descEl?.value || '').trim());
+        if (timeEl && timeEl.value) {
+            const selected = new Date(timeEl.value);
+            const now = new Date();
+            const diffMinutes = Math.abs((selected - now) / 60000);
+            if (diffMinutes > 15) {
+                showToast('Thời gian phải nằm trong ±15 phút quanh hiện tại!', 'error', 2600);
+                return; // ⛔ Dừng lại, không gửi
+            }
+            fd.append('Datetime', timeEl.value);
+        }
+        if (estimateEl && estimateEl.value) fd.append('EstimateTime', estimateEl.value);
+
+        const imageInputDT = document.getElementById('imageInputDT');
+        if (imageInputDT?.files?.length > 0) {
+            fd.append('imageFile', imageInputDT.files[0]);
+        }
+
+        const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+        const token = tokenInput ? tokenInput.value : null;
+
+        const btn = nextState === 'Run' ? btnRun : btnStop;
+        btn.disabled = true;
+        const oldText = btn.textContent;
+        btn.textContent = 'Đang lưu...';
+
+        try {
+            const res = await fetch('/Status/CreateDownTime', {
+                method: 'POST',
+                body: fd,
+                headers: token ? { 'RequestVerificationToken': token } : {}
+            });
+
+            if (!res.ok) {
+                const t = await res.text();
+                console.error('Server error:', t);
+                showToast('Lỗi máy chủ khi lưu.', 'error', 2600);
+                return;
+            }
+
+            let data = null;
+            try { data = await res.json(); } catch { }
+
+            if (data?.success) {
+                showToast(data.message || 'Đã lưu downtime!');
+                resetInputs();            // 🟢 reset tất cả ô input
+                await onOperationChanged(); // reload lại trạng thái
+            } else {
+                showToast(data?.message || 'Lưu thất bại!', 'error', 2400);
+            }
+        } catch (err) {
+            console.error(err);
+            showToast('Có lỗi trong quá trình lưu!', 'error', 2400);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = oldText;
+        }
+    }
+
+    /* ============ Event bindings ============ */
+    opEl?.addEventListener('change', onOperationChanged);
+    btnRun?.addEventListener('click', () => performSave('Run'));
+    btnStop?.addEventListener('click', () => performSave('Stop'));
+
+    /* ============ Init ============ */
+    window.addEventListener('DOMContentLoaded', () => {
+        opEl?.focus();
+        updateDatetimeRange();
+        if (opEl?.value) onOperationChanged();
+    });
+</script>
