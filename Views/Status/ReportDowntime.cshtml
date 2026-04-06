@@ -1,6 +1,6 @@
 @model List<MachineStatusUpdate.Models.DowntimeReportByOperation>
 @{
-    ViewData["Title"] = "Báo Cáo Downtime";
+    ViewData["Title"] = "停机时间报告 (Downtime Report)";
     var chartData = ViewBag.ChartData as MachineStatusUpdate.Models.DowntimeChartData;
     var dailyChartData = ViewBag.DailyChartData as MachineStatusUpdate.Models.DailyDowntimeChartData;
     
@@ -206,7 +206,7 @@
 <body>
     <div class="container-fluid mt-3">
         <div class="page-header">
-            <h1><i class="fas fa-chart-line"></i> Báo Cáo Downtime Theo Operation và Lỗi</h1>
+            <h1><i class="fas fa-chart-line"></i> 停机时间报告 (Downtime Report)</h1>
         </div>
 
         @if (!string.IsNullOrEmpty(ViewBag.ErrorMessage))
@@ -222,32 +222,32 @@
                 <div class="row align-items-end">
                     <div class="col-md-3">
                         <label class="form-label fw-bold">
-                            <i class="fas fa-calendar-alt"></i> Từ ngày
+                            <i class="fas fa-calendar-alt"></i> 从日期 (From date)
                         </label>
                         <input type="date" class="form-control form-control-sm" name="fromDate"
                             value="@ViewBag.FromDate" />
                     </div>
                     <div class="col-md-3">
                         <label class="form-label fw-bold">
-                            <i class="fas fa-calendar-alt"></i> Đến ngày
+                            <i class="fas fa-calendar-alt"></i> 到日期 (To date)
                         </label>
                         <input type="date" class="form-control form-control-sm" name="toDate" value="@ViewBag.ToDate" />
                     </div>
                     <div class="col-md-3">
                         <label class="form-label fw-bold">
-                            <i class="fas fa-list"></i> Số bản ghi/trang
+                            <i class="fas fa-list"></i> 每页记录数 (Records per page)
                         </label>
                         <select class="form-control form-control-sm" name="pageSize" id="pageSize">
-                            <option value="1" selected="@(pageSize == 1)">1 bản ghi</option>
-                            <option value="5" selected="@(pageSize == 5)">5 bản ghi</option>
-                            <option value="10" selected="@(pageSize == 10)">10 bản ghi</option>
-                            <option value="25" selected="@(pageSize == 25)">25 bản ghi</option>
-                            <option value="50" selected="@(pageSize == 50)">50 bản ghi</option>
+                            <option value="1" selected="@(pageSize == 1)">1 条记录 (1 record)</option>
+                            <option value="5" selected="@(pageSize == 5)">5 条记录 (5 records)</option>
+                            <option value="10" selected="@(pageSize == 10)">10 条记录 (10 records)</option>
+                            <option value="25" selected="@(pageSize == 25)">25 条记录 (25 records)</option>
+                            <option value="50" selected="@(pageSize == 50)">50 条记录 (50 records)</option>
                         </select>
                     </div>
                     <div class="col-md-3">
                         <button type="submit" class="btn btn-primary btn-sm w-100 mt-md-0 mt-2">
-                            <i class="fas fa-search"></i> Lọc dữ liệu
+                            <i class="fas fa-search"></i> 筛选数据 (Filter data)
                         </button>
                     </div>
                 </div>
@@ -261,7 +261,7 @@
                 <div class="col-md-4">
                     <div class="stats-card">
                         <h5 class="text-muted mb-1">
-                            <i class="fas fa-cogs"></i> Tổng số Operation
+                            <i class="fas fa-cogs"></i> 操作总数 (Total Operations)
                         </h5>
                         <h2 class="text-primary mb-0">@allData.Count</h2>
                     </div>
@@ -269,7 +269,7 @@
                 <div class="col-md-4">
                     <div class="stats-card">
                         <h5 class="text-muted mb-1">
-                            <i class="fas fa-exclamation-triangle"></i> Tổng số lần Downtime
+                            <i class="fas fa-exclamation-triangle"></i> 停机总次数 (Total Downtime Count)
                         </h5>
                         <h2 class="text-danger mb-0">@allData.Sum(x => x.TotalDowntimeCount)</h2>
                     </div>
@@ -277,7 +277,7 @@
                 <div class="col-md-4">
                     <div class="stats-card">
                         <h5 class="text-muted mb-1">
-                            <i class="fas fa-clock"></i> Tổng thời gian Downtime
+                            <i class="fas fa-clock"></i> 停机总时间 (Total Downtime Time)
                         </h5>
                         <h2 class="text-warning mb-0">
                             @{
@@ -285,7 +285,7 @@
                                 var hours = (int)(totalMinutes / 60);
                                 var mins = (int)(totalMinutes % 60);
                             }
-                            @hours giờ @mins phút
+                            @hours 小时 @mins 分钟 (@hours h @mins m)
                         </h2>
                     </div>
                 </div>
@@ -294,7 +294,7 @@
             <div class="mb-3 text-end">
                 <a href="@Url.Action("ExportDowntimeReportToExcel", new { fromDate = ViewBag.FromDate, toDate = ViewBag.ToDate })"
                     class="btn-export">
-                    <i class="fas fa-file-excel"></i> Xuất Excel
+                    <i class="fas fa-file-excel"></i> 导出Excel (Export Excel)
                 </a>
             </div>
 
@@ -303,7 +303,7 @@
                 <div class="col-md-4">
                     <div class="chart-container">
                         <h4 class="mb-2">
-                            <i class="fas fa-chart-bar"></i> Downtime theo Công đoạn
+                            <i class="fas fa-chart-bar"></i> 按工序的停机时间 (Downtime by Operation)
                         </h4>
                         <canvas id="operationChart"></canvas>
                     </div>
@@ -311,7 +311,7 @@
                 <div class="col-md-4">
                     <div class="chart-container">
                         <h4 class="mb-2">
-                            <i class="fas fa-chart-pie"></i> Phân bố Downtime
+                            <i class="fas fa-chart-pie"></i> 停机分布 (Downtime Distribution)
                         </h4>
                         <canvas id="pieChart"></canvas>
                     </div>
@@ -319,7 +319,7 @@
                 <div class="col-md-4">
                     <div class="chart-container">
                         <h4 class="mb-2">
-                            <i class="fas fa-exclamation-triangle"></i> Downtime theo Mã lỗi
+                            <i class="fas fa-exclamation-triangle"></i> 按错误代码的停机时间 (Downtime by Error Code)
                         </h4>
                         <canvas id="issCodeChart"></canvas>
                     </div>
@@ -333,7 +333,7 @@
                     <div class="col-md-12">
                         <div class="daily-chart-container">
                             <h4 class="mb-3">
-                                <i class="fas fa-chart-line"></i> Biểu đồ lịch sử Downtime
+                                <i class="fas fa-chart-line"></i> 停机历史趋势图 (Downtime History Trend)
                                 <small class="text-muted"></small>
                             </h4>
                             <canvas id="dailyTrendChart"></canvas>
@@ -361,7 +361,7 @@
                             labels: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(dailyChartData.Dates)),
                             datasets: [
                                 {
-                                    label: 'Thời gian Downtime (phút)',
+                                    label: '停机时间 (分钟) (Downtime minutes)',
                                     data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(dailyChartData.DowntimeMinutes)),
                                     borderColor: 'rgba(54, 162, 235, 1)',
                                     backgroundColor: gradient,
@@ -381,7 +381,7 @@
                                     }
                                 },
                                 {
-                                    label: 'Số lần Downtime',
+                                    label: '停机次数 (Downtime count)',
                                     data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(dailyChartData.DowntimeCounts)),
                                     borderColor: 'rgba(255, 99, 132, 1)',
                                     backgroundColor: gradient2,
@@ -437,12 +437,12 @@
                                             let label = context.dataset.label || '';
                                             let value = context.parsed.y;
                                             
-                                            if (context.dataset.label.includes('Thời gian')) {
+                                            if (context.dataset.label.includes('分钟')) {
                                                 let hours = Math.floor(value / 60);
                                                 let mins = Math.round(value % 60);
-                                                return `${label}: ${hours}h ${mins}m (${value.toFixed(1)} phút)`;
+                                                return `${label}: ${hours}小时 ${mins}分钟 (${value.toFixed(1)} 分钟)`;
                                             } else {
-                                                return `${label}: ${value} lần`;
+                                                return `${label}: ${value} 次`;
                                             }
                                         }
                                     }
@@ -452,7 +452,7 @@
                                 x: {
                                     title: {
                                         display: true,
-                                        text: 'Ngày',
+                                        text: '日期 (Date)',
                                         font: {
                                             size: 12,
                                             weight: 'bold'
@@ -474,7 +474,7 @@
                                     position: 'left',
                                     title: {
                                         display: true,
-                                        text: 'Thời gian (phút)',
+                                        text: '时间 (分钟) (Time - minutes)',
                                         font: {
                                             size: 12,
                                             weight: 'bold'
@@ -496,7 +496,7 @@
                                     position: 'right',
                                     title: {
                                         display: true,
-                                        text: 'Số lần',
+                                        text: '次数 (Count)',
                                         font: {
                                             size: 12,
                                             weight: 'bold'
@@ -567,11 +567,11 @@
                     <div class="col-md-12">
                         <div class="daily-chart-container">
                             <h4 class="mb-3">
-                                <i class="fas fa-chart-line"></i> Biểu đồ lịch sử Downtime
+                                <i class="fas fa-chart-line"></i> 停机历史趋势图 (Downtime History Trend)
                             </h4>
                             <div class="alert alert-info text-center mt-5">
                                 <i class="fas fa-info-circle"></i>
-                                Không có dữ liệu downtime theo ngày trong khoảng thời gian được chọn.
+                                所选时间段内没有按日期的停机数据。 (No daily downtime data in the selected period.)
                             </div>
                         </div>
                     </div>
@@ -583,7 +583,7 @@
                 <div class="row mt-4">
                     <div class="col-md-12">
                         <h4 class="mb-3">
-                            <i class="fas fa-list"></i> Chi tiết theo Operation 
+                            <i class="fas fa-list"></i> 按操作的详细数据 (Details by Operation)
                             <small class="text-muted">(@Model.Count/@totalRecords)</small>
                         </h4>
                     </div>
@@ -604,7 +604,7 @@
                                         <i class="fas fa-stopwatch"></i> @operation.TotalDowntimeFormatted
                                     </span>
                                     <span class="badge bg-light text-dark ms-2">
-                                        <i class="fas fa-list"></i> @operation.TotalDowntimeCount lần
+                                        <i class="fas fa-list"></i> @operation.TotalDowntimeCount 次 (times)
                                     </span>
                                 </div>
                             </div>
@@ -614,11 +614,11 @@
                             <thead>
                                 <tr>
                                     <th width="5%">#</th>
-                                    <th width="15%">ISS Code</th>
-                                    <th width="30%">Tên Lỗi</th>
-                                    <th width="10%" class="text-center">Số lần</th>
-                                    <th width="15%" class="text-center">Tổng thời gian</th>
-                                    <th width="25%">Tỷ lệ</th>
+                                    <th width="15%">ISS 代码 (ISS Code)</th>
+                                    <th width="30%">错误名称 (Error Name)</th>
+                                    <th width="10%" class="text-center">次数 (Count)</th>
+                                    <th width="15%" class="text-center">总时间 (Total Time)</th>
+                                    <th width="25%">比例 (Percentage)</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -644,7 +644,7 @@
                                             <strong>@error.TotalDowntimeFormatted</strong>
                                             <br />
                                             <small class="text-muted">
-                                                (@Math.Round(error.TotalDowntimeMinutes, 1) phút)
+                                                (@Math.Round(error.TotalDowntimeMinutes, 1) 分钟 (minutes))
                                             </small>
                                         </td>
                                         <td>
@@ -660,7 +660,7 @@
                             </tbody>
                             <tfoot>
                                 <tr class="table-info fw-bold">
-                                    <td colspan="3" class="text-end">TỔNG CỘNG:</td>
+                                    <td colspan="3" class="text-end">总计 (TOTAL):</td>
                                     <td class="text-center">@operation.TotalDowntimeCount</td>
                                     <td class="text-center">@operation.TotalDowntimeFormatted</td>
                                     <td>100%</td>
@@ -688,12 +688,12 @@
                                                     page = currentPage - 1, 
                                                     pageSize = pageSize 
                                                 })">
-                                                    <i class="fas fa-chevron-left"></i> Trước
+                                                    <i class="fas fa-chevron-left"></i> 上一页 (Previous)
                                                 </a>
                                             }
                                             else
                                             {
-                                                <span class="page-link"><i class="fas fa-chevron-left"></i> Trước</span>
+                                                <span class="page-link"><i class="fas fa-chevron-left"></i> 上一页 (Previous)</span>
                                             }
                                         </li>
 
@@ -729,12 +729,12 @@
                                                     page = currentPage + 1, 
                                                     pageSize = pageSize 
                                                 })">
-                                                    Sau <i class="fas fa-chevron-right"></i>
+                                                    下一页 (Next) <i class="fas fa-chevron-right"></i>
                                                 </a>
                                             }
                                             else
                                             {
-                                                <span class="page-link">Sau <i class="fas fa-chevron-right"></i></span>
+                                                <span class="page-link">下一页 (Next) <i class="fas fa-chevron-right"></i></span>
                                             }
                                         </li>
                                     </ul>
@@ -746,7 +746,8 @@
                         <div class="row mt-2">
                             <div class="col-md-12 text-center">
                                 <small class="page-info">
-                                    Hiển thị trang @currentPage/@totalPages - Tổng cộng @totalRecords operation
+                                    显示第 @currentPage 页 / 共 @totalPages 页 - 总共 @totalRecords 个操作
+                                    (Showing page @currentPage/@totalPages - Total @totalRecords operations)
                                 </small>
                             </div>
                         </div>
@@ -758,7 +759,7 @@
         {
             <div class="alert alert-info">
                 <i class="fas fa-info-circle"></i>
-                Không có dữ liệu downtime trong khoảng thời gian được chọn.
+                所选时间段内没有停机数据。 (No downtime data in the selected period.)
             </div>
         }
     </div>
@@ -774,7 +775,7 @@
         function formatMinutes(minutes) {
             const hours = Math.floor(minutes / 60);
             const mins = Math.round(minutes % 60);
-            return `${hours}h ${mins}m`;
+            return `${hours}小时 ${mins}分钟`;
         }
 
         // Function to calculate percentage
@@ -829,7 +830,7 @@
             data: {
                 labels: finalLabels,
                 datasets: [{
-                    label: 'Thời gian Downtime (phút)',
+                    label: '停机时间 (分钟) (Downtime minutes)',
                     data: finalData,
                     backgroundColor: 'rgba(102, 126, 234, 0.8)',
                     borderColor: 'rgba(102, 126, 234, 1)',
@@ -858,7 +859,7 @@
                                 let minutes = context.parsed.y;
                                 let hours = Math.floor(minutes / 60);
                                 let mins = Math.round(minutes % 60);
-                                return `${hours}h ${mins}m (${minutes.toFixed(1)} phút)`;
+                                return `${hours}小时 ${mins}分钟 (${minutes.toFixed(1)} 分钟)`;
                             }
                         }
                     }
@@ -873,7 +874,7 @@
                         },
                         title: {
                             display: true,
-                            text: 'Thời gian (phút)',
+                            text: '时间 (分钟) (Time - minutes)',
                             font: {
                                 size: 12,
                                 weight: 'bold'
@@ -888,7 +889,7 @@
                         },
                         title: {
                             display: true,
-                            text: 'Operation',
+                            text: '操作 (Operation)',
                             font: {
                                 size: 12,
                                 weight: 'bold'
@@ -957,7 +958,7 @@
                                 let mins = Math.round(value % 60);
                                 let total = context.dataset.data.reduce((a, b) => a + b, 0);
                                 let percentage = ((value / total) * 100).toFixed(1);
-                                return `${label}: ${hours}h ${mins}m (${percentage}%)`;
+                                return `${label}: ${hours}小时 ${mins}分钟 (${percentage}%)`;
                             }
                         }
                     },
@@ -1002,7 +1003,7 @@
                         data: {
                             labels: issCodeLabels,
                             datasets: [{
-                                label: 'Thời gian Downtime (phút)',
+                                label: '停机时间 (分钟) (Downtime minutes)',
                                 data: issCodeMinutes,
                                 backgroundColor: 'rgba(255, 99, 132, 0.8)',
                                 borderColor: 'rgba(255, 99, 132, 1)',
@@ -1034,8 +1035,8 @@
                                             let mins = Math.round(minutes % 60);
                                             let count = issCodeCounts[ctx.dataIndex] || 0;
                                             return [
-                                                `Thời gian: ${hours}h ${mins}m (${minutes.toFixed(1)} phút)`,
-                                                `Số lần: ${count}`
+                                                `时间: ${hours}小时 ${mins}分钟 (${minutes.toFixed(1)} 分钟)`,
+                                                `次数: ${count}`
                                             ];
                                         }
                                     }
@@ -1051,7 +1052,7 @@
                                     },
                                     title: {
                                         display: true,
-                                        text: 'Thời gian (phút)',
+                                        text: '时间 (分钟) (Time - minutes)',
                                         font: {
                                             size: 12,
                                             weight: 'bold'
@@ -1066,7 +1067,7 @@
                                     },
                                     title: {
                                         display: true,
-                                        text: 'ISS Code - Tên Lỗi',
+                                        text: 'ISS 代码 - 错误名称 (ISS Code - Error Name)',
                                         font: {
                                             size: 12,
                                             weight: 'bold'
@@ -1087,7 +1088,7 @@
                     issCodeCtx.fillStyle = '#6c757d';
                     issCodeCtx.font = '14px Arial';
                     issCodeCtx.textAlign = 'center';
-                    issCodeCtx.fillText('Không có dữ liệu ISS Code', 150, 100);
+                    issCodeCtx.fillText('没有 ISS 代码数据 (No ISS Code data)', 150, 100);
                 }
             </text>
         }
@@ -1099,7 +1100,7 @@
                 issCodeCtx.fillStyle = '#6c757d';
                 issCodeCtx.font = '14px Arial';
                 issCodeCtx.textAlign = 'center';
-                issCodeCtx.fillText('Không có dữ liệu ISS Code', 150, 100);
+                issCodeCtx.fillText('没有 ISS 代码数据 (No ISS Code data)', 150, 100);
             </text>
         }
     </script>

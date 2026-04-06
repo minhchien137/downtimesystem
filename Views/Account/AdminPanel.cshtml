@@ -1,0 +1,703 @@
+@{
+    ViewData["Title"] = "Admin Panel — 管理面板";
+    var userRole = Context.Session.GetString("UserRole") ?? "";
+    if (userRole != "Admin") {
+        Context.Response.Redirect("/Account/Login");
+        return;
+    }
+}
+
+<style>
+    :root {
+        --red:      #C8102E;
+        --red-dark: #9B0B22;
+        --white:    #FFFFFF;
+        --bg:       #F8F5F5;
+        --border:   #E8DEDE;
+        --text:     #1A1614;
+        --muted:    #7A6F6F;
+        --success:  #16A34A;
+        --warn:     #D97706;
+    }
+
+    body { background: var(--bg); }
+
+    /* ── Page header ── */
+    .admin-header {
+        background: var(--red);
+        color: #fff;
+        padding: 20px 28px;
+        border-radius: 12px;
+        margin-bottom: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        box-shadow: 0 6px 20px rgba(200,16,46,.25);
+    }
+    .admin-header h1 {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 700;
+    }
+    .admin-header p {
+        margin: 4px 0 0;
+        font-size: 13px;
+        opacity: .75;
+    }
+    .admin-badge {
+        background: rgba(255,255,255,.2);
+        border: 1px solid rgba(255,255,255,.3);
+        border-radius: 6px;
+        padding: 6px 14px;
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 1px;
+    }
+
+    /* ── Filter bar ── */
+    .filter-bar {
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 16px 20px;
+        margin-bottom: 20px;
+        display: flex;
+        gap: 12px;
+        align-items: flex-end;
+        flex-wrap: wrap;
+    }
+    .filter-bar label {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        color: var(--muted);
+        display: block;
+        margin-bottom: 5px;
+    }
+    .filter-bar input, .filter-bar select {
+        padding: 9px 12px;
+        border: 1.5px solid var(--border);
+        border-radius: 7px;
+        font-size: 14px;
+        outline: none;
+        transition: border-color .2s;
+    }
+    .filter-bar input:focus, .filter-bar select:focus {
+        border-color: var(--red);
+    }
+    .btn-search {
+        background: var(--red);
+        color: #fff;
+        border: none;
+        border-radius: 7px;
+        padding: 10px 20px;
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+        transition: background .2s;
+    }
+    .btn-search:hover { background: var(--red-dark); }
+
+    /* ── Table ── */
+    .table-card {
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 2px 12px rgba(0,0,0,.04);
+    }
+    .table-card table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+    .table-card thead {
+        background: #111;
+        color: #fff;
+        border-top: 3px solid var(--red);
+    }
+    .table-card thead th {
+        padding: 11px 12px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 11px;
+        letter-spacing: .8px;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+    .table-card tbody tr {
+        border-bottom: 1px solid #F3EDED;
+        transition: background .15s;
+    }
+    .table-card tbody tr:hover { background: #FFF5F6; }
+    .table-card tbody td {
+        padding: 9px 12px;
+        color: var(--text);
+        max-width: 160px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* State badges */
+    .badge {
+        display: inline-block;
+        padding: 3px 9px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: .5px;
+    }
+    .badge-stop     { background: #FFE5E8; color: #C8102E; }
+    .badge-run      { background: #E5F5EA; color: #15803D; }
+    .badge-response { background: #FFF4E5; color: #B45309; }
+
+    /* Action buttons */
+    .btn-edit {
+        background: #FFF4E5;
+        color: #B45309;
+        border: 1px solid #FDE68A;
+        border-radius: 6px;
+        padding: 4px 10px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all .15s;
+    }
+    .btn-edit:hover { background: #FDE68A; }
+    .btn-del {
+        background: #FFE5E8;
+        color: var(--red);
+        border: 1px solid #FECDD3;
+        border-radius: 6px;
+        padding: 4px 10px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all .15s;
+    }
+    .btn-del:hover { background: #FECDD3; }
+
+    /* ── Edit Modal ── */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,.35);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-box {
+        background: #fff;
+        border-radius: 14px;
+        width: min(720px, 95vw);
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0,0,0,.2);
+    }
+    .modal-head {
+        background: var(--red);
+        color: #fff;
+        padding: 16px 22px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-radius: 14px 14px 0 0;
+    }
+    .modal-head h3 { margin: 0; font-size: 16px; font-weight: 700; }
+    .modal-close {
+        background: rgba(255,255,255,.2);
+        border: none;
+        color: #fff;
+        width: 28px; height: 28px;
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 16px;
+        line-height: 28px;
+        text-align: center;
+    }
+    .modal-body {
+        padding: 22px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+    }
+    .modal-field label {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        color: var(--muted);
+        display: block;
+        margin-bottom: 5px;
+    }
+    .modal-field input, .modal-field select, .modal-field textarea {
+        width: 100%;
+        padding: 9px 12px;
+        border: 1.5px solid var(--border);
+        border-radius: 7px;
+        font-size: 14px;
+        outline: none;
+        transition: border-color .2s;
+        font-family: inherit;
+    }
+    .modal-field input:focus, .modal-field select:focus, .modal-field textarea:focus {
+        border-color: var(--red);
+        box-shadow: 0 0 0 3px rgba(200,16,46,.1);
+    }
+    .modal-field.span2 { grid-column: span 2; }
+    .modal-footer {
+        padding: 16px 22px;
+        border-top: 1px solid var(--border);
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+    }
+    .btn-save {
+        background: var(--red);
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 24px;
+        font-weight: 700;
+        font-size: 14px;
+        cursor: pointer;
+        transition: background .2s;
+    }
+    .btn-save:hover { background: var(--red-dark); }
+    .btn-cancel {
+        background: #F0EEEC;
+        color: var(--text);
+        border: none;
+        border-radius: 8px;
+        padding: 10px 20px;
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+    }
+
+    /* ── Confirm delete ── */
+    .confirm-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,.45);
+        z-index: 1100;
+        align-items: center;
+        justify-content: center;
+    }
+    .confirm-overlay.active { display: flex; }
+    .confirm-box {
+        background: #fff;
+        border-radius: 12px;
+        padding: 28px;
+        width: min(380px, 92vw);
+        text-align: center;
+        box-shadow: 0 16px 48px rgba(0,0,0,.2);
+    }
+    .confirm-icon { font-size: 40px; margin-bottom: 12px; }
+    .confirm-box h4 { font-weight: 700; margin-bottom: 6px; color: var(--red); }
+    .confirm-box p  { font-size: 14px; color: var(--muted); margin-bottom: 20px; }
+    .confirm-btns { display: flex; gap: 10px; justify-content: center; }
+
+    /* Pagination */
+    .pager {
+        padding: 14px 18px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        justify-content: flex-end;
+        border-top: 1px solid var(--border);
+        font-size: 13px;
+    }
+    .pager-btn {
+        border: 1.5px solid var(--border);
+        background: #fff;
+        border-radius: 7px;
+        padding: 5px 12px;
+        cursor: pointer;
+        font-size: 13px;
+        transition: all .15s;
+    }
+    .pager-btn:hover, .pager-btn.active {
+        background: var(--red);
+        color: #fff;
+        border-color: var(--red);
+    }
+
+    /* Toast */
+    #adminToast {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        background: #111;
+        color: #fff;
+        padding: 12px 20px;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 500;
+        opacity: 0;
+        transition: opacity .3s;
+        pointer-events: none;
+        z-index: 9999;
+        border-left: 4px solid var(--red);
+    }
+    #adminToast.show { opacity: 1; }
+</style>
+
+<!-- ── Page header ── -->
+<div class="admin-header">
+    <div>
+        <h1>🛡 管理面板 / Admin Panel</h1>
+        <p>编辑和删除停机数据 / Edit and delete downtime records </p>
+    </div>
+    <span class="admin-badge">🔐 ADMIN ONLY</span>
+</div>
+
+<!-- ── Filter bar ── -->
+<div class="filter-bar">
+    <div>
+        <label>操作 / Operation</label>
+        <input type="text" id="fOp" placeholder="e.g. SM-01" style="width:140px" />
+    </div>
+    <div>
+        <label>状态 / State</label>
+        <select id="fState" style="width:130px">
+            <option value="">All States</option>
+            <option value="STOP">STOP</option>
+            <option value="RESPONSE">RESPONSE</option>
+            <option value="RUN">RUN</option>
+        </select>
+    </div>
+    <div>
+        <label>日期从 / From</label>
+        <input type="date" id="fFrom" />
+    </div>
+    <div>
+        <label>到 / To</label>
+        <input type="date" id="fTo" />
+    </div>
+    <button class="btn-search" onclick="loadRecords(1)">🔍 搜索 / Search</button>
+    <button class="btn-search" style="background:#7A6F6F;" onclick="clearFilters()">↺ 重置 / Reset</button>
+</div>
+
+<!-- ── Table ── -->
+<div class="table-card">
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>状态</th>
+                <th>Operation</th>
+                <th>Employee</th>
+                <th>Machine</th>
+                <th>Location</th>
+                <th>Reason</th>
+                <th>Effect</th>
+                <th>Station</th>
+                <th>Description</th>
+                <th>Datetime</th>
+                <th style="text-align:center">操作</th>
+            </tr>
+        </thead>
+        <tbody id="recordsTbody">
+            <tr><td colspan="12" style="text-align:center;padding:30px;color:#aaa;">加载中... Loading...</td></tr>
+        </tbody>
+    </table>
+    <div class="pager" id="pagerBar"></div>
+</div>
+
+<!-- ── Edit Modal ── -->
+<div class="modal-overlay" id="editModal">
+    <div class="modal-box">
+        <div class="modal-head">
+            <h3>✏️ 编辑记录 / Edit Record — ID: <span id="modalId">-</span></h3>
+            <button class="modal-close" onclick="closeEdit()">✕</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="editId" />
+            <div class="modal-field">
+                <label>员工工号 / Employee Code</label>
+                <input type="text" id="editEmpCode" />
+            </div>
+            <div class="modal-field">
+                <label>员工姓名 / Employee Name</label>
+                <input type="text" id="editEmpName" />
+            </div>
+            <div class="modal-field">
+                <label>设备编号 / Machine Code</label>
+                <input type="text" id="editMachine" />
+            </div>
+            <div class="modal-field">
+                <label>操作 / Location</label>
+                <input type="text" id="editLocation" />
+            </div>
+            <div class="modal-field">
+                <label>生产线 / Operation</label>
+                <input type="text" id="editOperation" />
+            </div>
+            <div class="modal-field">
+                <label>状态 / State</label>
+                <select id="editState">
+                    <option value="STOP">STOP</option>
+                    <option value="RESPONSE">RESPONSE</option>
+                    <option value="RUN">RUN</option>
+                </select>
+            </div>
+            <div class="modal-field">
+                <label>原因 / Reason</label>
+                <input type="text" id="editReason" />
+            </div>
+            <div class="modal-field">
+                <label>影响 / Effect</label>
+                <input type="text" id="editEffect" />
+            </div>
+            <div class="modal-field">
+                <label>工位 / Station</label>
+                <input type="text" id="editStation" />
+            </div>
+            <div class="modal-field">
+                <label>维修动作 / Action</label>
+                <input type="text" id="editAction" />
+            </div>
+            <div class="modal-field">
+                <label>根本原因 / Root Cause</label>
+                <input type="text" id="editRootCause" />
+            </div>
+            <div class="modal-field">
+                <label>更换配件 / Spare Parts</label>
+                <input type="text" id="editSpareParts" />
+            </div>
+            <div class="modal-field">
+                <label>预计时间 / Estimate Time</label>
+                <input type="text" id="editEstimate" />
+            </div>
+            <div class="modal-field">
+                <label>日期时间 / Datetime</label>
+                <input type="datetime-local" id="editDatetime" />
+            </div>
+            <div class="modal-field span2">
+                <label>异常描述 / Description</label>
+                <textarea id="editDesc" rows="3"></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-cancel" onclick="closeEdit()">取消 / Cancel</button>
+            <button class="btn-save" onclick="saveEdit()">💾 保存 / Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Confirm Delete ── -->
+<div class="confirm-overlay" id="confirmModal">
+    <div class="confirm-box">
+        <div class="confirm-icon">🗑</div>
+        <h4>确认删除 / Confirm Delete</h4>
+        <p>此操作无法撤销。This action cannot be undone.<br>Record ID: <strong id="confirmId">-</strong></p>
+        <div class="confirm-btns">
+            <button class="btn-cancel" onclick="closeConfirm()">取消 / Cancel</button>
+            <button class="btn-del" style="padding:10px 20px;font-size:14px;" onclick="confirmDelete()">确认删除 / Delete</button>
+        </div>
+    </div>
+</div>
+
+<div id="adminToast"></div>
+
+<script>
+"use strict";
+
+const pathBase = '@Context.Request.PathBase'.replace(/\/$/, '');
+let currentPage   = 1;
+let pendingDeleteId = null;
+let allRecords    = [];
+
+// ── Load records via AJAX ──
+async function loadRecords(page = 1) {
+    currentPage = page;
+    const op    = document.getElementById('fOp').value.trim();
+    const state = document.getElementById('fState').value;
+    const from  = document.getElementById('fFrom').value;
+    const to    = document.getElementById('fTo').value;
+
+    const params = new URLSearchParams({ page, pageSize: 20 });
+    if (op)    params.append('operation', op);
+    if (state) params.append('state',     state);
+    if (from)  params.append('fromDate',  from);
+    if (to)    params.append('toDate',    to);
+
+    try {
+        const res  = await fetch(`${pathBase}/Status/AdminGetRecords?${params}`);
+        const data = await res.json();
+        allRecords = data.records || [];
+        renderTable(allRecords);
+        renderPager(data.totalPages, page);
+    } catch (e) {
+        showToast('⚠ 加载失败 / Load failed');
+    }
+}
+
+function renderTable(rows) {
+    const tbody = document.getElementById('recordsTbody');
+    if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:30px;color:#aaa;">没有数据 / No records found</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = rows.map(r => {
+        const badgeClass = r.state === 'STOP' ? 'badge-stop' : r.state === 'RUN' ? 'badge-run' : 'badge-response';
+        const dt = r.datetime ? new Date(r.datetime).toLocaleString('zh-CN') : '-';
+        return `<tr>
+            <td><strong>#${r.id}</strong></td>
+            <td><span class="badge ${badgeClass}">${r.state || '-'}</span></td>
+            <td title="${r.operation||''}">${r.operation || '-'}</td>
+            <td>${r.employeeName || '-'}</td>
+            <td>${r.machineCode || '-'}</td>
+            <td>${r.location || '-'}</td>
+            <td>${r.reason || '-'}</td>
+            <td>${r.effect || '-'}</td>
+            <td>${r.station || '-'}</td>
+            <td title="${r.description||''}">${(r.description||'-').substring(0,30)}${(r.description||'').length > 30 ? '…' : ''}</td>
+            <td style="white-space:nowrap">${dt}</td>
+            <td style="text-align:center;white-space:nowrap">
+                <button class="btn-edit" onclick='openEdit(${JSON.stringify(r)})'>✏ Edit</button>
+                <button class="btn-del"  onclick="openConfirm(${r.id})" style="margin-left:4px">🗑 Del</button>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+function renderPager(totalPages, current) {
+    const bar = document.getElementById('pagerBar');
+    if (totalPages <= 1) { bar.innerHTML = ''; return; }
+    let html = '';
+    for (let i = 1; i <= totalPages; i++) {
+        html += `<button class="pager-btn${i===current?' active':''}" onclick="loadRecords(${i})">${i}</button>`;
+    }
+    bar.innerHTML = `<span style="color:var(--muted);margin-right:8px;">第 ${current} / ${totalPages} 页</span>` + html;
+}
+
+// ── Edit ──
+function openEdit(r) {
+    document.getElementById('modalId').textContent = r.id;
+    document.getElementById('editId').value        = r.id;
+    document.getElementById('editEmpCode').value   = r.employeeCode  || '';
+    document.getElementById('editEmpName').value   = r.employeeName  || '';
+    document.getElementById('editMachine').value   = r.machineCode   || '';
+    document.getElementById('editLocation').value  = r.location      || '';
+    document.getElementById('editOperation').value = r.operation     || '';
+    document.getElementById('editState').value     = r.state         || 'STOP';
+    document.getElementById('editReason').value    = r.reason        || '';
+    document.getElementById('editEffect').value    = r.effect        || '';
+    document.getElementById('editStation').value   = r.station       || '';
+    document.getElementById('editAction').value    = r.action        || '';
+    document.getElementById('editRootCause').value = r.rootCause     || '';
+    document.getElementById('editSpareParts').value= r.spareParts    || '';
+    document.getElementById('editEstimate').value  = r.estimateTime  || '';
+    document.getElementById('editDesc').value      = r.description   || '';
+    if (r.datetime) {
+        const dt = new Date(r.datetime);
+        const pad = n => String(n).padStart(2,'0');
+        document.getElementById('editDatetime').value =
+            `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+    } else {
+        document.getElementById('editDatetime').value = '';
+    }
+    document.getElementById('editModal').classList.add('active');
+}
+function closeEdit() { document.getElementById('editModal').classList.remove('active'); }
+
+async function saveEdit() {
+    const payload = {
+        id:           parseInt(document.getElementById('editId').value),
+        employeeCode: document.getElementById('editEmpCode').value,
+        employeeName: document.getElementById('editEmpName').value,
+        machineCode:  document.getElementById('editMachine').value,
+        location:     document.getElementById('editLocation').value,
+        operation:    document.getElementById('editOperation').value,
+        state:        document.getElementById('editState').value,
+        reason:       document.getElementById('editReason').value,
+        effect:       document.getElementById('editEffect').value,
+        station:      document.getElementById('editStation').value,
+        action:       document.getElementById('editAction').value,
+        rootCause:    document.getElementById('editRootCause').value,
+        spareParts:   document.getElementById('editSpareParts').value,
+        estimateTime: document.getElementById('editEstimate').value,
+        description:  document.getElementById('editDesc').value,
+        datetime:     document.getElementById('editDatetime').value || null,
+    };
+
+    try {
+        const res  = await fetch(`${pathBase}/Status/AdminUpdateRecord`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': getToken() },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+            closeEdit();
+            showToast('✅ 保存成功 / Saved successfully');
+            loadRecords(currentPage);
+        } else {
+            showToast('⚠ ' + (data.message || '保存失败'));
+        }
+    } catch (e) { showToast('⚠ 请求失败 / Request failed'); }
+}
+
+// ── Delete ──
+function openConfirm(id) {
+    pendingDeleteId = id;
+    document.getElementById('confirmId').textContent = id;
+    document.getElementById('confirmModal').classList.add('active');
+}
+function closeConfirm() {
+    pendingDeleteId = null;
+    document.getElementById('confirmModal').classList.remove('active');
+}
+async function confirmDelete() {
+    if (!pendingDeleteId) return;
+    try {
+        const res  = await fetch(`${pathBase}/Status/AdminDeleteRecord`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': getToken() },
+            body: JSON.stringify({ id: pendingDeleteId })
+        });
+        const data = await res.json();
+        if (data.success) {
+            closeConfirm();
+            showToast('🗑 已删除 / Deleted successfully');
+            loadRecords(currentPage);
+        } else {
+            showToast('⚠ ' + (data.message || '删除失败'));
+        }
+    } catch (e) { showToast('⚠ 请求失败 / Request failed'); }
+}
+
+// ── Helpers ──
+function clearFilters() {
+    document.getElementById('fOp').value    = '';
+    document.getElementById('fState').value = '';
+    document.getElementById('fFrom').value  = '';
+    document.getElementById('fTo').value    = '';
+    loadRecords(1);
+}
+
+function showToast(msg) {
+    const t = document.getElementById('adminToast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+function getToken() {
+    const el = document.querySelector('input[name="__RequestVerificationToken"]');
+    return el ? el.value : '';
+}
+
+// ── Init ──
+window.addEventListener('DOMContentLoaded', () => loadRecords(1));
+</script>
+
+@Html.AntiForgeryToken()

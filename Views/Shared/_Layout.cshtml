@@ -1,20 +1,161 @@
-﻿<!DOCTYPE html>
+﻿@{
+    var userRole = Context.Session.GetString("UserRole") ?? "";
+    var userName = Context.Session.GetString("UserName") ?? "";
+    bool isAdmin      = userRole == "Admin";
+    bool isTechnical  = userRole == "Technical";
+    bool isProduction = userRole == "Production";
+}
+<!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Sigma ⚙️</title>
+    <title>@ViewData["Title"] - Sigma Worldwide ⚙️</title>
+    <link rel="icon" type="image/png" href="~/images/downtime.png" />
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/MachineStatusUpdate.styles.css" asp-append-version="true" />
+    <style>
+        /* ── Role badge in navbar ── */
+        .role-badge-nav {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            padding: 3px 9px;
+            border-radius: 20px;
+            vertical-align: middle;
+            margin-left: 6px;
+        }
+        .role-admin      { background: #C8102E; color: #fff; }
+        .role-technical  { background: #FF8C00; color: #fff; }
+        .role-production { background: #1565C0; color: #fff; }
+
+        .navbar-brand-text {
+            font-weight: 700;
+            color: #C8102E !important;
+            font-size: 15px;
+        }
+        .nav-logout {
+            background: #C8102E;
+            color: #fff !important;
+            border-radius: 6px;
+            padding: 6px 14px !important;
+            font-size: 13px;
+            transition: background .2s;
+        }
+        .nav-logout:hover { background: #9B0B22; }
+
+        /* ── Bell notification (Production only) ── */
+        .bell-wrapper {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+        }
+        .bell-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 20px;
+            padding: 4px 8px;
+            border-radius: 8px;
+            transition: background .18s;
+            position: relative;
+            line-height: 1;
+        }
+        .bell-btn:hover { background: #f3f4f6; }
+        .bell-badge {
+            display: none;
+            position: absolute;
+            top: 0px;
+            right: 2px;
+            background: #ef4444;
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            border-radius: 99px;
+            min-width: 16px;
+            height: 16px;
+            padding: 0 4px;
+            line-height: 16px;
+            text-align: center;
+            pointer-events: none;
+        }
+        .bell-dropdown {
+            display: none;
+            position: absolute;
+            top: calc(100% + 10px);
+            right: 0;
+            width: 340px;
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 14px;
+            box-shadow: 0 12px 40px rgba(0,0,0,.14);
+            z-index: 9999;
+            overflow: hidden;
+        }
+        .bell-dropdown.open { display: block; }
+        .bell-drop-header {
+            padding: 12px 16px;
+            font-weight: 700;
+            font-size: 14px;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f8fafc;
+        }
+        .bell-drop-clear {
+            font-size: 12px;
+            color: #6b7280;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: 6px;
+        }
+        .bell-drop-clear:hover { background: #e5e7eb; color: #111; }
+        .bell-drop-list {
+            max-height: 360px;
+            overflow-y: auto;
+        }
+        .bell-drop-empty {
+            padding: 28px 16px;
+            text-align: center;
+            color: #9ca3af;
+            font-size: 13px;
+        }
+        .bell-notif-item {
+            padding: 11px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 13px;
+        }
+        .bell-notif-item:last-child { border-bottom: none; }
+        .bell-notif-item.accept-item { border-left: 4px solid #22c55e; }
+        .bell-notif-item.wait-item   { border-left: 4px solid #f59e0b; }
+        .bell-notif-title { font-weight: 700; margin-bottom: 3px; }
+        .bell-notif-title.accept { color: #166534; }
+        .bell-notif-title.wait   { color: #92400e; }
+        .bell-notif-body { color: #374151; line-height: 1.5; }
+        .bell-notif-time { color: #9ca3af; font-size: 11px; margin-top: 4px; }
+        @@keyframes bellShake {
+            0%,100% { transform: rotate(0); }
+            15%      { transform: rotate(15deg); }
+            30%      { transform: rotate(-13deg); }
+            45%      { transform: rotate(10deg); }
+            60%      { transform: rotate(-8deg); }
+            75%      { transform: rotate(5deg); }
+        }
+        .bell-btn.shake { animation: bellShake 0.6s ease; }
+    </style>
 </head>
 
 <body>
+    @if (!string.IsNullOrEmpty(userRole))
+    {
     <header>
         <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
             <div class="container-fluid">
-
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse"
                     aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
@@ -22,44 +163,95 @@
 
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
-                        @* <li class="nav-item">
-                            <a class="nav-link text-dark custom-highlight" asp-area="" asp-controller="Status"
-                                asp-action="Create">📝 Nhập Trạng Thái</a>
+
+                        
+                        <li class="nav-item">
+                            <a class="nav-link text-dark custom-highlight" asp-controller="Status" asp-action="CreateDownTime">
+                                📝 录入停机时间
+                            </a>
+                        </li>
+
+                        
+                        <li class="nav-item">
+                            <a class="nav-link text-dark custom-highlight" asp-controller="Status" asp-action="DowntimeList">
+                                📈 停机时间历史
+                            </a>
+                        </li>
+
+                        
+                        <li class="nav-item">
+                            <a class="nav-link text-dark custom-highlight" asp-controller="Status" asp-action="ReportDowntime">
+                                📊 停机时间报告
+                            </a>
+                        </li>
+
+                        
+                        @if (isAdmin || isTechnical)
+                        {
+                        <li class="nav-item">
+                            <a class="nav-link text-dark custom-highlight" asp-controller="Status" asp-action="NotificationDashboard">
+                                🔔 通知仪表板
+                            </a>
+                        </li>
+                        }
+
+                        
+                        @if (isAdmin)
+                        {
+                        <li class="nav-item">
+                            <a class="nav-link text-dark custom-highlight" asp-controller="Status" asp-action="AdminPanel">
+                                🛡 管理面板
+                            </a>
+                        </li>
+                        }
+
+                    </ul>
+
+                    
+                    <ul class="navbar-nav align-items-center gap-2">
+                        <li class="nav-item">
+                            <div class="bell-wrapper" id="bellWrapper">
+                                <button class="bell-btn" id="bellBtn" onclick="toggleBellDropdown(event)" title="Thông báo">
+                                    🔔
+                                    <span class="bell-badge" id="bellBadge">0</span>
+                                </button>
+                                <div class="bell-dropdown" id="bellDropdown">
+                                    <div class="bell-drop-header">
+                                        @if (isProduction) { <span>📬 Phản hồi từ Technical team</span> }
+                                        @if (isTechnical)  { <span>🛑 Thông báo từ Production team</span> }
+                                        @if (isAdmin)      { <span>📋 Tất cả thông báo</span> }
+                                        <button class="bell-drop-clear" onclick="clearBellNotifs()">Xóa tất cả</button>
+                                    </div>
+                                    <div class="bell-drop-list" id="bellList">
+                                        <div class="bell-drop-empty" id="bellEmpty">Chưa có thông báo nào.</div>
+                                    </div>
+                                </div>
+                            </div>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark custom-highlight" asp-area="" asp-controller="Status"
-                                asp-action="Result">📈 Xem lịch sử</a>
+                            <span class="nav-link text-muted" style="font-size:13px; cursor:default;">
+                                👤 @userName
+                                @if (isAdmin)      { <span class="role-badge-nav role-admin">ADMIN</span> }
+                                @if (isTechnical)  { <span class="role-badge-nav role-technical">TECH</span> }
+                                @if (isProduction) { <span class="role-badge-nav role-production">PROD</span> }
+                            </span>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark custom-highlight" asp-area="" asp-controller="Status"
-                                asp-action="DowntimeDetailReport">📋 Detail Machine Status</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark custom-highlight" asp-area="" asp-controller="Status"
-                                asp-action="StatusUpdateReport">📊 Summary Machine Status</a>
-                        </li> *@
-                        <li class="nav-item">
-                            <a class="nav-link text-dark custom-highlight" asp-area="" asp-controller="Status"
-                                asp-action="CreateDownTime">📝 Nhập Downtime</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark custom-highlight" asp-area="" asp-controller="Status"
-                                asp-action="DowntimeList">📈 Lịch sử Downtime</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark custom-highlight" asp-area="" asp-controller="Status"
-                                asp-action="ReportDowntime">📊 Báo cáo Downtime</a>
+                            <a class="nav-link nav-logout" asp-controller="Account" asp-action="Logout">
+                                ⏻ 退出 / Logout
+                            </a>
                         </li>
                     </ul>
                 </div>
 
-                <div style="position:absolute; right:15px; top:25px; transform:translateY(-50%);">
+                @* <div style="position:absolute; right:200px; top:50%; transform:translateY(-50%);">
                     <img src="~/images/logo.png" alt="Logo" style="height:40px; width:auto;" />
-                </div>
-
+                </div> *@
             </div>
         </nav>
     </header>
+    }
+
     <div class="container">
         <main role="main" class="pb-3">
             @RenderBody()
@@ -67,13 +259,142 @@
     </div>
 
     <footer class="border-top footer text-muted">
-        <div class="container">
-        </div>
+        <div class="container"></div>
     </footer>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
-</body>
 
+    @if (!string.IsNullOrEmpty(userRole))
+    {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+    <script>
+    (function() {
+        "use strict";
+        const pathBase    = '@Context.Request.PathBase'.replace(/\/$/, '');
+        const myUsername  = '@userName';
+        const myRole      = '@userRole';
+        const bellBtn     = document.getElementById('bellBtn');
+        const bellBadge   = document.getElementById('bellBadge');
+        const bellList    = document.getElementById('bellList');
+        const bellDrop    = document.getElementById('bellDropdown');
+        let unreadCount   = 0;
+
+        /* ── Toggle dropdown ── */
+        window.toggleBellDropdown = function(e) {
+            e.stopPropagation();
+            const isOpen = bellDrop.classList.toggle('open');
+            if (isOpen) {
+                unreadCount = 0;
+                bellBadge.style.display = 'none';
+                bellBadge.textContent = '0';
+            }
+        };
+
+        document.addEventListener('click', function(e) {
+            const wrapper = document.getElementById('bellWrapper');
+            if (wrapper && !wrapper.contains(e.target)) bellDrop.classList.remove('open');
+        });
+
+        /* ── Thêm item vào bell list ── */
+        function addBellItem(html) {
+            const emptyEl = document.getElementById('bellEmpty');
+            if (emptyEl) emptyEl.style.display = 'none';
+
+            const item = document.createElement('div');
+            item.innerHTML = html;
+            bellList.insertBefore(item.firstElementChild, bellList.firstChild);
+
+            unreadCount++;
+            bellBadge.textContent = unreadCount > 9 ? '9+' : String(unreadCount);
+            bellBadge.style.display = 'block';
+
+            if (bellBtn) {
+                bellBtn.classList.remove('shake');
+                void bellBtn.offsetWidth;
+                bellBtn.classList.add('shake');
+                setTimeout(() => bellBtn.classList.remove('shake'), 700);
+            }
+        }
+
+        /* ── Thông báo: Tech phản hồi → hiện với Prod & Admin ── */
+        function onTechResponse(data) {
+            const isAccept = data.action === 'ACCEPT';
+            addBellItem(`
+                <div class="bell-notif-item ${isAccept ? 'accept-item' : 'wait-item'}">
+                    <div class="bell-notif-title ${isAccept ? 'accept' : 'wait'}">
+                        ${isAccept ? '✅ Kỹ thuật đã nhận — đang đến sửa' : '⏳ Kỹ thuật đã xem — vui lòng chờ'}
+                    </div>
+                    <div class="bell-notif-body">
+                        🔧 Máy: <strong>${data.machineCode || '-'}</strong>
+                        &nbsp;·&nbsp; Kỹ thuật: <strong>${data.techName || '-'}</strong>
+                    </div>
+                    <div class="bell-notif-time">🕐 ${data.datetime || ''}</div>
+                </div>`);
+        }
+
+        /* ── Thông báo: Prod gửi STOP → hiện với Tech & Admin ── */
+        function onStopNotification(data) {
+            addBellItem(`
+                <div class="bell-notif-item accept-item" style="border-left-color:#ef4444;">
+                    <div class="bell-notif-title" style="color:#991b1b;">
+                        🛑 STOP / CALL — ${data.machineCode || '-'}
+                    </div>
+                    <div class="bell-notif-body">
+                        📍 ${data.operation || '-'}
+                        &nbsp;·&nbsp; 👤 ${data.employeeName || data.employeeCode || '-'}
+                        &nbsp;·&nbsp; 🔴 ${data.reason || '-'}
+                    </div>
+                    <div class="bell-notif-time">🕐 ${data.datetime || ''}</div>
+                </div>`);
+        }
+
+        /* ── Clear all ── */
+        window.clearBellNotifs = function() {
+            bellList.innerHTML = '<div class="bell-drop-empty" id="bellEmpty">Chưa có thông báo nào.</div>';
+            unreadCount = 0;
+            bellBadge.style.display = 'none';
+        };
+
+        /* ── SignalR ── */
+        if (!myUsername) return;
+
+        const conn = new signalR.HubConnectionBuilder()
+            .withUrl(`${pathBase}/downtimeHub`)
+            .withAutomaticReconnect([2000, 5000, 10000])
+            .configureLogging(signalR.LogLevel.Warning)
+            .build();
+
+        // Prod & Admin: nhận phản hồi từ Tech
+        if (myRole === 'Production' || myRole === 'Admin') {
+            conn.on("ReceiveTechResponse", onTechResponse);
+        }
+
+        // Tech & Admin: nhận STOP từ Prod
+        if (myRole === 'Technical' || myRole === 'Admin') {
+            conn.on("ReceiveStopNotification", onStopNotification);
+        }
+
+        async function startConn() {
+            try {
+                await conn.start();
+                // Prod & Admin join group riêng để nhận phản hồi Tech
+                if (myRole === 'Production' || myRole === 'Admin') {
+                    await conn.invoke("JoinOperatorGroup", myUsername);
+                }
+                // Tech & Admin join TechnicianGroup để nhận STOP
+                if (myRole === 'Technical' || myRole === 'Admin') {
+                    await conn.invoke("JoinTechnicianGroup");
+                }
+            } catch(e) {
+                setTimeout(startConn, 5000);
+            }
+        }
+
+        startConn();
+    })();
+    </script>
+    }
+</body>
 </html>

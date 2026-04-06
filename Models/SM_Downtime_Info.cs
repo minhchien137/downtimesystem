@@ -4,30 +4,26 @@
 
 // namespace MachineStatusUpdate.Models
 // {
-//     [Table("SVN_Downtime_Info")]
-//     public class SVN_Downtime_Info
+//     [Table("SM_Downtime_Info")]
+//     public class SM_Downtime_Info
 //     {
+
 //         [Key]
 //         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
 //         public int Id { get; set; }
 
-//         // === Existing fields ===
 //         public string? Code { get; set; }
 
 //         public string? Name { get; set; }
 
 //         public string? State { get; set; }
 
-//         /// <summary>生产线 / Operation (Line)</summary>
 //         public string? Operation { get; set; }
 
-//         /// <summary>预计时间 / Estimated Time</summary>
 //         public string? EstimateTime { get; set; }
 
-//         /// <summary>异常描述 / Problem Description</summary>
 //         public string? Description { get; set; }
 
-//         /// <summary>图片 / Image path</summary>
 //         public string? Image { get; set; }
 
 //         public DateTime? Datetime { get; set; }
@@ -35,25 +31,12 @@
 //         [Column("ISS-Code")]
 //         public string? ISS_Code { get; set; }
 
-//         [Column("SVNCode")]
-//         public string? SVNCode { get; set; }
-
-//         public string? EmployeeCode { get; set; }
-//         public string? MachineCode { get; set; }
-
-//         public string? Location { get; set; }
-//         public string? Reason { get; set; }
-
-//         public string? Effect { get; set; }
-
-//         public string? Station { get; set; }
-//         public string? Action { get; set; }
-//         public string? RootCause { get; set; }
-//         public string? SpareParts { get; set; }
-
-//         // === Not mapped (runtime only) ===
 //         [NotMapped]
 //         public string? ErrorName { get; set; }
+
+//         [Column("SMCode")]
+//         public string? SMCode { get; set; }
+
 //     }
 
 //     [Table("SVN_target")]
@@ -62,16 +45,6 @@
 //     {
 //         public string Operation { get; set; }
 //         public string Date_time { get; set; } // "yyyyMMdd"
-//     }
-
-//     [Table("SVN_Downtime_Reason")]
-//     public class SVN_Downtime_Reason
-//     {
-//         [Key]
-//         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-//         public int Id { get; set; }
-//         public string Reason_Code { get; set; }
-//         public string Reason_Name { get; set; }
 //     }
 
 //     [Table("SM_Downtime_Reason")]

@@ -4,6 +4,8 @@ using MachineStatusUpdate.Models;
 using MachineStatusUpdate.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.SignalR;
+using MachineStatusUpdate.Hubs;
 using ZXing;
 
 
@@ -12,22 +14,25 @@ namespace MachineStatusUpdate.Controllers
     public class StatusController : Controller
     {
 
+        private readonly IHubContext<DowntimeHub> _hubContext;
+
         private readonly ApplicationDbContext _context;
 
         private readonly IWebHostEnvironment _webHostEnvironment;
 
-        private readonly IStatusUpdateService _statusUpdateService;
-
-
-        public StatusController(ApplicationDbContext context, IWebHostEnvironment webHostEnvironment, IStatusUpdateService statusUpdateService)
+        public StatusController(ApplicationDbContext context, IWebHostEnvironment webHostEnvironment, IHubContext<DowntimeHub> hubContext)
         {
             _context = context;
             _webHostEnvironment = webHostEnvironment;
-            _statusUpdateService = statusUpdateService;
+            _hubContext = hubContext;
 
         }
 
-        
+
+        // ============================================================
+        // GET: GetLatestDowntimeForOperation
+        // Trả về bản ghi downtime mới nhất trong ngày theo Operation
+        // ============================================================
         [HttpGet]
         public async Task<IActionResult> GetLatestDowntimeForOperation(string operation)
         {
@@ -37,7 +42,7 @@ namespace MachineStatusUpdate.Controllers
             var op = operation.Trim();
             var today = DateTime.Now.Date;
 
-            var latest = await _context.SVN_Downtime_Infos
+            var latest = await _context.SVN_Downtime_Infos_Devel
                 .Where(x => x.Operation != null
                             && x.Operation.Trim() == op
                             && x.Datetime.HasValue
@@ -45,15 +50,55 @@ namespace MachineStatusUpdate.Controllers
                 .OrderByDescending(x => x.Datetime)
                 .Select(x => new
                 {
-                    state = (x.State ?? "").Trim(),
-                    ISS_Code = (x.ISS_Code ?? "").Trim()
+                    state  = (x.State  ?? "").Trim(),
+                    reason = (x.Reason ?? "").Trim()
                 })
                 .FirstOrDefaultAsync();
 
             if (latest == null)
                 return Json(new { exists = false });
 
-            return Json(new { exists = true, state = latest.state, ISSCode = latest.ISS_Code });
+            return Json(new { exists = true, state = latest.state, reason = latest.reason });
+        }
+
+
+        // ============================================================
+        // GET: GetLatestStopByMachine
+        // Trả về bản ghi Stop gần nhất trong ngày theo MachineCode
+        // Dùng để auto-fill form khi chọn Machine lúc nhấn Run
+        // ============================================================
+        [HttpGet]
+        public async Task<IActionResult> GetLatestStopByMachine(string machineNo)
+        {
+            if (string.IsNullOrWhiteSpace(machineNo))
+                return Json(new { exists = false });
+
+            var today = DateTime.Now.Date;
+
+            var latest = await _context.SVN_Downtime_Infos_Devel
+                .Where(x => x.MachineCode != null
+                            && x.MachineCode.Trim() == machineNo.Trim()
+                            && x.State != null
+                            && x.State.Trim().ToUpper() == "STOP"
+                            && x.Datetime.HasValue
+                            && x.Datetime.Value.Date == today)
+                .OrderByDescending(x => x.Datetime)
+                .Select(x => new
+                {
+                    employeeCode = (x.EmployeeCode ?? "").Trim(),
+                    employeeName = (x.EmployeeName ?? "").Trim(),
+                    operation    = (x.Operation    ?? "").Trim(),
+                    opValue      = (x.Location     ?? "").Trim(),
+                    reason       = (x.Reason       ?? "").Trim(),
+                    effect       = (x.Effect       ?? "").Trim(),
+                    description  = (x.Description  ?? "").Trim()
+                })
+                .FirstOrDefaultAsync();
+
+            if (latest == null)
+                return Json(new { exists = false });
+
+            return Json(new { exists = true, data = latest });
         }
 
 
@@ -64,863 +109,6 @@ namespace MachineStatusUpdate.Controllers
         }
 
 
-        /*==============================================Machine Status Update=====================================================*/
-
-        // Hàm check mã máy có khớp không
-        [HttpPost]
-        public async Task<IActionResult> ValidateCode([FromBody] ValidateCodeRequest request)
-        {
-            try
-            {
-                if (string.IsNullOrEmpty(request.Code))
-                {
-                    return Json(new { exists = false });
-                }
-
-                var exists = await _context.sVN_Equipment_Machine_Info
-                    .AnyAsync(x => x.SVNCode == request.Code);
-
-                return Json(new { exists = exists });
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error validating code: {ex.Message}");
-                return Json(new { exists = false });
-            }
-        }
-
-        // Hàm xác định Operation dựa trên Code
-        private async Task<string> GetOperationFromCodeAsync(string code)
-        {
-            if (string.IsNullOrEmpty(code))
-                return "";
-
-            try
-            {
-                var machineInfo = await _context.sVN_Equipment_Machine_Info
-                    .FirstOrDefaultAsync(x => x.SVNCode == code);
-
-                return machineInfo?.Project ?? "";
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error getting operation from code: {ex.Message}");
-                return "";
-            }
-        }
-
-        // Hàm decode mã QR từ upload
-        [HttpPost]
-        public async Task<IActionResult> DecodeQR(IFormFile qrImage)
-        {
-            if (qrImage == null || qrImage.Length == 0)
-                return Json(new { success = false, message = "Chưa chọn ảnh!" });
-
-            try
-            {
-                using var stream = qrImage.OpenReadStream();
-                using var skBitmap = SkiaSharp.SKBitmap.Decode(stream);
-
-                var reader = new ZXing.SkiaSharp.BarcodeReader();
-                var result = reader.Decode(skBitmap);
-
-                if (result != null)
-                {
-                    return Json(new { success = true, code = result.Text });
-                }
-                else
-                {
-                    return Json(new { success = false, message = "Không đọc được mã từ ảnh!" });
-                }
-            }
-            catch (Exception ex)
-            {
-                return Json(new { success = false, message = "Lỗi xử lý: " + ex.Message });
-            }
-        }
-
-        // Method để xử lý lại toàn bộ dữ liệu (nếu cần)
-        public async Task<IActionResult> ProcessAllHistoryToDetail()
-        {
-            try
-            {
-                // Xóa toàn bộ dữ liệu cũ trong bảng Detail
-                var existingDetails = _context.SVN_Equipment_Status_Update_Detail.ToList();
-                _context.SVN_Equipment_Status_Update_Detail.RemoveRange(existingDetails);
-                await _context.SaveChangesAsync();
-
-                // Lấy tất cả records từ History, group by Code và xử lý
-                var allHistoryRecords = await _context.SVN_Equipment_Info_History_Test
-                    .OrderBy(x => x.Code)
-                    .ThenBy(x => x.Datetime)
-                    .ToListAsync();
-
-                var groupedByCode = allHistoryRecords.GroupBy(x => x.Code).ToList();
-
-                foreach (var codeGroup in groupedByCode)
-                {
-                    var records = codeGroup.OrderBy(x => x.Datetime).ToList();
-
-                    for (int i = 0; i < records.Count; i++)
-                    {
-                        var currentRecord = records[i];
-                        if (!currentRecord.Datetime.HasValue) continue;
-
-                        // Tính EstimateTime (số phút từ EstimateTime - DateTime)
-                        double? estimateTimeMinutes = null;
-                        if (!string.IsNullOrEmpty(currentRecord.EstimateTime))
-                        {
-                            if (TimeSpan.TryParse(currentRecord.EstimateTime, out TimeSpan estimateTimeSpan))
-                            {
-                                var estimateDateTime = currentRecord.Datetime.Value.Date.Add(estimateTimeSpan);
-                                var timeDifference = estimateDateTime - currentRecord.Datetime.Value;
-                                estimateTimeMinutes = timeDifference.TotalMinutes;
-                            }
-                        }
-
-                        // Xử lý ToTime và DurationMinutes
-                        string toTime = "";
-                        float durationMinutes = 0;
-
-                        if (i < records.Count - 1)
-                        {
-                            var nextRecord = records[i + 1];
-                            if (nextRecord.Datetime.HasValue)
-                            {
-                                durationMinutes = (float)(nextRecord.Datetime.Value - currentRecord.Datetime.Value).TotalMinutes;
-                                toTime = Math.Round(durationMinutes, 2).ToString(); // ToTime là số phút
-                            }
-                        }
-
-                        // Tạo record mới cho bảng Detail
-                        var detailRecord = new SVN_Equipment_Status_Update_Detail
-                        {
-                            Name = currentRecord.Name ?? "",
-                            Operation = currentRecord.Operation ?? "",
-                            State = currentRecord.State ?? "",
-                            EstimateTime = estimateTimeMinutes?.ToString("F2") ?? "",
-                            FromTime = currentRecord.Datetime.Value.ToString("yyyy-MM-dd HH:mm:ss"),
-                            ToTime = toTime, // Lưu số phút, để rỗng nếu chưa có
-                            DurationMinutes = durationMinutes
-                        };
-
-                        _context.SVN_Equipment_Status_Update_Detail.Add(detailRecord);
-                    }
-                }
-
-                await _context.SaveChangesAsync();
-
-                return Json(new { success = true, message = "Đã xử lý thành công toàn bộ dữ liệu History vào Detail!" });
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Lỗi trong ProcessAllHistoryToDetail: {ex.Message}");
-                return Json(new { success = false, message = $"Lỗi: {ex.Message}" });
-            }
-        }
-
-        [HttpPost]
-        public async Task<IActionResult> Create(SVN_Equipment_Info_History_Test model, IFormFile imageFile)
-        {
-            try
-            {
-                if (string.IsNullOrEmpty(model.Code) || string.IsNullOrEmpty(model.State))
-                {
-                    return Json(new { success = false, message = "Vui lòng điền đầy đủ thông tin bắt buộc!" });
-                }
-
-                var machineExists = await _context.sVN_Equipment_Machine_Info
-                    .AnyAsync(x => x.SVNCode == model.Code);
-
-                if (!machineExists)
-                {
-                    return Json(new { success = false, message = "Không tồn tại mã máy này trong hệ thống!" });
-                }
-
-                string imagePath = null;
-                if (imageFile != null && imageFile.Length > 0)
-                {
-                    var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp" };
-                    var fileExtension = Path.GetExtension(imageFile.FileName).ToLower();
-
-                    if (!allowedExtensions.Contains(fileExtension))
-                    {
-                        return Json(new { success = false, message = "Chỉ cho phép upload ảnh với định dạng: jpg, jpeg, png, gif, bmp" });
-                    }
-                    if (imageFile.Length > 5 * 1024 * 1024)
-                    {
-                        return Json(new { success = false, message = "Kích thước ảnh không được vượt quá 5MB" });
-                    }
-
-                    var uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, "uploads", "status-images");
-                    if (!Directory.Exists(uploadsFolder))
-                    {
-                        Directory.CreateDirectory(uploadsFolder);
-                    }
-                    var fileName = $"{DateTime.Now:yyyyMMdd_HHmmss}_{Guid.NewGuid():N}{fileExtension}";
-                    var filePath = Path.Combine(uploadsFolder, fileName);
-
-                    using (var stream = new FileStream(filePath, FileMode.Create))
-                    {
-                        await imageFile.CopyToAsync(stream);
-                    }
-                    imagePath = $"/uploads/status-images/{fileName}";
-                }
-
-                string generateName = model.Code;
-                if (!string.IsNullOrEmpty(model.Code) && model.Code.Contains("-"))
-                {
-                    var parts = model.Code.Split('-');
-                    if (parts.Length >= 2 && int.TryParse(parts[1], out int number))
-                    {
-                        generateName = $"#{number}";
-                    }
-                }
-
-                model.Name = generateName;
-                model.Operation = await GetOperationFromCodeAsync(model.Code);
-                model.Datetime = DateTime.Now;
-
-                int insertedId = 0;
-                using (var command = _context.Database.GetDbConnection().CreateCommand())
-                {
-                    command.CommandText = "EXEC [dbo].[SVN_InsertMachineStatus_Test] @Code, @Name, @State, @Operation, @EstimateTime, @Description, @Image, @Datetime";
-                    command.CommandType = System.Data.CommandType.Text;
-
-                    command.Parameters.Add(new Microsoft.Data.SqlClient.SqlParameter("@Code", model.Code ?? ""));
-                    command.Parameters.Add(new Microsoft.Data.SqlClient.SqlParameter("@Name", model.Name ?? ""));
-                    command.Parameters.Add(new Microsoft.Data.SqlClient.SqlParameter("@State", model.State ?? ""));
-                    command.Parameters.Add(new Microsoft.Data.SqlClient.SqlParameter("@Operation", model.Operation ?? ""));
-                    command.Parameters.Add(new Microsoft.Data.SqlClient.SqlParameter("@EstimateTime", model.EstimateTime ?? ""));
-                    command.Parameters.Add(new Microsoft.Data.SqlClient.SqlParameter("@Description", model.Description ?? ""));
-                    command.Parameters.Add(new Microsoft.Data.SqlClient.SqlParameter("@Image", imagePath ?? ""));
-                    command.Parameters.Add(new Microsoft.Data.SqlClient.SqlParameter("@Datetime", model.Datetime));
-
-                    if (command.Connection.State != System.Data.ConnectionState.Open)
-                        await command.Connection.OpenAsync();
-
-                    var result = await command.ExecuteScalarAsync();
-                    insertedId = Convert.ToInt32(result);
-                }
-
-
-                var insertedRecord = await _context.SVN_Equipment_Info_History_Test
-                    .FirstOrDefaultAsync(x => x.Id == insertedId);
-
-                await _statusUpdateService.ProcessSingleRecordToUpdateDetail(insertedRecord);
-
-                return Json(new { success = true, message = "Lưu trạng thái thành công!", data = insertedRecord });
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in Create: {ex.Message}");
-                return Json(new { success = false, message = $"Có lỗi xảy ra: {ex.Message}" });
-            }
-        }
-
-        // Method để xử lý dữ liệu từ Detail sang Status Update
-        [HttpPost]
-        public async Task<IActionResult> ProcessToStatusUpdate(DateTime? filterDate = null)
-        {
-            try
-            {
-                await _statusUpdateService.ProcessDataToStatusUpdate(filterDate);
-                return Json(new { success = true, message = "Đã xử lý thành công dữ liệu vào bảng Status Update!" });
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Lỗi trong ProcessToStatusUpdate: {ex.Message}");
-                return Json(new { success = false, message = $"Lỗi: {ex.Message}" });
-            }
-        }
-
-        // Method hiển thị Status Update Report
-        public async Task<IActionResult> StatusUpdateReport(DateTime? filterDate = null, string operation = "", int page = 1, int pageSize = 25)
-        {
-            try
-            {
-                var query = _context.SVN_Equipment_Status_Update.AsQueryable();
-
-                // Apply date filter
-                if (filterDate.HasValue)
-                {
-                    query = query.Where(x => x.Datetime.Date == filterDate.Value.Date);
-                }
-
-                if (!string.IsNullOrEmpty(operation))
-                {
-                    query = query.Where(x => x.Operation.Contains(operation));
-                }
-
-                var totalRecords = await query.CountAsync();
-
-                var results = await query
-                    .OrderByDescending(x => x.Datetime)
-                    .ThenBy(x => x.Name)
-                    .Skip((page - 1) * pageSize)
-                    .Take(pageSize)
-                    .AsNoTracking()
-                    .ToListAsync();
-
-                var totalPages = (int)Math.Ceiling((double)totalRecords / pageSize);
-
-                // Pagination ViewBag
-                ViewBag.CurrentPage = page;
-                ViewBag.TotalPages = totalPages;
-                ViewBag.PageSize = pageSize;
-                ViewBag.TotalRecords = totalRecords;
-                ViewBag.HasPreviousPage = page > 1;
-                ViewBag.HasNextPage = page < totalPages;
-
-                // Filter ViewBag
-                ViewBag.FilterDate = filterDate?.ToString("yyyy-MM-dd") ?? "";
-                ViewBag.Operation = operation ?? "";
-
-                return View(results);
-            }
-            catch (Exception ex)
-            {
-                ViewBag.ErrorMessage = $"Lỗi: {ex.Message}";
-                ViewBag.FilterDate = filterDate?.ToString("yyyy-MM-dd") ?? "";
-                ViewBag.Operation = operation ?? "";
-
-                // Set default pagination values for error case
-                ViewBag.CurrentPage = 1;
-                ViewBag.TotalPages = 0;
-                ViewBag.PageSize = pageSize;
-                ViewBag.TotalRecords = 0;
-                ViewBag.HasPreviousPage = false;
-                ViewBag.HasNextPage = false;
-
-                return View(new List<SVN_Equipment_Status_Update>());
-            }
-        }
-
-        // Method xuất Excel cho Status Update
-        public async Task<IActionResult> ExportStatusUpdateToExcel(DateTime? filterDate = null, string operation = "")
-        {
-            try
-            {
-                var query = _context.SVN_Equipment_Status_Update.AsQueryable();
-
-                if (filterDate.HasValue)
-                {
-                    query = query.Where(x => x.Datetime.Date == filterDate.Value.Date);
-                }
-
-                if (!string.IsNullOrEmpty(operation))
-                {
-                    query = query.Where(x => x.Operation.Contains(operation));
-                }
-
-                var data = await query
-                    .OrderByDescending(x => x.Datetime)
-                    .ThenBy(x => x.Name)
-                    .ToListAsync();
-
-                using (var workbook = new XLWorkbook())
-                {
-                    var ws = workbook.Worksheets.Add("StatusUpdateReport");
-                    var currentRow = 1;
-
-                    // Font mặc định
-                    ws.Style.Font.FontName = "Times New Roman";
-                    ws.Style.Font.FontSize = 11;
-
-                    // Header
-                    string[] headers = { "Id", "Name", "Operation", "Start Time", "Duration (min)", "Total Downtime (min)", "Date" };
-                    for (int i = 0; i < headers.Length; i++)
-                    {
-                        var cell = ws.Cell(currentRow, i + 1);
-                        cell.Value = headers[i];
-                        cell.Style.Font.Bold = true;
-                        cell.Style.Fill.BackgroundColor = XLColor.FromTheme(XLThemeColor.Accent1, 0.5);
-                        cell.Style.Font.FontColor = XLColor.White;
-                        cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                        cell.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
-                    }
-
-                    // Data rows
-                    foreach (var item in data)
-                    {
-                        currentRow++;
-                        ws.Cell(currentRow, 1).Value = item.Id;
-                        ws.Cell(currentRow, 2).Value = item.Name;
-                        ws.Cell(currentRow, 3).Value = item.Operation;
-                        ws.Cell(currentRow, 4).Value = item.StartTime;
-                        ws.Cell(currentRow, 5).Value = Math.Round(item.Duration, 2);
-                        ws.Cell(currentRow, 6).Value = Math.Round(item.TotalDuration, 2);
-                        ws.Cell(currentRow, 7).Value = item.Datetime.ToString("yyyyMMdd");
-                    }
-
-                    // Styling
-                    ws.Columns(1, 7).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                    ws.Columns(1, 7).Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
-
-                    // Column widths
-                    ws.Column(1).Width = 8;   // Id
-                    ws.Column(2).Width = 15;  // Name
-                    ws.Column(3).Width = 20;  // Operation
-                    ws.Column(4).Width = 20;  // Start Time
-                    ws.Column(5).Width = 15;  // Duration
-                    ws.Column(6).Width = 18;  // Total Downtime
-                    ws.Column(7).Width = 12;  // Date
-
-                    using (var stream = new MemoryStream())
-                    {
-                        workbook.SaveAs(stream);
-                        return File(stream.ToArray(),
-                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                            $"StatusUpdateReport_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Lỗi ExportStatusUpdateToExcel: {ex.Message}");
-                return Json(new { success = false, message = $"Lỗi xuất Excel: {ex.Message}" });
-            }
-        }
-
-        // API endpoint để xử lý dữ liệu cho ngày cụ thể
-        [HttpPost]
-        public async Task<IActionResult> ProcessDataForDate([FromBody] ProcessDateRequest request)
-        {
-            try
-            {
-                DateTime? filterDate = null;
-                if (!string.IsNullOrEmpty(request.Date))
-                {
-                    if (DateTime.TryParse(request.Date, out DateTime parsedDate))
-                    {
-                        filterDate = parsedDate;
-                    }
-                }
-
-                await _statusUpdateService.ProcessDataToStatusUpdate(filterDate);
-                return Json(new { success = true, message = "Đã xử lý thành công!" });
-            }
-            catch (Exception ex)
-            {
-                return Json(new { success = false, message = $"Lỗi: {ex.Message}" });
-            }
-        }
-
-        // Method hiển thị kết quả nhập trạng thái
-        public async Task<IActionResult> Result(string code = "", string state = "", string operation = "", string fromInsDateTime = "", string toInsDateTime = "", int page = 1, int pageSize = 25)
-        {
-            try
-            {
-                var query = _context.SVN_Equipment_Info_History_Test.AsQueryable();
-
-                // Apply filter
-
-                if (!string.IsNullOrEmpty(code))
-                    query = query.Where(x => x.Code.Contains(code));
-
-                if (!string.IsNullOrEmpty(state))
-                    query = query.Where(x => x.State.Contains(state));
-
-                if (!string.IsNullOrEmpty(operation))
-                    query = query.Where(x => x.Operation.Contains(operation));
-
-                if (!string.IsNullOrEmpty(fromInsDateTime) && DateTime.TryParse(fromInsDateTime, out var fromDate))
-                {
-                    query = query.Where(x => x.Datetime.HasValue && x.Datetime.Value.Date >= fromDate.Date);
-                }
-
-                if (!string.IsNullOrEmpty(toInsDateTime) && DateTime.TryParse(toInsDateTime, out var toDate))
-                {
-                    query = query.Where(x => x.Datetime.HasValue && x.Datetime.Value.Date <= toDate.Date);
-                }
-
-                var totalRecords = await query.CountAsync();
-
-                var results = await query
-                    .OrderByDescending(x => x.Datetime)
-                    .Skip((page - 1) * pageSize)
-                    .Take(pageSize)
-                    .AsNoTracking()
-                    .ToListAsync();
-
-                var totalPages = (int)Math.Ceiling((double)totalRecords / pageSize);
-
-                ViewBag.CurrentPage = page;
-                ViewBag.TotalPages = totalPages;
-                ViewBag.PageSize = pageSize;
-                ViewBag.TotalRecords = totalRecords;
-                ViewBag.HasPreviousPage = page > 1;
-                ViewBag.HasNextPage = page < totalPages;
-
-                // Truyền giá trị filter ra View
-
-                ViewBag.Code = code ?? "";
-                ViewBag.State = state ?? "";
-                ViewBag.Operation = operation ?? "";
-                ViewBag.fromInsDateTime = fromInsDateTime ?? "";
-                ViewBag.toInsDateTime = toInsDateTime ?? "";
-
-                return View(results);
-            }
-            catch (Exception ex)
-            {
-                ViewBag.ErrorMessage = $"Lỗi: {ex.Message}";
-                ViewBag.Code = code ?? "";
-                ViewBag.State = state ?? "";
-                ViewBag.Operation = operation ?? "";
-                ViewBag.fromInsDateTime = fromInsDateTime ?? "";
-                ViewBag.toInsDateTime = toInsDateTime ?? "";
-
-                // Set default pagination values for error case
-                ViewBag.CurrentPage = 1;
-                ViewBag.TotalPages = 0;
-                ViewBag.PageSize = pageSize;
-                ViewBag.TotalRecords = 0;
-                ViewBag.HasPreviousPage = false;
-                ViewBag.HasNextPage = false;
-
-                return View(new List<SVN_Equipment_Info_History_Test>());
-            }
-        }
-
-        // Xuất File Excel kết quả
-        public async Task<IActionResult> ExportToExcel(string code = "", string state = "", string operation = "", string fromInsDateTime = "", string toInsDateTime = "")
-        {
-            var query = _context.SVN_Equipment_Info_History_Test.AsQueryable();
-
-            if (!string.IsNullOrEmpty(code))
-                query = query.Where(x => x.Code.Contains(code));
-
-            if (!string.IsNullOrEmpty(state))
-                query = query.Where(x => x.State.Contains(state));
-
-            if (!string.IsNullOrEmpty(operation))
-                query = query.Where(x => x.Operation.Contains(operation));
-
-            if (!string.IsNullOrEmpty(fromInsDateTime) && DateTime.TryParse(fromInsDateTime, out var fromDate))
-            {
-                query = query.Where(x => x.Datetime.HasValue && x.Datetime.Value.Date >= fromDate.Date);
-            }
-
-            if (!string.IsNullOrEmpty(toInsDateTime) && DateTime.TryParse(toInsDateTime, out var toDate))
-            {
-                query = query.Where(x => x.Datetime.HasValue && x.Datetime.Value.Date <= toDate.Date);
-            }
-
-            // Sắp xếp bản ghi theo thời gian ASC
-            var data = await query.OrderBy(x => x.Datetime).ToListAsync();
-
-            using (var workbook = new XLWorkbook())
-            {
-                var ws = workbook.Worksheets.Add("StatusHistory");
-                var currentRow = 1;
-
-                // Font mặc định
-                ws.Style.Font.FontName = "Times New Roman";
-                ws.Style.Font.FontSize = 11;
-
-                // Header
-                string[] headers = { "Id", "Code", "Name", "State", "Operation", "Description", "Image", "Datetime" };
-                for (int i = 0; i < headers.Length; i++)
-                {
-                    var cell = ws.Cell(currentRow, i + 1);
-                    cell.Value = headers[i];
-                    cell.Style.Font.Bold = true;
-                    cell.Style.Fill.BackgroundColor = XLColor.FromTheme(XLThemeColor.Accent1, 0.5);
-                    cell.Style.Font.FontColor = XLColor.White;
-                    cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                    cell.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
-                }
-
-                // Thiết lập chiều cao hàng cho data (để ảnh hiển thị đẹp)
-                const double rowHeight = 70;
-
-                foreach (var item in data)
-                {
-                    currentRow++;
-                    ws.Row(currentRow).Height = rowHeight;
-                    ws.Cell(currentRow, 1).Value = item.Id;
-                    ws.Cell(currentRow, 2).Value = item.Code;
-                    ws.Cell(currentRow, 3).Value = item.Name;
-                    ws.Cell(currentRow, 4).Value = item.State;
-                    ws.Cell(currentRow, 5).Value = item.Operation;
-                    ws.Cell(currentRow, 6).Value = item.Description;
-
-                    if (!string.IsNullOrEmpty(item.Image))
-                    {
-                        try
-                        {
-                            string imagePath = "";
-                            if (item.Image.StartsWith("/uploads/"))
-                            {
-                                imagePath = Path.Combine(_webHostEnvironment.WebRootPath, item.Image.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
-                            }
-                            else
-                            {
-                                imagePath = item.Image;
-                            }
-
-                            if (System.IO.File.Exists(imagePath))
-                            {
-
-                                var picture = ws.AddPicture(imagePath);
-                                picture.MoveTo(ws.Cell(currentRow, 7), 8, 5);
-                                picture.WithSize(100, 70);
-
-
-                                var imageCell = ws.Cell(currentRow, 7);
-                                imageCell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                                imageCell.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
-                            }
-                            else
-                            {
-
-                                ws.Cell(currentRow, 7).Value = "No image";
-                                ws.Cell(currentRow, 7).Style.Font.FontColor = XLColor.Gray;
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-
-                            ws.Cell(currentRow, 7).Value = $"Error: {ex.Message}";
-                            ws.Cell(currentRow, 7).Style.Font.FontColor = XLColor.Red;
-                        }
-                    }
-                    else
-                    {
-                        ws.Cell(currentRow, 7).Value = "No image";
-                        ws.Cell(currentRow, 7).Style.Font.FontColor = XLColor.Gray;
-                    }
-                    ws.Cell(currentRow, 8).Value = item.Datetime?.ToString("yyyy-MM-dd HH:mm:ss");
-                }
-
-                // Canh giữa các cột số và ngày
-                ws.Columns(1, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                ws.Columns(2, 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                ws.Columns(3, 3).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                ws.Columns(4, 4).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                ws.Columns(5, 5).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                ws.Columns(7, 7).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-
-                ws.Column(1).Width = 8;
-                ws.Column(2).Width = 15;
-                ws.Column(3).Width = 15;
-                ws.Column(4).Width = 15;
-                ws.Column(5).Width = 15;
-                ws.Column(6).Width = 15;
-                ws.Column(7).Width = 15;
-                ws.Column(8).Width = 18;
-
-                using (var stream = new MemoryStream())
-                {
-
-                    workbook.SaveAs(stream);
-                    return File(stream.ToArray(),
-                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        "StatusHistory.xlsx");
-                }
-
-            }
-
-        }
-
-
-        public async Task<IActionResult> DowntimeDetailReport(string code = "",string state = "",string operation = "",string fromInsDateTime = "",string toInsDateTime = "",int page = 1,int pageSize = 25)
-        {
-            try
-            {
-                IQueryable<SVN_Equipment_Status_Update_Detail> query = _context.SVN_Equipment_Status_Update_Detail;
-
-                // Lọc theo Code
-                if (!string.IsNullOrEmpty(code))
-                {
-                    query = query.Where(x => x.Name.Contains(code));
-                }
-
-                // Lọc theo State
-                if (!string.IsNullOrEmpty(state))
-                {
-                    query = query.Where(x => x.State.Contains(state));
-                }
-
-                // Lọc theo Operation
-                if (!string.IsNullOrEmpty(operation))
-                {
-                    query = query.Where(x => x.Operation.Contains(operation));
-                }
-
-                // Lọc theo khoảng thời gian
-                if (!string.IsNullOrEmpty(fromInsDateTime) && DateTime.TryParse(fromInsDateTime, out DateTime fromDate))
-                {
-                    query = query.Where(x => x.FromTime.CompareTo(fromDate.ToString("yyyy-MM-dd HH:mm:ss")) >= 0);
-                }
-
-                if (!string.IsNullOrEmpty(toInsDateTime) && DateTime.TryParse(toInsDateTime, out DateTime toDate))
-                {
-                    query = query.Where(x => x.FromTime.CompareTo(toDate.ToString("yyyy-MM-dd HH:mm:ss")) <= 0);
-                }
-
-                // Lấy tổng số bản ghi
-                var totalRecords = await query.CountAsync();
-                var totalPages = (int)Math.Ceiling(totalRecords / (double)pageSize);
-
-                // Áp dụng phân trang
-                var pagedResults = await query
-                    .OrderByDescending(x => x.FromTime)
-                    .Skip((page - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToListAsync();
-
-                // Gán dữ liệu vào ViewBag để truyền sang View
-                ViewBag.Code = code;
-                ViewBag.State = state;
-                ViewBag.Operation = operation;
-                ViewBag.fromInsDateTime = fromInsDateTime;
-                ViewBag.toInsDateTime = toInsDateTime;
-                ViewBag.CurrentPage = page;
-                ViewBag.PageSize = pageSize;
-                ViewBag.TotalPages = totalPages;
-                ViewBag.TotalRecords = totalRecords;
-                ViewBag.HasPreviousPage = page > 1;
-                ViewBag.HasNextPage = page < totalPages;
-
-                return View(pagedResults);
-            }
-            catch (Exception ex)
-            {
-                ViewBag.ErrorMessage = $"Lỗi DowntimeDetailReport: {ex.Message}";
-                return View(new List<SVN_Equipment_Status_Update_Detail>());
-            }
-        }
-
-        // Xuất Excel cho Downtime Detail
-        public async Task<IActionResult> ExportDowntimeDetailToExcel(string code = "",string state = "",string operation = "",string fromInsDateTime = "",string toInsDateTime = "")
-        {
-            try
-            {
-                IQueryable<SVN_Equipment_Status_Update_Detail> query = _context.SVN_Equipment_Status_Update_Detail;
-
-                // Lọc theo Code
-                if (!string.IsNullOrEmpty(code))
-                    query = query.Where(x => x.Name.Contains(code));
-
-                // Lọc theo State
-                if (!string.IsNullOrEmpty(state))
-                    query = query.Where(x => x.State.Contains(state));
-
-                // Lọc theo Operation
-                if (!string.IsNullOrEmpty(operation))
-                    query = query.Where(x => x.Operation.Contains(operation));
-
-                // Lọc theo khoảng thời gian
-                if (!string.IsNullOrEmpty(fromInsDateTime) && DateTime.TryParse(fromInsDateTime, out DateTime fromDate))
-                {
-                    query = query.Where(x => x.FromTime.CompareTo(fromDate.ToString("yyyy-MM-dd HH:mm:ss")) >= 0);
-                }
-
-                if (!string.IsNullOrEmpty(toInsDateTime) && DateTime.TryParse(toInsDateTime, out DateTime toDate))
-                {
-                    query = query.Where(x => x.FromTime.CompareTo(toDate.ToString("yyyy-MM-dd HH:mm:ss")) <= 0);
-                }
-
-                var data = await query.OrderByDescending(x => x.FromTime).ToListAsync();
-
-                using (var workbook = new XLWorkbook())
-                {
-                    var ws = workbook.Worksheets.Add("DowntimeDetail");
-                    var currentRow = 1;
-
-                    // Font mặc định
-                    ws.Style.Font.FontName = "Times New Roman";
-                    ws.Style.Font.FontSize = 11;
-
-                    // Header
-                    string[] headers = { "Id", "Name", "Operation", "State", "Estimate Time (min)", "From Time", "To Time (min)", "Duration (min)" };
-                    for (int i = 0; i < headers.Length; i++)
-                    {
-                        var cell = ws.Cell(currentRow, i + 1);
-                        cell.Value = headers[i];
-                        cell.Style.Font.Bold = true;
-                        cell.Style.Fill.BackgroundColor = XLColor.FromTheme(XLThemeColor.Accent1, 0.5);
-                        cell.Style.Font.FontColor = XLColor.White;
-                        cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                        cell.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
-                    }
-
-                    // Data rows
-                    foreach (var item in data)
-                    {
-                        currentRow++;
-                        ws.Cell(currentRow, 1).Value = item.Id;
-                        ws.Cell(currentRow, 2).Value = item.Name;
-                        ws.Cell(currentRow, 3).Value = item.Operation;
-                        ws.Cell(currentRow, 4).Value = item.State;
-
-                        // Estimate Time
-                        if (!string.IsNullOrEmpty(item.EstimateTime) && double.TryParse(item.EstimateTime, out double estimateMinutes))
-                        {
-                            ws.Cell(currentRow, 5).Value = Math.Round(estimateMinutes, 1);
-                            ws.Cell(currentRow, 5).Style.NumberFormat.Format = "0.0";
-                        }
-                        else
-                        {
-                            ws.Cell(currentRow, 5).Value = ""; // để trống
-                        }
-
-                        // FromTime
-                        if (!string.IsNullOrEmpty(item.FromTime))
-                        {
-                            ws.Cell(currentRow, 6).Value = item.FromTime;
-                        }
-                        else
-                        {
-                            ws.Cell(currentRow, 6).Value = "";
-                        }
-
-                        // ToTime
-                        if (!string.IsNullOrEmpty(item.ToTime) && double.TryParse(item.ToTime, out double toTimeMinutes))
-                        {
-                            ws.Cell(currentRow, 7).Value = Math.Round(toTimeMinutes, 1);
-                            ws.Cell(currentRow, 7).Style.NumberFormat.Format = "0.0";
-                        }
-                        else
-                        {
-                            ws.Cell(currentRow, 7).Value = "";
-                        }
-
-                        // Duration
-                        if (item.DurationMinutes > 0)
-                        {
-                            ws.Cell(currentRow, 8).Value = Math.Round(item.DurationMinutes, 1);
-                            ws.Cell(currentRow, 8).Style.NumberFormat.Format = "0.0";
-                        }
-                        else
-                        {
-                            ws.Cell(currentRow, 8).Value = "";
-                        }
-                    }
-                    // Styling
-                    ws.Columns().AdjustToContents();
-
-                    using (var stream = new MemoryStream())
-                    {
-                        workbook.SaveAs(stream);
-                        return File(stream.ToArray(),
-                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                            $"DowntimeDetail_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Lỗi ExportDowntimeDetailToExcel: {ex.Message}");
-                return Json(new { success = false, message = $"Lỗi xuất Excel: {ex.Message}" });
-            }
-        }
-
-
-
-
         /*============================================================ Downtime ========================================================================**/
 
 
@@ -929,16 +117,19 @@ namespace MachineStatusUpdate.Controllers
         public async Task<IActionResult> CreateDownTime()
         {
             var today = DateTime.Now.ToString("yyyyMMdd");
-            var ops = await _context.SVN_targets
+
+            // 生产线 / Production Line
+            var line = await _context.SVN_targets
                 .AsNoTracking()
-                .Where(x => x.Date_time == today && x.Operation != null && x.Operation != "")
+                .Where(x => x.Date_time == today && x.Operation != null && x.Operation != "" && x.Operation.Contains("(SM)"))
                 .Select(x => x.Operation)
                 .Distinct()
                 .OrderBy(x => x)
                 .ToListAsync();
 
-            ViewBag.OperationOptions = ops;
+            ViewBag.OperationOptions = line;
 
+            // 原因 (Reason)
             var rea = await _context.SVN_Downtime_Reasons
                 .AsNoTracking()
                 .OrderBy(r => r.Reason_Name)
@@ -946,37 +137,79 @@ namespace MachineStatusUpdate.Controllers
                 .ToListAsync();
 
             ViewBag.ReasonOptions = rea;
-            return View("CreateDownTime"); // <- chỉ rõ, khớp file .cshtml
+
+            // 员工工号 / Employee ID no.
+            var employees = await _context.SM_EmployInfos
+                .AsNoTracking()
+                .OrderBy(e => e.EnglishName)
+                .Select(e => new { e.Id, e.ChineseName, e.EnglishName })
+                .ToListAsync();
+
+            ViewBag.Employees = employees;
+
+            // 操作 / Location
+            var operation = await _context.SM_Operations
+                .AsNoTracking()
+                .Where(x => x.Operation != null && x.Operation != "")
+                .Select(x => x.Operation)
+                .Distinct()
+                .OrderBy(x => x)
+                .ToListAsync();
+
+            ViewBag.Operations = operation;
+
+            return View("CreateDownTime");
         }
 
         /* Hàm GET Lịch sử Downtime */
         [HttpGet]
-        public async Task<IActionResult> DowntimeList(string operation = "", string fromDate = "", string toDate = "",int page = 1, int pageSize = 25)
+        public async Task<IActionResult> DowntimeList(
+            string operation = "",
+            string fromDate  = "",
+            string toDate    = "",
+            string station   = "",   // ← MỚI
+            string machine   = "",   // ← MỚI
+            string location  = "",   // ← MỚI
+            string employee  = "",   // ← MỚI
+            string reason    = "",   // ← MỚI
+            string effect    = "",   // ← MỚI
+            int page         = 1,
+            int pageSize     = 25)
         {
             try
             {
-                // JOIN với bảng Reasons để lấy ErrorName
-                var query = from d in _context.SVN_Downtime_Infos
-                            join r in _context.SVN_Downtime_Reasons
-                            on d.ISS_Code equals r.Reason_Code into reasons
+                var query = from d in _context.SVN_Downtime_Infos_Devel
+                            join r in _context.SM_Downtime_Reasons
+                            on d.Reason equals r.Reason_Code into reasons
                             from r in reasons.DefaultIfEmpty()
-                            select new SVN_Downtime_Info
+                            select new SVN_Downtime_Info_Devel
                             {
-                                Id = d.Id,
-                                Code = d.Code,
-                                SVNCode = d.SVNCode,
-                                Name = d.Name,
-                                Operation = d.Operation,
-                                State = d.State,
-                                ISS_Code = d.ISS_Code,
-                                ErrorName = r != null ? r.Reason_Name : "", // Lấy Reason_Name
-                                Description = d.Description,
-                                Datetime = d.Datetime,
+                                Id           = d.Id,
+                                Code         = d.Code,
+                                Name         = d.Name,
+                                EmployeeCode = d.EmployeeCode,
+                                EmployeeName = d.EmployeeName,
+                                MachineCode  = d.MachineCode,
+                                Location     = d.Location,
+                                Operation    = d.Operation,
+                                State        = d.State,
+                                Reason       = d.Reason,
+                                ErrorName    = r != null ? r.Reason_Name : "",
+                                Effect       = d.Effect,
+                                Station      = d.Station,
+                                Description  = d.Description,
+                                Action       = d.Action,
+                                RootCause    = d.RootCause,
+                                SpareParts   = d.SpareParts,
+                                Datetime     = d.Datetime,
                                 EstimateTime = d.EstimateTime,
-                                Image = d.Image
+                                Image        = d.Image
                             };
 
-                // ----- Filters -----
+                // ----- Filter cố định: chỉ lấy SM -----
+                query = query.Where(x => x.Operation != null && x.Operation.Contains("(SM)"));
+
+                // ----- Filters cũ -----
                 if (!string.IsNullOrWhiteSpace(operation))
                 {
                     var op = operation.Trim();
@@ -984,92 +217,188 @@ namespace MachineStatusUpdate.Controllers
                 }
 
                 if (!string.IsNullOrEmpty(fromDate) && DateTime.TryParse(fromDate, out var from))
-                {
                     query = query.Where(x => x.Datetime.HasValue && x.Datetime.Value.Date >= from.Date);
-                }
 
                 if (!string.IsNullOrEmpty(toDate) && DateTime.TryParse(toDate, out var to))
-                {
                     query = query.Where(x => x.Datetime.HasValue && x.Datetime.Value.Date <= to.Date);
-                }
 
-                // ----- Pagination -----
-                var totalRecords = await query.CountAsync();
-                var results = await query
+                // ----- Filters mới -----
+                if (!string.IsNullOrWhiteSpace(station))
+                    query = query.Where(x => x.Station != null && x.Station == station.Trim());
+
+                if (!string.IsNullOrWhiteSpace(machine))
+                    query = query.Where(x => x.MachineCode != null && x.MachineCode == machine.Trim());
+
+                if (!string.IsNullOrWhiteSpace(location))
+                    query = query.Where(x => x.Location != null && x.Location == location.Trim());
+
+                if (!string.IsNullOrWhiteSpace(employee))
+                    query = query.Where(x => x.EmployeeCode != null && x.EmployeeCode == employee.Trim());
+
+                if (!string.IsNullOrWhiteSpace(reason))
+                    query = query.Where(x => x.Reason != null && x.Reason == reason.Trim());
+
+                if (!string.IsNullOrWhiteSpace(effect))
+                    query = query.Where(x => x.Effect != null && x.Effect == effect.Trim());
+
+                // ----- Lấy toàn bộ kết quả đã filter (không paginate) để build dropdown -----
+                var allFilteredData = await query
                     .OrderByDescending(x => x.Datetime)
                     .ThenBy(x => x.Operation)
-                    .Skip((page - 1) * pageSize)
-                    .Take(pageSize)
                     .ToListAsync();
 
-                var totalPages = (int)Math.Ceiling((double)totalRecords / pageSize);
+                var totalRecords = allFilteredData.Count;
+                var totalPages   = (int)Math.Ceiling((double)totalRecords / pageSize);
 
-                // Distinct operations cho dropdown filter
-                ViewBag.OperationOptions = await _context.SVN_Downtime_Infos
-                    .Where(x => x.Operation != null && x.Operation != "")
+                // ----- Paginate từ allFilteredData -----
+                var results = allFilteredData
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                // ----- ViewBag: dropdown options lấy distinct từ toàn bộ kết quả đã filter -----
+                ViewBag.OperationOptions = allFilteredData
+                    .Where(x => !string.IsNullOrEmpty(x.Operation))
                     .Select(x => x.Operation!)
                     .Distinct()
                     .OrderBy(x => x)
-                    .ToListAsync();
+                    .ToList();
 
-                // Pass filter & pagination to View
-                ViewBag.Operation = operation ?? "";
-                ViewBag.FromDate = fromDate ?? "";
-                ViewBag.ToDate = toDate ?? "";
-                ViewBag.CurrentPage = page;
-                ViewBag.TotalPages = totalPages;
-                ViewBag.PageSize = pageSize;
-                ViewBag.TotalRecords = totalRecords;
+                ViewBag.StationOptions = allFilteredData
+                    .Where(x => !string.IsNullOrEmpty(x.Station))
+                    .Select(x => x.Station!)
+                    .Distinct()
+                    .OrderBy(x => x)
+                    .ToList();
+
+                ViewBag.MachineOptions = allFilteredData
+                    .Where(x => !string.IsNullOrEmpty(x.MachineCode))
+                    .Select(x => x.MachineCode!)
+                    .Distinct()
+                    .OrderBy(x => x)
+                    .ToList();
+
+                ViewBag.LocationOptions = allFilteredData
+                    .Where(x => !string.IsNullOrEmpty(x.Location))
+                    .Select(x => x.Location!)
+                    .Distinct()
+                    .OrderBy(x => x)
+                    .ToList();
+
+                ViewBag.EmployeeOptions = allFilteredData
+                    .Where(x => !string.IsNullOrEmpty(x.EmployeeCode))
+                    .Select(x => x.EmployeeCode!)
+                    .Distinct()
+                    .OrderBy(x => x)
+                    .ToList();
+
+                ViewBag.ReasonOptions = allFilteredData
+                    .Where(x => !string.IsNullOrEmpty(x.Reason))
+                    .Select(x => x.Reason!)
+                    .Distinct()
+                    .OrderBy(x => x)
+                    .ToList();
+
+                ViewBag.EffectOptions = allFilteredData
+                    .Where(x => !string.IsNullOrEmpty(x.Effect))
+                    .Select(x => x.Effect!)
+                    .Distinct()
+                    .OrderBy(x => x)
+                    .ToList();
+
+                // ----- ViewBag: giá trị filter hiện tại để giữ state -----
+                ViewBag.Operation       = operation  ?? "";
+                ViewBag.FromDate        = fromDate   ?? "";
+                ViewBag.ToDate          = toDate     ?? "";
+                ViewBag.Station         = station    ?? "";
+                ViewBag.Machine         = machine    ?? "";
+                ViewBag.Location        = location   ?? "";
+                ViewBag.Employee        = employee   ?? "";
+                ViewBag.Reason          = reason     ?? "";
+                ViewBag.Effect          = effect     ?? "";
+                ViewBag.CurrentPage     = page;
+                ViewBag.TotalPages      = totalPages;
+                ViewBag.PageSize        = pageSize;
+                ViewBag.TotalRecords    = totalRecords;
                 ViewBag.HasPreviousPage = page > 1;
-                ViewBag.HasNextPage = page < totalPages;
+                ViewBag.HasNextPage     = page < totalPages;
 
                 return View(results);
             }
             catch (Exception ex)
             {
-                ViewBag.ErrorMessage = $"Lỗi: {ex.Message}";
-                // Defaults khi lỗi
-                ViewBag.Operation = operation ?? "";
-                ViewBag.FromDate = fromDate ?? "";
-                ViewBag.ToDate = toDate ?? "";
-                ViewBag.CurrentPage = 1;
-                ViewBag.TotalPages = 0;
-                ViewBag.PageSize = pageSize;
-                ViewBag.TotalRecords = 0;
+                ViewBag.ErrorMessage    = $"Lỗi: {ex.Message}";
+                ViewBag.Operation       = operation  ?? "";
+                ViewBag.FromDate        = fromDate   ?? "";
+                ViewBag.ToDate          = toDate     ?? "";
+                ViewBag.Station         = station    ?? "";
+                ViewBag.Machine         = machine    ?? "";
+                ViewBag.Location        = location   ?? "";
+                ViewBag.Employee        = employee   ?? "";
+                ViewBag.Reason          = reason     ?? "";
+                ViewBag.Effect          = effect     ?? "";
+                ViewBag.CurrentPage     = 1;
+                ViewBag.TotalPages      = 0;
+                ViewBag.PageSize        = pageSize;
+                ViewBag.TotalRecords    = 0;
                 ViewBag.HasPreviousPage = false;
-                ViewBag.HasNextPage = false;
-
-                return View(new List<SVN_Downtime_Info>());
+                ViewBag.HasNextPage     = false;
+                // Trả về ViewBag options rỗng để tránh lỗi null trong View
+                ViewBag.OperationOptions = new List<string>();
+                ViewBag.StationOptions   = new List<string>();
+                ViewBag.MachineOptions   = new List<string>();
+                ViewBag.LocationOptions  = new List<string>();
+                ViewBag.EmployeeOptions  = new List<string>();
+                ViewBag.ReasonOptions    = new List<string>();
+                ViewBag.EffectOptions    = new List<string>();
+                return View(new List<SVN_Downtime_Info_Devel>());
             }
         }
 
-        // Xuất Excel DowntimeList với ErrorName
-        public async Task<IActionResult> ExportDowntimeListToExcel(string operation = "", string fromDate = "", string toDate = "")
+        /* Xuất Excel DowntimeList */
+        public async Task<IActionResult> ExportDowntimeListToExcel(
+            string operation = "",
+            string fromDate  = "",
+            string toDate    = "",
+            string station   = "",   // ← MỚI
+            string machine   = "",   // ← MỚI
+            string location  = "",   // ← MỚI
+            string employee  = "",   // ← MỚI
+            string reason    = "",   // ← MỚI
+            string effect    = "")   // ← MỚI
         {
             try
             {
-                // JOIN với bảng Reasons để lấy ErrorName
-                var query = from d in _context.SVN_Downtime_Infos
-                            join r in _context.SVN_Downtime_Reasons
-                            on d.ISS_Code equals r.Reason_Code into reasons
+                var query = from d in _context.SVN_Downtime_Infos_Devel
+                            join r in _context.SM_Downtime_Reasons
+                            on d.Reason equals r.Reason_Code into reasons
                             from r in reasons.DefaultIfEmpty()
-                            select new SVN_Downtime_Info
+                            select new SVN_Downtime_Info_Devel
                             {
-                                Id = d.Id,
-                                SVNCode = d.SVNCode,
-                                Code = d.Code,
-                                Name = d.Name,
-                                Operation = d.Operation,
-                                State = d.State,
-                                ISS_Code = d.ISS_Code,
-                                ErrorName = r != null ? r.Reason_Name : "",
-                                Description = d.Description,
-                                Datetime = d.Datetime,
+                                Id           = d.Id,
+                                Code         = d.Code,
+                                Name         = d.Name,
+                                EmployeeCode = d.EmployeeCode,
+                                EmployeeName = d.EmployeeName,
+                                MachineCode  = d.MachineCode,
+                                Location     = d.Location,
+                                Operation    = d.Operation,
+                                State        = d.State,
+                                Reason       = d.Reason,
+                                ErrorName    = r != null ? r.Reason_Name : "",
+                                Effect       = d.Effect,
+                                Station      = d.Station,
+                                Description  = d.Description,
+                                Action       = d.Action,
+                                RootCause    = d.RootCause,
+                                SpareParts   = d.SpareParts,
+                                Datetime     = d.Datetime,
                                 EstimateTime = d.EstimateTime,
-                                Image = d.Image
+                                Image        = d.Image
                             };
 
-                // Apply filters
+                query = query.Where(x => x.Operation != null && x.Operation.Contains("(SM)"));
+
                 if (!string.IsNullOrWhiteSpace(operation))
                 {
                     var op = operation.Trim();
@@ -1077,14 +406,28 @@ namespace MachineStatusUpdate.Controllers
                 }
 
                 if (!string.IsNullOrEmpty(fromDate) && DateTime.TryParse(fromDate, out var from))
-                {
                     query = query.Where(x => x.Datetime.HasValue && x.Datetime.Value.Date >= from.Date);
-                }
 
                 if (!string.IsNullOrEmpty(toDate) && DateTime.TryParse(toDate, out var to))
-                {
                     query = query.Where(x => x.Datetime.HasValue && x.Datetime.Value.Date <= to.Date);
-                }
+
+                if (!string.IsNullOrWhiteSpace(station))
+                    query = query.Where(x => x.Station != null && x.Station == station.Trim());
+
+                if (!string.IsNullOrWhiteSpace(machine))
+                    query = query.Where(x => x.MachineCode != null && x.MachineCode == machine.Trim());
+
+                if (!string.IsNullOrWhiteSpace(location))
+                    query = query.Where(x => x.Location != null && x.Location == location.Trim());
+
+                if (!string.IsNullOrWhiteSpace(employee))
+                    query = query.Where(x => x.EmployeeCode != null && x.EmployeeCode == employee.Trim());
+
+                if (!string.IsNullOrWhiteSpace(reason))
+                    query = query.Where(x => x.Reason != null && x.Reason == reason.Trim());
+
+                if (!string.IsNullOrWhiteSpace(effect))
+                    query = query.Where(x => x.Effect != null && x.Effect == effect.Trim());
 
                 var data = await query
                     .OrderByDescending(x => x.Datetime)
@@ -1096,12 +439,17 @@ namespace MachineStatusUpdate.Controllers
                     var ws = workbook.Worksheets.Add("DowntimeList");
                     var currentRow = 1;
 
-                    // Font mặc định
                     ws.Style.Font.FontName = "Times New Roman";
                     ws.Style.Font.FontSize = 11;
 
-                    // Header
-                    string[] headers = { "#", "SVN Code", "Operation", "ISS Code", "Tên lỗi", "State", "Mô tả", "Thời gian", "Ước tính", "Ảnh" };
+                    // Header theo thứ tự cột SQL
+                    string[] headers = {
+                        "#", "Code", "Name", "Operation", "Machine", "Location",
+                        "Reason", "Error Name", "Effect", "Station", "Estimate Time",
+                        "State", "Action", "Description", "Root Cause", "Spare Parts",
+                        "Employee Code", "Employee Name", "Datetime", "Image"
+                    };
+
                     for (int i = 0; i < headers.Length; i++)
                     {
                         var cell = ws.Cell(currentRow, i + 1);
@@ -1110,88 +458,105 @@ namespace MachineStatusUpdate.Controllers
                         cell.Style.Fill.BackgroundColor = XLColor.FromTheme(XLThemeColor.Accent1, 0.5);
                         cell.Style.Font.FontColor = XLColor.White;
                         cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                        cell.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+                        cell.Style.Alignment.Vertical   = XLAlignmentVerticalValues.Center;
                     }
 
                     const double rowHeight = 70;
-
                     int rowIndex = 0;
+
                     foreach (var item in data)
                     {
                         currentRow++;
                         rowIndex++;
                         ws.Row(currentRow).Height = rowHeight;
 
-                        ws.Cell(currentRow, 1).Value = rowIndex;
-                        ws.Cell(currentRow, 2).Value = item.SVNCode;
-                        ws.Cell(currentRow, 3).Value = item.Operation;
-                        ws.Cell(currentRow, 4).Value = item.ISS_Code;
-                        ws.Cell(currentRow, 5).Value = item.ErrorName;
-                        ws.Cell(currentRow, 6).Value = item.State;
-                        ws.Cell(currentRow, 7).Value = item.Description;
-                        ws.Cell(currentRow, 8).Value = item.Datetime?.ToString("dd/MM/yyyy HH:mm") ?? "-";
-                        ws.Cell(currentRow, 9).Value = string.IsNullOrEmpty(item.EstimateTime) ? "-" : item.EstimateTime;
+                        string effLabel = item.Effect == "1" ? "影响生产"
+                                        : item.Effect == "2" ? "不影响生产"
+                                        : (item.Effect ?? "-");
 
-                        // Xử lý ảnh
+                        ws.Cell(currentRow,  1).Value = rowIndex;
+                        ws.Cell(currentRow,  2).Value = item.Code;
+                        ws.Cell(currentRow,  3).Value = item.Name;
+                        ws.Cell(currentRow,  4).Value = item.Operation;
+                        ws.Cell(currentRow,  5).Value = item.MachineCode;
+                        ws.Cell(currentRow,  6).Value = item.Location;
+                        ws.Cell(currentRow,  7).Value = item.Reason;
+                        ws.Cell(currentRow,  8).Value = item.ErrorName;
+                        ws.Cell(currentRow,  9).Value = effLabel;
+                        ws.Cell(currentRow, 10).Value = item.Station;
+                        ws.Cell(currentRow, 11).Value = string.IsNullOrEmpty(item.EstimateTime) ? "-" : item.EstimateTime;
+                        ws.Cell(currentRow, 12).Value = item.State;
+                        ws.Cell(currentRow, 13).Value = item.Action;
+                        ws.Cell(currentRow, 14).Value = item.Description;
+                        ws.Cell(currentRow, 15).Value = item.RootCause;
+                        ws.Cell(currentRow, 16).Value = item.SpareParts;
+                        ws.Cell(currentRow, 17).Value = item.EmployeeCode;
+                        ws.Cell(currentRow, 18).Value = item.EmployeeName;
+                        ws.Cell(currentRow, 19).Value = item.Datetime?.ToString("dd/MM/yyyy HH:mm") ?? "-";
+
                         if (!string.IsNullOrEmpty(item.Image))
                         {
                             try
                             {
-                                string imagePath = "";
-                                if (item.Image.StartsWith("/uploads/"))
-                                {
-                                    imagePath = Path.Combine(_webHostEnvironment.WebRootPath, item.Image.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
-                                }
-                                else
-                                {
-                                    imagePath = item.Image;
-                                }
+                                string imagePath = item.Image.StartsWith("/uploads/")
+                                    ? Path.Combine(_webHostEnvironment.WebRootPath, item.Image.TrimStart('/').Replace('/', Path.DirectorySeparatorChar))
+                                    : item.Image;
 
                                 if (System.IO.File.Exists(imagePath))
                                 {
                                     var picture = ws.AddPicture(imagePath);
-                                    picture.MoveTo(ws.Cell(currentRow, 10), 8, 5);
+                                    picture.MoveTo(ws.Cell(currentRow, 20), 8, 5);
                                     picture.WithSize(100, 70);
-
-                                    var imageCell = ws.Cell(currentRow, 10);
-                                    imageCell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                                    imageCell.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+                                    ws.Cell(currentRow, 20).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                                    ws.Cell(currentRow, 20).Style.Alignment.Vertical   = XLAlignmentVerticalValues.Center;
                                 }
                                 else
                                 {
-                                    ws.Cell(currentRow, 10).Value = "No image";
-                                    ws.Cell(currentRow, 10).Style.Font.FontColor = XLColor.Gray;
+                                    ws.Cell(currentRow, 20).Value = "No image";
+                                    ws.Cell(currentRow, 20).Style.Font.FontColor = XLColor.Gray;
                                 }
                             }
                             catch (Exception ex)
                             {
-                                ws.Cell(currentRow, 10).Value = $"Error: {ex.Message}";
-                                ws.Cell(currentRow, 10).Style.Font.FontColor = XLColor.Red;
+                                ws.Cell(currentRow, 20).Value = $"Error: {ex.Message}";
+                                ws.Cell(currentRow, 20).Style.Font.FontColor = XLColor.Red;
                             }
                         }
                         else
                         {
-                            ws.Cell(currentRow, 10).Value = "-";
-                            ws.Cell(currentRow, 10).Style.Font.FontColor = XLColor.Gray;
+                            ws.Cell(currentRow, 20).Value = "-";
+                            ws.Cell(currentRow, 20).Style.Font.FontColor = XLColor.Gray;
                         }
                     }
 
-                    // Styling
-                    ws.Columns(1, 9).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                    ws.Columns(1, 9).Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
-                    ws.Column(7).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left; // Mô tả căn trái
+                    ws.Columns(1, 19).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                    ws.Columns(1, 19).Style.Alignment.Vertical   = XLAlignmentVerticalValues.Center;
+                    // Description, Action, RootCause, SpareParts căn trái
+                    ws.Column(13).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;
+                    ws.Column(14).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;
+                    ws.Column(15).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;
+                    ws.Column(16).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;
 
-                    // Column widths
-                    ws.Column(1).Width = 8;
-                    ws.Column(2).Width = 15;
-                    ws.Column(3).Width = 20;
-                    ws.Column(4).Width = 15;
-                    ws.Column(5).Width = 25;
-                    ws.Column(6).Width = 12;
-                    ws.Column(7).Width = 30;
-                    ws.Column(8).Width = 18;
-                    ws.Column(9).Width = 15;
-                    ws.Column(10).Width = 15;
+                    ws.Column(1).Width  = 6;
+                    ws.Column(2).Width  = 12;
+                    ws.Column(3).Width  = 15;
+                    ws.Column(4).Width  = 28;
+                    ws.Column(5).Width  = 22;
+                    ws.Column(6).Width  = 18;
+                    ws.Column(7).Width  = 14;
+                    ws.Column(8).Width  = 25;
+                    ws.Column(9).Width  = 15;
+                    ws.Column(10).Width = 14;
+                    ws.Column(11).Width = 14;
+                    ws.Column(12).Width = 12;
+                    ws.Column(13).Width = 28;
+                    ws.Column(14).Width = 30;
+                    ws.Column(15).Width = 28;
+                    ws.Column(16).Width = 22;
+                    ws.Column(17).Width = 15;
+                    ws.Column(18).Width = 18;
+                    ws.Column(19).Width = 18;
+                    ws.Column(20).Width = 15;
 
                     using (var stream = new MemoryStream())
                     {
@@ -1211,23 +576,16 @@ namespace MachineStatusUpdate.Controllers
 
         /* Hàm POST Nhập Downtime */
         [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> CreateDownTime(SVN_Downtime_Info model, IFormFile? imageFile)
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> CreateDownTime(SVN_Downtime_Info_Devel model, IFormFile? imageFile)
         {
             // ===== 1) Chuẩn hoá/điền mặc định =====
-
             if (string.IsNullOrWhiteSpace(model.Code))
-            {
+                model.Code = model.EmployeeCode ?? string.Empty;
 
-                model.Code = model.Operation ?? string.Empty;
-
-            }
-
-            // Nếu chưa có Name thì đặt theo Operation để không null
             if (string.IsNullOrWhiteSpace(model.Name))
-                model.Name = model.Operation ?? string.Empty;
+                model.Name = model.EmployeeName ?? model.EmployeeCode ?? string.Empty;
 
-            // Dùng thời gian người dùng chọn, nếu trống thì Now (như logic cũ)
             if (!model.Datetime.HasValue || model.Datetime.Value == default)
                 model.Datetime = DateTime.Now;
 
@@ -1237,7 +595,7 @@ namespace MachineStatusUpdate.Controllers
             if (string.IsNullOrWhiteSpace(model.Description))
                 model.Description = string.Empty;
 
-            // ===== 2) Xử lý upload ảnh (tuỳ chọn) =====
+            // ===== 2) Xử lý upload ảnh =====
             string imagePath = string.Empty;
             if (imageFile != null && imageFile.Length > 0)
             {
@@ -1245,10 +603,10 @@ namespace MachineStatusUpdate.Controllers
                 var ext = Path.GetExtension(imageFile.FileName).ToLowerInvariant();
 
                 if (!allowedExtensions.Contains(ext))
-                    return Json(new { success = false, message = "Chỉ cho phép upload ảnh: jpg, jpeg, png, gif, bmp" });
+                    return Json(new { success = false, message = "只允许上传图片: jpg, jpeg, png, gif, bmp" });
 
                 if (imageFile.Length > 5 * 1024 * 1024)
-                    return Json(new { success = false, message = "Kích thước ảnh không được vượt quá 5MB" });
+                    return Json(new { success = false, message = "图片大小不能超过5MB" });
 
                 var uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, "uploads", "status-images");
                 if (!Directory.Exists(uploadsFolder))
@@ -1258,40 +616,174 @@ namespace MachineStatusUpdate.Controllers
                 var filePath = Path.Combine(uploadsFolder, fileName);
 
                 using (var stream = new FileStream(filePath, FileMode.Create))
-                {
                     await imageFile.CopyToAsync(stream);
-                }
 
                 imagePath = $"/uploads/status-images/{fileName}";
             }
 
-            model.Image = imagePath; // model có trường Image để lưu đường dẫn ảnh
+            model.Image = imagePath;
 
-            // ===== 3) Validate ModelState & Lưu DB =====
+            // ===== 3) Validate ModelState =====
+            ModelState.Remove("Name");
+            ModelState.Remove("Code");
+            ModelState.Remove("EstimateTime");
+            ModelState.Remove("Description");
+            ModelState.Remove("Image");
+            ModelState.Remove("EmployeeCode");
+            ModelState.Remove("EmployeeName");
+            ModelState.Remove("MachineCode");
+            ModelState.Remove("Location");
+            ModelState.Remove("Reason");
+            ModelState.Remove("Effect");
+            ModelState.Remove("Station");
+            ModelState.Remove("Action");
+            ModelState.Remove("RootCause");
+            ModelState.Remove("SpareParts");
+
             if (!ModelState.IsValid)
             {
-                await RefillOpsForToday();
-                await RefillReasonsAsync();
-                TempData["Error"] = "Dữ liệu không hợp lệ!";
-                return View("CreateDownTime", model);
+                var errors = ModelState
+                    .Where(x => x.Value.Errors.Any())
+                    .Select(x => $"{x.Key}: {string.Join(", ", x.Value.Errors.Select(e => e.ErrorMessage))}")
+                    .ToList();
+                return Json(new { success = false, message = "数据无效: " + string.Join(" | ", errors) });
             }
 
-            _context.SVN_Downtime_Infos.Add(model);
-            await _context.SaveChangesAsync();
+            // ===== 4) Lưu DB =====
+            try
+            {
+                _context.SVN_Downtime_Infos_Devel.Add(model);
+                await _context.SaveChangesAsync();
 
-            // ===== 4) Trả JSON cho AJAX (giống kiểu cũ) =====
-            return Json(new { success = true, message = "Đã lưu downtime!" });
+                // ===== 5) SignalR: Push real-time notification khi State = STOP =====
+                var state = (model.State ?? "").Trim().ToUpper();
+
+                if (state == "STOP")
+                {
+                    // ── Lưu vào bảng TechResponses để Tech thấy khi refresh ──
+                    var techResp = new MachineStatusUpdate.Models.SVN_Downtime_TechResponse
+                    {
+                        DowntimeId       = model.Id,
+                        MachineCode      = model.MachineCode  ?? "",
+                        Operation        = model.Operation    ?? "",
+                        EmployeeCode     = model.EmployeeCode ?? "",
+                        EmployeeName     = model.EmployeeName ?? "",
+                        OperatorUsername = HttpContext.Session.GetString("UserName") ?? "",
+                        Reason           = model.Reason       ?? "",
+                        Effect           = model.Effect       ?? "",
+                        EstimateTime     = model.EstimateTime ?? "",
+                        Station          = model.Station      ?? "",
+                        Description      = model.Description  ?? "",
+                        Location         = model.Location     ?? "",
+                        StopDatetime     = model.Datetime ?? DateTime.Now,
+                        TechAction       = null   // chưa xử lý
+                    };
+                    _context.SVN_Downtime_TechResponses.Add(techResp);
+                    await _context.SaveChangesAsync();
+
+                    // Gửi thông báo đến tất cả Kỹ thuật trong TechnicianGroup
+                    await _hubContext.Clients.Group("TechnicianGroup").SendAsync("ReceiveStopNotification", new
+                    {
+                        techResponseId   = techResp.Id,
+                        operation        = model.Operation    ?? "",
+                        machineCode      = model.MachineCode  ?? "",
+                        location         = model.Location     ?? "",
+                        employeeCode     = model.EmployeeCode ?? "",
+                        employeeName     = model.EmployeeName ?? "",
+                        reason           = model.Reason       ?? "",
+                        effect           = model.Effect       ?? "",
+                        description      = model.Description  ?? "",
+                        station          = model.Station      ?? "",
+                        estimateTime     = model.EstimateTime ?? "",
+                        datetime         = model.Datetime?.ToString("dd/MM/yyyy HH:mm") ?? "",
+                        insertedId       = model.Id,
+                        operatorUsername = HttpContext.Session.GetString("UserName") ?? ""
+                    });
+                }
+                else if (state == "RUN")
+                {
+                    // Thông báo máy đã chạy lại để Kỹ thuật biết
+                    await _hubContext.Clients.Group("TechnicianGroup").SendAsync("ReceiveRunNotification", new
+                    {
+                        operation = model.Operation ?? "",
+                        machineCode = model.MachineCode ?? "",
+                        datetime = model.Datetime?.ToString("dd/MM/yyyy HH:mm") ?? ""
+                    });
+                }
+
+                return Json(new { success = true, message = "停机时间已保存!" });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = $"数据库错误: {ex.InnerException?.Message ?? ex.Message}" });
+            }
         }
 
-        /* Hàm fill danh sách dropdown mã lỗi ISS Code - Error Reason */
+
+        /* Hàm fill danh sách dropdown mã lỗi */
         private async Task RefillReasonsAsync()
         {
-            ViewBag.ReasonOptions = await _context.SVN_Downtime_Reasons
+            ViewBag.ReasonOptions = await _context.SM_Downtime_Reasons
                 .AsNoTracking()
                 .OrderBy(r => r.Reason_Name)
                 .Select(r => new { r.Reason_Code, r.Reason_Name })
                 .ToListAsync();
         }
+
+        [HttpGet]
+        public async Task<IActionResult> NotificationDashboard()
+        {
+            var role = HttpContext.Session.GetString("UserRole");
+            if (role != "Technical" && role != "Admin")
+                return RedirectToAction("Login", "Account");
+
+            // Load tất cả bản ghi STOP hôm nay để hiển thị khi Tech vào/refresh trang
+            var today = DateTime.Now.Date;
+            var pending = await _context.SVN_Downtime_TechResponses
+                .AsNoTracking()
+                .Where(x => x.StopDatetime.HasValue && x.StopDatetime.Value.Date == today)
+                .OrderByDescending(x => x.StopDatetime)
+                .ToListAsync();
+
+            ViewBag.PendingNotifications = pending;
+            return View();
+        }
+
+        // ── API: Load danh sách thông báo hôm nay khi Tech refresh trang ──
+        [HttpGet]
+        public async Task<IActionResult> GetPendingNotifications()
+        {
+            var today = DateTime.Now.Date;
+            var list = await _context.SVN_Downtime_TechResponses
+                .AsNoTracking()
+                .Where(x => x.StopDatetime.HasValue && x.StopDatetime.Value.Date == today)
+                .OrderByDescending(x => x.StopDatetime)
+                .Select(x => new {
+                    id               = x.Id,
+                    downtimeId       = x.DowntimeId,
+                    machineCode      = x.MachineCode      ?? "",
+                    operation        = x.Operation        ?? "",
+                    employeeCode     = x.EmployeeCode     ?? "",
+                    employeeName     = x.EmployeeName     ?? "",
+                    operatorUsername = x.OperatorUsername ?? "",
+                    reason           = x.Reason           ?? "",
+                    effect           = x.Effect           ?? "",
+                    estimateTime     = x.EstimateTime     ?? "",
+                    station          = x.Station          ?? "",
+                    description      = x.Description      ?? "",
+                    location         = x.Location         ?? "",
+                    datetime         = x.StopDatetime.HasValue
+                                       ? x.StopDatetime.Value.ToString("dd/MM/yyyy HH:mm") : "",
+                    techAction       = x.TechAction   ?? "",  // "" | "ACCEPT" | "WAIT"
+                    techUsername     = x.TechUsername  ?? "",
+                    respondDatetime  = x.RespondDatetime.HasValue
+                                       ? x.RespondDatetime.Value.ToString("dd/MM/yyyy HH:mm") : ""
+                })
+                .ToListAsync();
+
+            return Json(list);
+        }
+
 
         /* Hàm fill danh sách Operation đang chạy trong ngày hôm nay */
         private async Task RefillOpsForToday()
@@ -1299,7 +791,7 @@ namespace MachineStatusUpdate.Controllers
             var today = DateTime.Now.ToString("yyyyMMdd");
             ViewBag.OperationOptions = await _context.SVN_targets
                 .AsNoTracking()
-                .Where(x => x.Date_time == today && x.Operation != null && x.Operation != "")
+                .Where(x => x.Date_time == today && x.Operation != null && x.Operation != "" && x.Operation.Contains("(SM)"))
                 .Select(x => x.Operation)
                 .Distinct()
                 .OrderBy(x => x)
@@ -1315,11 +807,9 @@ namespace MachineStatusUpdate.Controllers
             {
                 var allData = await GetDowntimeReportData(fromDate, toDate);
 
-                // Phân trang CHỈ cho danh sách operation
                 var totalRecords = allData.Count;
-                var totalPages = (int)Math.Ceiling(totalRecords / (double)pageSize);
+                var totalPages   = (int)Math.Ceiling(totalRecords / (double)pageSize);
 
-                // Đảm bảo page không vượt quá totalPages
                 page = Math.Max(1, Math.Min(page, totalPages));
 
                 var pagedData = allData
@@ -1327,103 +817,88 @@ namespace MachineStatusUpdate.Controllers
                     .Take(pageSize)
                     .ToList();
 
-                ViewBag.FromDate = fromDate;
-                ViewBag.ToDate = toDate;
-
-                // Chart data vẫn dùng TOÀN BỘ dữ liệu
-
-                ViewBag.ChartData = PrepareChartData(allData);
+                ViewBag.FromDate         = fromDate;
+                ViewBag.ToDate           = toDate;
+                ViewBag.ChartData        = PrepareChartData(allData);
                 ViewBag.IssCodeChartData = PrepareIssCodeChartData(allData);
-                ViewBag.DailyChartData = PrepareDailyDowntimeChartData(allData, fromDate, toDate);
-
-                // Truyền cả toàn bộ dữ liệu cho thống kê
-                ViewBag.AllData = allData;
-
-                // Thêm thông tin phân trang
-                ViewBag.CurrentPage = page;
-                ViewBag.PageSize = pageSize;
-                ViewBag.TotalRecords = totalRecords;
-                ViewBag.TotalPages = totalPages;
-                ViewBag.HasPreviousPage = page > 1;
-                ViewBag.HasNextPage = page < totalPages;
+                ViewBag.DailyChartData   = PrepareDailyDowntimeChartData(allData, fromDate, toDate);
+                ViewBag.AllData          = allData;
+                ViewBag.CurrentPage      = page;
+                ViewBag.PageSize         = pageSize;
+                ViewBag.TotalRecords     = totalRecords;
+                ViewBag.TotalPages       = totalPages;
+                ViewBag.HasPreviousPage  = page > 1;
+                ViewBag.HasNextPage      = page < totalPages;
 
                 return View(pagedData);
             }
             catch (Exception ex)
             {
-                ViewBag.ErrorMessage = $"Lỗi: {ex.Message}";
-                ViewBag.FromDate = fromDate;
-                ViewBag.ToDate = toDate;
-                ViewBag.CurrentPage = 1;
-                ViewBag.PageSize = 10;
-                ViewBag.TotalRecords = 0;
-                ViewBag.TotalPages = 1;
+                ViewBag.ErrorMessage    = $"Lỗi: {ex.Message}";
+                ViewBag.FromDate        = fromDate;
+                ViewBag.ToDate          = toDate;
+                ViewBag.CurrentPage     = 1;
+                ViewBag.PageSize        = 10;
+                ViewBag.TotalRecords    = 0;
+                ViewBag.TotalPages      = 1;
                 ViewBag.HasPreviousPage = false;
-                ViewBag.HasNextPage = false;
+                ViewBag.HasNextPage     = false;
                 return View(new List<DowntimeReportByOperation>());
             }
         }
 
-        /* Hàm chuẩn bị dữ liệu downtime ngày => Chart biểu đồ xu hướng downtime */
+        /* Hàm chuẩn bị dữ liệu downtime ngày => Chart */
         private DailyDowntimeChartData PrepareDailyDowntimeChartData(List<DowntimeReportByOperation> reportData, string fromDate, string toDate)
         {
             var dailyData = new DailyDowntimeChartData
             {
-                Dates = new List<string>(),
+                Dates           = new List<string>(),
                 DowntimeMinutes = new List<double>(),
-                DowntimeCounts = new List<int>()
+                DowntimeCounts  = new List<int>()
             };
 
             try
             {
-                // Lấy tất cả records downtime trong khoảng thời gian
-                var query = from d in _context.SVN_Downtime_Infos
-                            join r in _context.SVN_Downtime_Reasons
-                            on d.ISS_Code equals r.Reason_Code into reasons
+                var query = from d in _context.SVN_Downtime_Infos_Devel
+                            join r in _context.SM_Downtime_Reasons
+                            on d.Reason equals r.Reason_Code into reasons
                             from r in reasons.DefaultIfEmpty()
                             select new
                             {
                                 d.Operation,
                                 d.State,
-                                d.ISS_Code,
-                                ErrorName = r != null ? r.Reason_Name : "Chưa xác định",
+                                d.Reason,
+                                ErrorName    = r != null ? r.Reason_Name : "未确定",
                                 d.Datetime,
-                                d.SVNCode
+                                d.EmployeeCode
                             };
 
-                // Lọc theo ngày
+                query = query.Where(x => x.Operation != null && x.Operation.Contains("(SM)"));
+
                 if (!string.IsNullOrEmpty(fromDate) && DateTime.TryParse(fromDate, out var from))
-                {
                     query = query.Where(x => x.Datetime.HasValue && x.Datetime.Value.Date >= from.Date);
-                }
 
                 if (!string.IsNullOrEmpty(toDate) && DateTime.TryParse(toDate, out var to))
-                {
                     query = query.Where(x => x.Datetime.HasValue && x.Datetime.Value.Date <= to.Date);
-                }
 
-                var allRecords = query.ToList();
-
-                // Tính toán downtime theo ngày
+                var allRecords     = query.ToList();
                 var downtimeByDate = new Dictionary<DateTime, (double Minutes, int Count)>();
 
-                // Nhóm records theo SVNCode và Operation
-                var groupedBySVNAndOp = allRecords
-                    .Where(x => !string.IsNullOrEmpty(x.Operation) && !string.IsNullOrEmpty(x.SVNCode))
-                    .GroupBy(x => new { x.SVNCode, x.Operation });
+                var groupedByEmpAndOp = allRecords
+                    .Where(x => !string.IsNullOrEmpty(x.Operation) && !string.IsNullOrEmpty(x.EmployeeCode))
+                    .GroupBy(x => new { x.EmployeeCode, x.Operation });
 
-                foreach (var group in groupedBySVNAndOp)
+                foreach (var group in groupedByEmpAndOp)
                 {
                     var records = group.OrderBy(x => x.Datetime).ToList();
 
                     for (int i = 0; i < records.Count - 1; i++)
                     {
                         var current = records[i];
-                        var next = records[i + 1];
+                        var next    = records[i + 1];
 
-                        // Tính downtime từ Stop đến Run
                         if (current.State?.Trim().ToUpper() == "STOP" &&
-                            next.State?.Trim().ToUpper() == "RUN" &&
+                            next.State?.Trim().ToUpper()    == "RUN"  &&
                             current.Datetime.HasValue &&
                             next.Datetime.HasValue)
                         {
@@ -1431,22 +906,14 @@ namespace MachineStatusUpdate.Controllers
                             var dateKey = current.Datetime.Value.Date;
 
                             if (downtimeByDate.ContainsKey(dateKey))
-                            {
-                                downtimeByDate[dateKey] = (downtimeByDate[dateKey].Minutes + downtimeMinutes,
-                                                         downtimeByDate[dateKey].Count + 1);
-                            }
+                                downtimeByDate[dateKey] = (downtimeByDate[dateKey].Minutes + downtimeMinutes, downtimeByDate[dateKey].Count + 1);
                             else
-                            {
                                 downtimeByDate[dateKey] = (downtimeMinutes, 1);
-                            }
                         }
                     }
                 }
 
-                // Sắp xếp theo ngày
-                var sortedDates = downtimeByDate.Keys.OrderBy(date => date).ToList();
-
-                foreach (var date in sortedDates)
+                foreach (var date in downtimeByDate.Keys.OrderBy(d => d))
                 {
                     dailyData.Dates.Add(date.ToString("dd/MM"));
                     dailyData.DowntimeMinutes.Add(Math.Round(downtimeByDate[date].Minutes, 2));
@@ -1462,98 +929,89 @@ namespace MachineStatusUpdate.Controllers
         }
 
 
-        /* Hàm lấy dữ liệu downtime trong khoảng STOP -> RUN, sau đó tổng hợp theo Operation và ISS Code */
+        /* Hàm lấy dữ liệu downtime STOP -> RUN */
         private async Task<List<DowntimeReportByOperation>> GetDowntimeReportData(string fromDate, string toDate)
         {
-            // Lấy tất cả dữ liệu downtime có JOIN với Reasons
-            var query = from d in _context.SVN_Downtime_Infos
-                        join r in _context.SVN_Downtime_Reasons
-                        on d.ISS_Code equals r.Reason_Code into reasons
+            var query = from d in _context.SVN_Downtime_Infos_Devel
+                        join r in _context.SM_Downtime_Reasons
+                        on d.Reason equals r.Reason_Code into reasons
                         from r in reasons.DefaultIfEmpty()
                         select new
                         {
                             d.Operation,
                             d.State,
-                            d.ISS_Code,
-                            ErrorName = r != null ? r.Reason_Name : "Chưa xác định",
+                            d.Reason,
+                            ErrorName    = r != null ? r.Reason_Name : "未确定",
                             d.Datetime,
-                            d.SVNCode
+                            d.EmployeeCode
                         };
 
-            // Lọc theo ngày
+            query = query.Where(x => x.Operation != null && x.Operation.Contains("(SM)"));
+
             if (!string.IsNullOrEmpty(fromDate) && DateTime.TryParse(fromDate, out var from))
-            {
                 query = query.Where(x => x.Datetime.HasValue && x.Datetime.Value.Date >= from.Date);
-            }
 
             if (!string.IsNullOrEmpty(toDate) && DateTime.TryParse(toDate, out var to))
-            {
                 query = query.Where(x => x.Datetime.HasValue && x.Datetime.Value.Date <= to.Date);
-            }
 
             var allRecords = await query
-                .OrderBy(x => x.SVNCode)
+                .OrderBy(x => x.EmployeeCode)
                 .ThenBy(x => x.Operation)
                 .ThenBy(x => x.Datetime)
                 .ToListAsync();
 
-            // Tính toán downtime: từ Stop đến Run, nhóm theo ISS_Code của record Stop
             var downtimeRecords = new List<DowntimeRecord>();
 
-            var groupedBySVNAndOp = allRecords
-                .Where(x => !string.IsNullOrEmpty(x.Operation) && !string.IsNullOrEmpty(x.SVNCode))
-                .GroupBy(x => new { x.SVNCode, x.Operation });
+            var groupedByEmpAndOp = allRecords
+                .Where(x => !string.IsNullOrEmpty(x.Operation) && !string.IsNullOrEmpty(x.EmployeeCode))
+                .GroupBy(x => new { x.EmployeeCode, x.Operation });
 
-            foreach (var group in groupedBySVNAndOp)
+            foreach (var group in groupedByEmpAndOp)
             {
                 var records = group.OrderBy(x => x.Datetime).ToList();
 
                 for (int i = 0; i < records.Count - 1; i++)
                 {
                     var current = records[i];
-                    var next = records[i + 1];
+                    var next    = records[i + 1];
 
-                    // Tính downtime từ Stop đến Run
                     if (current.State?.Trim().ToUpper() == "STOP" &&
-                        next.State?.Trim().ToUpper() == "RUN" &&
+                        next.State?.Trim().ToUpper()    == "RUN"  &&
                         current.Datetime.HasValue &&
                         next.Datetime.HasValue)
                     {
                         var downtimeMinutes = (next.Datetime.Value - current.Datetime.Value).TotalMinutes;
-
-                        // Lấy ISS_Code và ErrorName từ record STOP (current)
-                        var issCode = string.IsNullOrWhiteSpace(current.ISS_Code) ? "N/A" : current.ISS_Code.Trim();
-                        var errorName = string.IsNullOrWhiteSpace(current.ErrorName) ? "Không xác định" : current.ErrorName.Trim();
+                        var reason    = string.IsNullOrWhiteSpace(current.Reason)    ? "N/A"    : current.Reason.Trim();
+                        var errorName = string.IsNullOrWhiteSpace(current.ErrorName) ? "未确定" : current.ErrorName.Trim();
 
                         downtimeRecords.Add(new DowntimeRecord
                         {
-                            Operation = current.Operation.Trim(),
-                            ISS_Code = issCode,
-                            ErrorName = errorName,
+                            Operation       = current.Operation.Trim(),
+                            ISS_Code        = reason,
+                            ErrorName       = errorName,
                             DowntimeMinutes = downtimeMinutes
                         });
                     }
                 }
             }
 
-            // Nhóm theo Operation và ISS_Code
             var groupedReport = downtimeRecords
                 .GroupBy(x => x.Operation)
                 .Select(opGroup => new DowntimeReportByOperation
                 {
-                    Operation = opGroup.Key,
-                    TotalDowntimeCount = opGroup.Count(),
-                    TotalDowntimeMinutes = opGroup.Sum(x => x.DowntimeMinutes),
+                    Operation              = opGroup.Key,
+                    TotalDowntimeCount     = opGroup.Count(),
+                    TotalDowntimeMinutes   = opGroup.Sum(x => x.DowntimeMinutes),
                     TotalDowntimeFormatted = FormatMinutesToTime(opGroup.Sum(x => x.DowntimeMinutes)),
                     ErrorDetails = opGroup
                         .GroupBy(x => new { x.ISS_Code, x.ErrorName })
                         .Select(errGroup => new DowntimeReportByOperationError
                         {
-                            Operation = opGroup.Key,
-                            ISS_Code = errGroup.Key.ISS_Code,
-                            ErrorName = errGroup.Key.ErrorName,
-                            DowntimeCount = errGroup.Count(),
-                            TotalDowntimeMinutes = errGroup.Sum(x => x.DowntimeMinutes),
+                            Operation              = opGroup.Key,
+                            ISS_Code               = errGroup.Key.ISS_Code,
+                            ErrorName              = errGroup.Key.ErrorName,
+                            DowntimeCount          = errGroup.Count(),
+                            TotalDowntimeMinutes   = errGroup.Sum(x => x.DowntimeMinutes),
                             TotalDowntimeFormatted = FormatMinutesToTime(errGroup.Sum(x => x.DowntimeMinutes))
                         })
                         .OrderByDescending(x => x.TotalDowntimeMinutes)
@@ -1565,24 +1023,21 @@ namespace MachineStatusUpdate.Controllers
             return groupedReport;
         }
 
-        /* Hàm chuyển đổi tổng số phút sang chuỗi thời gian */
+        /* Hàm chuyển đổi phút sang chuỗi thời gian */
         private string FormatMinutesToTime(double minutes)
         {
             if (minutes < 0) return "0h 0m";
-
             int hours = (int)(minutes / 60);
-            int mins = (int)(minutes % 60);
-
+            int mins  = (int)(minutes % 60);
             return $"{hours}h {mins}m";
         }
 
-
-        /* Hàm chuẩn bị dữ liệu downtime theo từng Operation */
+        /* Hàm chuẩn bị chart data theo Operation */
         private DowntimeChartData PrepareChartData(List<DowntimeReportByOperation> reportData)
         {
             var chartData = new DowntimeChartData
             {
-                Operations = reportData.Select(x => x.Operation).ToList(),
+                Operations      = reportData.Select(x => x.Operation).ToList(),
                 DowntimeMinutes = reportData.Select(x => Math.Round(x.TotalDowntimeMinutes, 2)).ToList(),
                 ErrorBreakdowns = new List<ChartErrorBreakdown>()
             };
@@ -1591,41 +1046,40 @@ namespace MachineStatusUpdate.Controllers
             {
                 chartData.ErrorBreakdowns.Add(new ChartErrorBreakdown
                 {
-                    Operation = op.Operation,
+                    Operation  = op.Operation,
                     ErrorNames = op.ErrorDetails.Select(e => e.ErrorName).ToList(),
-                    Minutes = op.ErrorDetails.Select(e => Math.Round(e.TotalDowntimeMinutes, 2)).ToList()
+                    Minutes    = op.ErrorDetails.Select(e => Math.Round(e.TotalDowntimeMinutes, 2)).ToList()
                 });
             }
 
             return chartData;
         }
 
-        /* Hàm tổng hợp và chuẩn bị dữ liệu Downtime theo ISS Code */
+        /* Hàm chuẩn bị chart data theo Reason Code */
         private IssCodeChartData PrepareIssCodeChartData(List<DowntimeReportByOperation> reportData)
         {
-            // Tổng hợp tất cả errors từ các operation
             var allErrors = reportData
                 .SelectMany(op => op.ErrorDetails)
                 .GroupBy(e => new { e.ISS_Code, e.ErrorName })
                 .Select(g => new
                 {
-                    IssCode = g.Key.ISS_Code,
-                    ErrorName = g.Key.ErrorName,
+                    IssCode      = g.Key.ISS_Code,
+                    ErrorName    = g.Key.ErrorName,
                     TotalMinutes = g.Sum(e => e.TotalDowntimeMinutes),
-                    Count = g.Sum(e => e.DowntimeCount)
+                    Count        = g.Sum(e => e.DowntimeCount)
                 })
                 .OrderByDescending(x => x.TotalMinutes)
                 .ToList();
 
             return new IssCodeChartData
             {
-                IssCodeLabels = allErrors.Select(e => $"{e.IssCode} - {e.ErrorName}").ToList(),
+                IssCodeLabels   = allErrors.Select(e => $"{e.IssCode} - {e.ErrorName}").ToList(),
                 DowntimeMinutes = allErrors.Select(e => Math.Round(e.TotalMinutes, 2)).ToList(),
-                DowntimeCounts = allErrors.Select(e => e.Count).ToList()
+                DowntimeCounts  = allErrors.Select(e => e.Count).ToList()
             };
         }
 
-        /* Hàm xuất Excel cho báo cáo downtime */
+        /* Hàm xuất Excel báo cáo downtime */
         [HttpGet]
         public async Task<IActionResult> ExportDowntimeReportToExcel(string fromDate = "", string toDate = "")
         {
@@ -1641,42 +1095,37 @@ namespace MachineStatusUpdate.Controllers
                     ws.Style.Font.FontName = "Times New Roman";
                     ws.Style.Font.FontSize = 11;
 
-                    // Title
-                    ws.Cell(currentRow, 1).Value = "BÁO CÁO DOWNTIME THEO OPERATION VÀ LỖI";
+                    ws.Cell(currentRow, 1).Value = "按操作和错误分类的停机时间报告";
                     ws.Range(currentRow, 1, currentRow, 6).Merge();
                     ws.Cell(currentRow, 1).Style.Font.Bold = true;
                     ws.Cell(currentRow, 1).Style.Font.FontSize = 14;
                     ws.Cell(currentRow, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
                     currentRow += 2;
 
-                    // Date range
                     if (!string.IsNullOrEmpty(fromDate) || !string.IsNullOrEmpty(toDate))
                     {
-                        ws.Cell(currentRow, 1).Value = $"Từ ngày: {fromDate} - Đến ngày: {toDate}";
+                        ws.Cell(currentRow, 1).Value = $"从日期: {fromDate} - 到日期: {toDate}";
                         ws.Range(currentRow, 1, currentRow, 6).Merge();
                         currentRow += 2;
                     }
 
                     foreach (var operation in reportData)
                     {
-                        // Operation header
                         ws.Cell(currentRow, 1).Value = $"Operation: {operation.Operation}";
                         ws.Cell(currentRow, 1).Style.Font.Bold = true;
                         ws.Cell(currentRow, 1).Style.Fill.BackgroundColor = XLColor.LightBlue;
                         ws.Range(currentRow, 1, currentRow, 6).Merge();
                         currentRow++;
 
-                        // Tổng hợp Operation
-                        ws.Cell(currentRow, 1).Value = "Tổng số lần downtime:";
+                        ws.Cell(currentRow, 1).Value = "停机总次数:";
                         ws.Cell(currentRow, 2).Value = operation.TotalDowntimeCount;
-                        ws.Cell(currentRow, 3).Value = "Tổng thời gian:";
+                        ws.Cell(currentRow, 3).Value = "总时间:";
                         ws.Cell(currentRow, 4).Value = operation.TotalDowntimeFormatted;
                         ws.Cell(currentRow, 1).Style.Font.Bold = true;
                         ws.Cell(currentRow, 3).Style.Font.Bold = true;
                         currentRow++;
 
-                        // Chi tiết lỗi header
-                        string[] headers = { "ISS Code", "Tên lỗi", "Số lần", "Tổng thời gian (phút)", "Thời gian", "%" };
+                        string[] headers = { "#", "Reason Code", "Error Name", "Count", "Total (min)", "%" };
                         for (int i = 0; i < headers.Length; i++)
                         {
                             var cell = ws.Cell(currentRow, i + 1);
@@ -1688,32 +1137,28 @@ namespace MachineStatusUpdate.Controllers
                         }
                         currentRow++;
 
-                        // Chi tiết từng lỗi
                         foreach (var error in operation.ErrorDetails)
                         {
-                            ws.Cell(currentRow, 1).Value = error.ISS_Code;
-                            ws.Cell(currentRow, 2).Value = error.ErrorName;
-                            ws.Cell(currentRow, 3).Value = error.DowntimeCount;
-                            ws.Cell(currentRow, 4).Value = Math.Round(error.TotalDowntimeMinutes, 2);
-                            ws.Cell(currentRow, 5).Value = error.TotalDowntimeFormatted;
+                            ws.Cell(currentRow, 1).Value = currentRow - 3;
+                            ws.Cell(currentRow, 2).Value = error.ISS_Code;
+                            ws.Cell(currentRow, 3).Value = error.ErrorName;
+                            ws.Cell(currentRow, 4).Value = error.DowntimeCount;
+                            ws.Cell(currentRow, 5).Value = Math.Round(error.TotalDowntimeMinutes, 2);
 
                             double percentage = operation.TotalDowntimeMinutes > 0
-                                ? (error.TotalDowntimeMinutes / operation.TotalDowntimeMinutes * 100)
-                                : 0;
+                                ? (error.TotalDowntimeMinutes / operation.TotalDowntimeMinutes * 100) : 0;
                             ws.Cell(currentRow, 6).Value = $"{Math.Round(percentage, 1)}%";
-
                             currentRow++;
                         }
 
-                        currentRow += 2; // Khoảng cách giữa các operation
+                        currentRow += 2;
                     }
 
-                    // Adjust columns
-                    ws.Column(1).Width = 15;
-                    ws.Column(2).Width = 30;
-                    ws.Column(3).Width = 12;
-                    ws.Column(4).Width = 20;
-                    ws.Column(5).Width = 15;
+                    ws.Column(1).Width = 8;
+                    ws.Column(2).Width = 15;
+                    ws.Column(3).Width = 30;
+                    ws.Column(4).Width = 12;
+                    ws.Column(5).Width = 20;
                     ws.Column(6).Width = 10;
 
                     using (var stream = new MemoryStream())
@@ -1727,36 +1172,218 @@ namespace MachineStatusUpdate.Controllers
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = $"Lỗi xuất Excel: {ex.Message}" });
+                return Json(new { success = false, message = $"导出Excel时出错: {ex.Message}" });
             }
         }
 
-        // Helper class
+        // ══════════════════════════════════════════════════════
+        // POST /Status/TechnicianRespond
+        // Tech nhấn Accept hoặc Wait → cập nhật DB + push SignalR về Operator
+        // ══════════════════════════════════════════════════════
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> TechnicianRespond([FromBody] TechRespondDto dto)
+        {
+            var techUser = HttpContext.Session.GetString("UserName") ?? "Kỹ thuật";
+
+            // Cập nhật trạng thái trong bảng TechResponses
+            var record = await _context.SVN_Downtime_TechResponses.FindAsync(dto.TechResponseId);
+            if (record == null)
+                return Json(new { success = false, message = "Record not found" });
+
+            record.TechAction      = dto.Action;   // "ACCEPT" hoặc "WAIT"
+            record.TechUsername    = techUser;
+            record.RespondDatetime = DateTime.Now;
+            await _context.SaveChangesAsync();
+
+            // Push SignalR ngược về Operator
+            if (!string.IsNullOrWhiteSpace(dto.OperatorUsername))
+            {
+                await _hubContext.Clients
+                    .Group($"Operator_{dto.OperatorUsername}")
+                    .SendAsync("ReceiveTechResponse", new
+                    {
+                        action      = dto.Action,
+                        techName    = techUser,
+                        machineCode = dto.MachineCode ?? "",
+                        message     = dto.Action == "ACCEPT"
+                            ? $"✅ Kỹ thuật [{techUser}] đã nhận thông tin và đang chuẩn bị đến sửa máy {dto.MachineCode}."
+                            : $"⏳ Kỹ thuật [{techUser}] đã xem thông báo, vui lòng chờ thêm.",
+                        datetime    = DateTime.Now.ToString("dd/MM/yyyy HH:mm")
+                    });
+            }
+
+            return Json(new { success = true });
+        }
+
+        public class TechRespondDto
+        {
+            public int     TechResponseId   { get; set; }   // Id trong SVN_Downtime_TechResponses
+            public string  Action           { get; set; } = "";
+            public string? OperatorUsername { get; set; }
+            public string? MachineCode      { get; set; }
+        }
+
+        // ── Admin: Render panel ──
+        [HttpGet]
+        public IActionResult AdminPanel()
+        {
+            var role = HttpContext.Session.GetString("UserRole");
+            if (role != "Admin") return RedirectToAction("Login", "Account");
+            return View("~/Views/Account/AdminPanel.cshtml");
+        }
+
+
+        // ── Admin: List records (paginated + filtered) ──
+        [HttpGet]
+        public async Task<IActionResult> AdminGetRecords(
+            string operation = "", string state = "",
+            string fromDate = "", string toDate = "",
+            int page = 1, int pageSize = 20)
+        {
+            if (HttpContext.Session.GetString("UserRole") != "Admin")
+                return Unauthorized();
+
+            var q = _context.SVN_Downtime_Infos_Devel.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(operation))
+                q = q.Where(x => x.Operation != null && x.Operation.Contains(operation));
+
+            if (!string.IsNullOrWhiteSpace(state))
+                q = q.Where(x => x.State != null && x.State.Trim().ToUpper() == state.ToUpper());
+
+            if (DateTime.TryParse(fromDate, out var fd))
+                q = q.Where(x => x.Datetime >= fd);
+
+            if (DateTime.TryParse(toDate, out var td))
+                q = q.Where(x => x.Datetime <= td.AddDays(1));
+
+            var total = await q.CountAsync();
+            var records = await q
+                .OrderByDescending(x => x.Datetime)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(x => new
+                {
+                    x.Id,
+                    x.State,
+                    x.Operation,
+                    x.EmployeeCode,
+                    x.EmployeeName,
+                    x.MachineCode,
+                    x.Location,
+                    x.Reason,
+                    x.Effect,
+                    x.Station,
+                    x.Action,
+                    x.RootCause,
+                    x.SpareParts,
+                    x.EstimateTime,
+                    x.Description,
+                    x.Datetime
+                })
+                .ToListAsync();
+
+            return Json(new
+            {
+                records,
+                totalPages = (int)Math.Ceiling((double)total / pageSize),
+                totalCount = total
+            });
+        }
+
+
+        // ── Admin: Update record ──
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AdminUpdateRecord([FromBody] AdminRecordDto dto)
+        {
+            if (HttpContext.Session.GetString("UserRole") != "Admin")
+                return Unauthorized();
+
+            var rec = await _context.SVN_Downtime_Infos_Devel.FindAsync(dto.Id);
+            if (rec == null)
+                return Json(new { success = false, message = "Record not found" });
+
+            rec.EmployeeCode = dto.EmployeeCode;
+            rec.EmployeeName = dto.EmployeeName;
+            rec.MachineCode = dto.MachineCode;
+            rec.Location = dto.Location;
+            rec.Operation = dto.Operation;
+            rec.State = dto.State;
+            rec.Reason = dto.Reason;
+            rec.Effect = dto.Effect;
+            rec.Station = dto.Station;
+            rec.Action = dto.Action;
+            rec.RootCause = dto.RootCause;
+            rec.SpareParts = dto.SpareParts;
+            rec.EstimateTime = dto.EstimateTime;
+            rec.Description = dto.Description;
+
+            if (!string.IsNullOrWhiteSpace(dto.Datetime) &&
+                DateTime.TryParse(dto.Datetime, out var dt))
+                rec.Datetime = dt;
+
+            await _context.SaveChangesAsync();
+            return Json(new { success = true });
+        }
+
+
+        // ── Admin: Delete record ──
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AdminDeleteRecord([FromBody] AdminDeleteDto dto)
+        {
+            if (HttpContext.Session.GetString("UserRole") != "Admin")
+                return Unauthorized();
+
+            var rec = await _context.SVN_Downtime_Infos_Devel.FindAsync(dto.Id);
+            if (rec == null)
+                return Json(new { success = false, message = "Record not found" });
+
+            _context.SVN_Downtime_Infos_Devel.Remove(rec);
+            await _context.SaveChangesAsync();
+            return Json(new { success = true });
+        }
+
+
+        // ── DTOs ──
+        public class AdminRecordDto
+        {
+            public int Id { get; set; }
+            public string? EmployeeCode { get; set; }
+            public string? EmployeeName { get; set; }
+            public string? MachineCode { get; set; }
+            public string? Location { get; set; }
+            public string? Operation { get; set; }
+            public string? State { get; set; }
+            public string? Reason { get; set; }
+            public string? Effect { get; set; }
+            public string? Station { get; set; }
+            public string? Action { get; set; }
+            public string? RootCause { get; set; }
+            public string? SpareParts { get; set; }
+            public string? EstimateTime { get; set; }
+            public string? Description { get; set; }
+            public string? Datetime { get; set; }
+        }
+
+
+        public class AdminDeleteDto
+        {
+            public int Id { get; set; }
+        }
+
+
+        // Helper classes
         private class DowntimeRecord
         {
-            public string Operation { get; set; }
-            public string ISS_Code { get; set; }
-            public string ErrorName { get; set; }
+            public string Operation       { get; set; }
+            public string ISS_Code        { get; set; }
+            public string ErrorName       { get; set; }
             public double DowntimeMinutes { get; set; }
         }
 
-
-        // Hàm test
-        [HttpGet]
-        public async Task<IActionResult> TestProcessAll()
-        {
-            try
-            {
-                return await ProcessAllHistoryToDetail();
-            }
-            catch (Exception ex)
-            {
-                return Json(new { success = false, message = ex.Message, stackTrace = ex.StackTrace });
-            }
-        }
-
-
-        // DTO class cho request
         public class ProcessDateRequest
         {
             public string Date { get; set; }
@@ -1766,7 +1393,6 @@ namespace MachineStatusUpdate.Controllers
         {
             public int InsertedId { get; set; }
         }
-
 
         public class ValidateCodeRequest
         {

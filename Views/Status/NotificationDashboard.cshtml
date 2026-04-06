@@ -1,0 +1,965 @@
+@{
+    ViewData["Title"] = "🔔 Technician Dashboard – Real-time Notifications";
+}
+
+<style>
+    :root {
+        --stop-color:  #ef4444;
+        --run-color:   #22c55e;
+        --resp-color:  #f59e0b;
+        --border:      #e5e7eb;
+        --text:        #111827;
+        --muted:       #6b7280;
+        --bg:          #f9fafb;
+        --card-bg:     #ffffff;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+        font-family: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+        background: var(--bg);
+        margin: 0;
+    }
+
+    /* ===== Header ===== */
+    .dash-header {
+        background: #111;
+        border-top: 4px solid #ef4444;
+        padding: 16px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .dash-header h1 {
+        margin: 0;
+        color: #fff;
+        font-size: 20px;
+        font-weight: 700;
+    }
+
+    .dash-header .sub {
+        color: #999;
+        font-size: 13px;
+        margin-top: 3px;
+    }
+
+    /* Connection status badge */
+    .conn-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        border-radius: 99px;
+        font-size: 13px;
+        font-weight: 600;
+        transition: all .3s;
+    }
+
+    .conn-badge.connecting { background: #fef3c7; color: #92400e; }
+    .conn-badge.connected  { background: #dcfce7; color: #166534; }
+    .conn-badge.disconnected { background: #fee2e2; color: #991b1b; }
+
+    .conn-dot {
+        width: 9px; height: 9px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    .connecting  .conn-dot { background: #f59e0b; animation: pulse 1.2s infinite; }
+    .connected   .conn-dot { background: #22c55e; }
+    .disconnected .conn-dot { background: #ef4444; }
+
+    @@keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50%       { opacity: 0.3; }
+    }
+
+    /* ===== Body layout ===== */
+    .dash-body {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px 16px;
+    }
+
+    /* ===== Summary counters ===== */
+    .summary-row {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 14px;
+        margin-bottom: 22px;
+    }
+
+    .summary-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.04);
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+
+    .summary-icon {
+        font-size: 28px;
+        line-height: 1;
+    }
+
+    .summary-label {
+        font-size: 12px;
+        color: var(--muted);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+    }
+
+    .summary-value {
+        font-size: 28px;
+        font-weight: 800;
+        line-height: 1.1;
+    }
+
+    .summary-value.stop  { color: var(--stop-color); }
+    .summary-value.run   { color: var(--run-color); }
+    .summary-value.total { color: #6366f1; }
+    .summary-value.accept { color: #16a34a; }
+    .summary-value.wait   { color: #d97706; }
+
+    /* ===== Accept / Wait buttons ===== */
+    .notif-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 14px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border);
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .btn-accept {
+        background: linear-gradient(135deg, #16a34a, #22c55e);
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 9px 20px;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        box-shadow: 0 3px 10px rgba(34,197,94,.35);
+        transition: all .18s;
+    }
+    .btn-accept:hover  { filter: brightness(1.08); transform: translateY(-1px); }
+    .btn-accept:active { transform: translateY(1px); }
+    .btn-accept:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+
+    .btn-wait {
+        background: linear-gradient(135deg, #d97706, #f59e0b);
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 9px 20px;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        box-shadow: 0 3px 10px rgba(245,158,11,.35);
+        transition: all .18s;
+    }
+    .btn-wait:hover  { filter: brightness(1.08); transform: translateY(-1px); }
+    .btn-wait:active { transform: translateY(1px); }
+    .btn-wait:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+
+    .responded-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 14px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+    }
+    .responded-badge.accepted { background: #dcfce7; color: #166534; }
+    .responded-badge.waited   { background: #fef3c7; color: #92400e; }
+
+    @@media (max-width: 600px) {
+        .summary-row { grid-template-columns: 1fr 1fr; }
+        .notif-grid  { grid-template-columns: 1fr 1fr; }
+    }
+
+    .toolbar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+    }
+
+    .toolbar-title {
+        font-weight: 700;
+        font-size: 15px;
+        flex: 1;
+    }
+
+    .btn-clear {
+        background: #e5e7eb;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 14px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background .2s;
+    }
+
+    .btn-clear:hover { background: #d1d5db; }
+
+    /* Sound toggle */
+    .btn-sound {
+        background: #ede9fe;
+        color: #6d28d9;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 14px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background .2s;
+    }
+
+    .btn-sound:hover { background: #ddd6fe; }
+
+    /* ===== Notification list ===== */
+    .notif-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .notif-empty {
+        text-align: center;
+        padding: 60px 20px;
+        color: var(--muted);
+        font-size: 15px;
+    }
+
+    .notif-empty .empty-icon { font-size: 48px; display: block; margin-bottom: 12px; }
+
+    /* Notification card */
+    .notif-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-left: 5px solid var(--stop-color);
+        border-radius: 12px;
+        padding: 16px 18px;
+        box-shadow: 0 2px 10px rgba(0,0,0,.05);
+        animation: slideIn .3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .notif-card.run-card  { border-left-color: var(--run-color); }
+    .notif-card.new-card  { box-shadow: 0 0 0 3px rgba(239,68,68,.25), 0 4px 16px rgba(0,0,0,.08); }
+
+    @@keyframes slideIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .notif-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+
+    .notif-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 12px;
+        border-radius: 99px;
+        font-size: 12px;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+
+    .badge-stop { background: #fee2e2; color: #991b1b; }
+    .badge-run  { background: #dcfce7; color: #166534; }
+
+    .notif-time {
+        font-size: 12px;
+        color: var(--muted);
+        flex-shrink: 0;
+    }
+
+    .notif-machine {
+        font-size: 17px;
+        font-weight: 800;
+        color: var(--text);
+        margin-bottom: 2px;
+    }
+
+    .notif-op {
+        font-size: 13px;
+        color: var(--muted);
+        margin-bottom: 10px;
+    }
+
+    .notif-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 8px;
+    }
+
+    .notif-field {
+        background: #f8fafc;
+        border: 1px solid #f1f5f9;
+        border-radius: 8px;
+        padding: 7px 10px;
+    }
+
+    .notif-field-label {
+        font-size: 11px;
+        color: var(--muted);
+        font-weight: 600;
+        text-transform: uppercase;
+        margin-bottom: 2px;
+    }
+
+    .notif-field-value {
+        font-size: 13.5px;
+        color: var(--text);
+        font-weight: 600;
+        word-break: break-word;
+    }
+
+    /* Dismiss button */
+    .notif-dismiss {
+        position: absolute;
+        top: 10px;
+        right: 12px;
+        background: transparent;
+        border: none;
+        font-size: 18px;
+        color: var(--muted);
+        cursor: pointer;
+        padding: 0 4px;
+        line-height: 1;
+    }
+
+    .notif-dismiss:hover { color: var(--text); }
+
+    /* Audio permission banner */
+    .audio-banner {
+        background: #fffbeb;
+        border: 1px solid #fde68a;
+        border-radius: 10px;
+        padding: 10px 16px;
+        font-size: 13px;
+        color: #92400e;
+        margin-bottom: 16px;
+        display: none;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .audio-banner button {
+        background: #f59e0b;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        padding: 5px 12px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        margin-left: auto;
+    }
+</style>
+
+<!-- Header -->
+<div class="dash-header">
+    <div>
+        <h1>🔔 Technician Dashboard</h1>
+        <div class="sub">Real-time downtime notifications / 实时停机通知</div>
+    </div>
+    <span class="conn-badge connecting" id="connBadge">
+        <span class="conn-dot"></span>
+        <span id="connText">Đang kết nối...</span>
+    </span>
+</div>
+
+<div class="dash-body">
+
+    <!-- Audio permission banner -->
+    <div class="audio-banner" id="audioBanner">
+        🔇 Trình duyệt chặn âm thanh tự động.
+        <button onclick="unlockAudio()">Bật âm thanh (Enable Sound)</button>
+    </div>
+
+    <!-- Summary counters -->
+    <div class="summary-row">
+        <div class="summary-card">
+            <div class="summary-icon">🛑</div>
+            <div>
+                <div class="summary-label">Đang STOP hôm nay</div>
+                <div class="summary-value stop" id="cntStop">0</div>
+            </div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-icon">▶️</div>
+            <div>
+                <div class="summary-label">Đã RUN lại</div>
+                <div class="summary-value run" id="cntRun">0</div>
+            </div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-icon">✅</div>
+            <div>
+                <div class="summary-label">Đã Accept</div>
+                <div class="summary-value accept" id="cntAccept">0</div>
+            </div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-icon">⏳</div>
+            <div>
+                <div class="summary-label">Đang Wait</div>
+                <div class="summary-value wait" id="cntWait">0</div>
+            </div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-icon">📋</div>
+            <div>
+                <div class="summary-label">Tổng thông báo</div>
+                <div class="summary-value total" id="cntTotal">0</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+        <div class="toolbar-title">📬 Danh sách thông báo</div>
+        <button class="btn-sound" id="btnSound" onclick="toggleSound()">🔔 Sound: BẬT</button>
+        <button class="btn-clear" onclick="clearAll()">🗑 Xóa tất cả</button>
+    </div>
+
+    <!-- Notification list -->
+    <div class="notif-list" id="notifList">
+        <div class="notif-empty" id="emptyState">
+            <span class="empty-icon">🟢</span>
+            Đang chờ thông báo...<br>
+            <small style="font-size:13px;margin-top:6px;display:block;">
+                Khi Operator bấm <strong>Call</strong>, thông báo sẽ hiện ở đây ngay lập tức.
+            </small>
+        </div>
+    </div>
+
+</div>
+
+<!-- Flash overlay toàn màn hình khi có STOP -->
+<div id="flashOverlay" style="
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(239,68,68,0.18);
+    z-index:9999;
+    pointer-events:none;
+    animation: flashAnim 0.12s ease;
+"></div>
+
+<style>
+@@keyframes flashAnim {
+    0%   { opacity: 0; }
+    40%  { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+/* Nháy border toàn trang */
+@@keyframes borderPulse {
+    0%, 100% { box-shadow: inset 0 0 0 6px rgba(239,68,68,0); }
+    50%       { box-shadow: inset 0 0 0 6px rgba(239,68,68,0.7); }
+}
+
+body.flashing {
+    animation: borderPulse 0.4s ease 4;
+}
+
+/* Nháy title tab */
+.notif-card.flash-card {
+    animation: cardFlash 0.5s ease 3;
+}
+
+@@keyframes cardFlash {
+    0%, 100% { background: #fff; }
+    50%       { background: #fee2e2; }
+}
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+<script>
+"use strict";
+
+const pathBase   = '@Context.Request.PathBase'.replace(/\/$/, '');
+const notifList  = document.getElementById('notifList');
+let   emptyState = document.getElementById('emptyState'); // FIX: let để có thể gán null
+const connBadge  = document.getElementById('connBadge');
+const connText   = document.getElementById('connText');
+
+let soundEnabled  = true;
+let cntStop  = 0;
+let cntRun   = 0;
+let cntTotal = 0;
+let cntAccept = 0;
+let cntWait   = 0;
+let audioCtx = null;
+let audioUnlocked = false;
+
+// Tab title flash
+let titleFlashInterval = null;
+const originalTitle = document.title;
+
+/* ===== Unlock AudioContext ngay khi user click/touch lần đầu ===== */
+function ensureAudioCtx() {
+    if (audioUnlocked && audioCtx) return audioCtx;
+    try {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        audioUnlocked = true;
+        document.getElementById('audioBanner').style.display = 'none';
+    } catch (e) {
+        console.warn('AudioContext failed:', e);
+    }
+    return audioCtx;
+}
+
+// Unlock ngay khi load nếu có thể, sau đó unlock lại mỗi lần user tương tác
+['click','touchstart','keydown','scroll'].forEach(evt => {
+    document.addEventListener(evt, () => ensureAudioCtx(), { once: false, passive: true });
+});
+
+function unlockAudio() {
+    ensureAudioCtx();
+    document.getElementById('audioBanner').style.display = 'none';
+}
+
+function toggleSound() {
+    soundEnabled = !soundEnabled;
+    document.getElementById('btnSound').textContent =
+        soundEnabled ? '🔔 Sound: BẬT' : '🔕 Sound: TẮT';
+}
+
+/* ===== Âm thanh STOP: còi báo động to, 5 tiếng bip nhanh ===== */
+function playStopSound() {
+    if (!soundEnabled) return;
+    const ctx = ensureAudioCtx();
+    if (!ctx) return;
+
+    if (ctx.state === 'suspended') ctx.resume();
+
+    // CompressorNode để âm to hơn
+    const compressor = ctx.createDynamicsCompressor();
+    compressor.threshold.value = -10;
+    compressor.knee.value      = 0;
+    compressor.ratio.value     = 20;
+    compressor.attack.value    = 0;
+    compressor.release.value   = 0.1;
+    compressor.connect(ctx.destination);
+
+    // 5 tiếng bíp liên tục, to, tần số cao
+    const times = [0, 0.22, 0.44, 0.66, 0.88];
+    times.forEach(offset => {
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(compressor);
+
+        osc.type            = 'square';   // square wave → to và rõ hơn sine
+        osc.frequency.value = 1050;       // tần số cao nghe rõ hơn
+
+        const t = ctx.currentTime + offset;
+        gain.gain.setValueAtTime(0, t);
+        gain.gain.linearRampToValueAtTime(1.0, t + 0.01);  // lên nhanh
+        gain.gain.setValueAtTime(1.0, t + 0.14);
+        gain.gain.linearRampToValueAtTime(0, t + 0.18);    // tắt
+
+        osc.start(t);
+        osc.stop(t + 0.2);
+    });
+}
+
+/* ===== Âm thanh RUN: 2 tiếng bíp nhẹ xuống tần số ===== */
+function playRunSound() {
+    if (!soundEnabled) return;
+    const ctx = ensureAudioCtx();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') ctx.resume();
+
+    [0, 0.3].forEach((offset, i) => {
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type            = 'sine';
+        osc.frequency.value = i === 0 ? 660 : 440;
+        const t = ctx.currentTime + offset;
+        gain.gain.setValueAtTime(0.6, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+        osc.start(t);
+        osc.stop(t + 0.3);
+    });
+}
+
+/* ===== Flash toàn màn hình ===== */
+function flashScreen() {
+    const overlay = document.getElementById('flashOverlay');
+    let count = 0;
+    const max = 6; // số lần nháy
+
+    function doFlash() {
+        if (count >= max) { overlay.style.display = 'none'; return; }
+        overlay.style.display = 'block';
+        overlay.style.animation = 'none';
+        overlay.offsetHeight; // reflow
+        overlay.style.animation = 'flashAnim 0.22s ease';
+        count++;
+        setTimeout(() => {
+            overlay.style.display = 'none';
+            setTimeout(doFlash, 80);
+        }, 220);
+    }
+    doFlash();
+
+    // Nháy border body
+    document.body.classList.add('flashing');
+    setTimeout(() => document.body.classList.remove('flashing'), 2000);
+}
+
+/* ===== Nháy title tab ===== */
+function startTitleFlash(machineName) {
+    if (titleFlashInterval) clearInterval(titleFlashInterval);
+    let show = true;
+    titleFlashInterval = setInterval(() => {
+        document.title = show ? `🛑 STOP: ${machineName}` : originalTitle;
+        show = !show;
+    }, 700);
+    // Dừng sau 15 giây
+    setTimeout(stopTitleFlash, 15000);
+}
+
+function stopTitleFlash() {
+    if (titleFlashInterval) { clearInterval(titleFlashInterval); titleFlashInterval = null; }
+    document.title = originalTitle;
+}
+
+/* ===== Update counters ===== */
+function updateCounters() {
+    document.getElementById('cntStop').textContent   = cntStop;
+    document.getElementById('cntRun').textContent    = cntRun;
+    document.getElementById('cntTotal').textContent  = cntTotal;
+    document.getElementById('cntAccept').textContent = cntAccept;
+    document.getElementById('cntWait').textContent   = cntWait;
+}
+
+/* ===== Render STOP card ===== */
+function renderStopCard(data, prepend = true) {
+    if (emptyState) { emptyState.remove(); emptyState = null; }
+
+    const effLabel = data.effect === '1' ? '影响生产 (Affects production)'
+                   : data.effect === '2' ? '不影响生产 (No effect)'
+                   : (data.effect || '-');
+
+    const card = document.createElement('div');
+    card.className = 'notif-card new-card';
+    card.dataset.techResponseId   = data.techResponseId   || data.id || '';
+    card.dataset.operatorUsername = data.operatorUsername || '';
+    card.dataset.machineCode      = data.machineCode      || '';
+
+    // Nếu đã có techAction (load từ DB), render ngay trạng thái đã respond
+    const alreadyResponded = data.techAction && data.techAction !== '';
+    const actionsHtml = alreadyResponded
+        ? buildRespondedBadge(data.techAction, data.techUsername, data.respondDatetime)
+        : `<button class="btn-accept" onclick="respondToOperator(this,'ACCEPT')">✅ Accept — Đang đến sửa</button>
+           <button class="btn-wait"   onclick="respondToOperator(this,'WAIT')">⏳ Wait — Vui lòng chờ</button>`;
+
+    card.innerHTML = `
+        <div class="notif-top">
+            <span class="notif-badge badge-stop">🛑 STOP / CALL</span>
+            <span class="notif-time">${data.datetime || new Date().toLocaleString('vi-VN')}</span>
+        </div>
+        <div class="notif-machine">${data.machineCode || '(Không có máy)'}</div>
+        <div class="notif-op">📍 ${data.operation || '-'} ${data.location ? '· ' + data.location : ''}</div>
+        <div class="notif-grid">
+            <div class="notif-field">
+                <div class="notif-field-label">👤 Operator</div>
+                <div class="notif-field-value">${data.employeeName || data.employeeCode || '-'} ${data.employeeCode ? '(' + data.employeeCode + ')' : ''}</div>
+            </div>
+            <div class="notif-field">
+                <div class="notif-field-label">🔴 Reason</div>
+                <div class="notif-field-value">${data.reason || '-'}</div>
+            </div>
+            <div class="notif-field">
+                <div class="notif-field-label">⚠ Effect</div>
+                <div class="notif-field-value">${effLabel}</div>
+            </div>
+            <div class="notif-field">
+                <div class="notif-field-label">⏱ Estimate</div>
+                <div class="notif-field-value">${data.estimateTime || '-'}</div>
+            </div>
+            ${data.station ? `<div class="notif-field"><div class="notif-field-label">🔩 Station</div><div class="notif-field-value">${data.station}</div></div>` : ''}
+            ${data.description ? `<div class="notif-field" style="grid-column:1/-1;"><div class="notif-field-label">📝 Description</div><div class="notif-field-value">${data.description}</div></div>` : ''}
+        </div>
+        <div class="notif-actions">${actionsHtml}</div>
+    `;
+
+    if (prepend) {
+        notifList.insertBefore(card, notifList.firstChild);
+    } else {
+        notifList.appendChild(card);
+    }
+
+    // Chỉ highlight nếu là thông báo mới real-time (không phải load từ DB)
+    if (prepend) setTimeout(() => card.classList.remove('new-card'), 5000);
+    else card.classList.remove('new-card');
+}
+
+function buildRespondedBadge(action, techUser, respondTime) {
+    if (action === 'ACCEPT')
+        return `<span class="responded-badge accepted">✅ Đã Accept${techUser ? ' bởi ' + techUser : ''}${respondTime ? ' · ' + respondTime : ''}</span>`;
+    return `<span class="responded-badge waited">⏳ Đã Wait${techUser ? ' bởi ' + techUser : ''}${respondTime ? ' · ' + respondTime : ''}</span>`;
+}
+
+/* ===== Tech respond: gửi Accept hoặc Wait ngược về Operator ===== */
+async function respondToOperator(btn, action) {
+    const card = btn.closest('.notif-card');
+    if (!card) return;
+
+    const techResponseId   = card.dataset.techResponseId   || '';
+    const operatorUsername = card.dataset.operatorUsername || '';
+    const machineCode      = card.dataset.machineCode      || '';
+    const actionsDiv       = card.querySelector('.notif-actions');
+
+    card.querySelectorAll('.btn-accept, .btn-wait').forEach(b => b.disabled = true);
+    btn.innerHTML = '⏳ Đang gửi...';
+
+    try {
+        const res = await fetch(`${pathBase}/Status/TechnicianRespond`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ techResponseId: parseInt(techResponseId) || 0, action, operatorUsername, machineCode })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            if (actionsDiv) {
+                actionsDiv.innerHTML = buildRespondedBadge(action, null, null);
+            }
+            // Cập nhật counter
+            if (action === 'ACCEPT') { cntAccept++; }
+            else                     { cntWait++;   }
+            updateCounters();
+        } else {
+            card.querySelectorAll('.btn-accept, .btn-wait').forEach(b => b.disabled = false);
+            btn.innerHTML = action === 'ACCEPT' ? '✅ Accept — Đang đến sửa' : '⏳ Wait — Vui lòng chờ';
+        }
+    } catch (err) {
+        console.error('respondToOperator error:', err);
+        card.querySelectorAll('.btn-accept, .btn-wait').forEach(b => b.disabled = false);
+        btn.innerHTML = action === 'ACCEPT' ? '✅ Accept — Đang đến sửa' : '⏳ Wait — Vui lòng chờ';
+    }
+}
+
+/* ===== Render RUN card ===== */
+function renderRunCard(data) {
+    if (emptyState) emptyState.remove();
+
+    const card = document.createElement('div');
+    card.className = 'notif-card run-card';
+    card.innerHTML = `
+        <button class="notif-dismiss" onclick="dismissCard(this)" title="Đóng">×</button>
+        <div class="notif-top">
+            <span class="notif-badge badge-run">▶ RUN</span>
+            <span class="notif-time">${data.datetime || new Date().toLocaleString('vi-VN')}</span>
+        </div>
+        <div class="notif-machine">${data.machineCode || '-'}</div>
+        <div class="notif-op">📍 ${data.operation || '-'}</div>
+        <div style="font-size:13px;color:#166534;margin-top:6px;">✅ Máy đã chạy lại bình thường.</div>
+    `;
+
+    notifList.insertBefore(card, notifList.firstChild);
+}
+
+/* ===== dismissCard — chỉ cho dismiss card đã responded ===== */
+function dismissCard(btn) {
+    const card = btn.closest('.notif-card');
+    const badge = card.querySelector('.responded-badge');
+    if (!badge) {
+        // Chưa respond → không cho đóng, nhắc Tech xử lý trước
+        card.style.outline = '2px solid #ef4444';
+        setTimeout(() => card.style.outline = '', 1200);
+        return;
+    }
+    card.remove();
+    if (notifList.querySelectorAll('.notif-card').length === 0) showEmptyState();
+}
+
+function showEmptyState() {
+    const empty = document.createElement('div');
+    empty.className = 'notif-empty';
+    empty.id = 'emptyState';
+    empty.innerHTML = `<span class="empty-icon">🟢</span>Đang chờ thông báo...<br><small style="font-size:13px;margin-top:6px;display:block;">Khi Operator bấm <strong>Call</strong>, thông báo sẽ hiện ở đây ngay lập tức.</small>`;
+    notifList.appendChild(empty);
+}
+
+function clearAll() {
+    // Chỉ xóa các card đã responded
+    notifList.querySelectorAll('.notif-card').forEach(card => {
+        const badge = card.querySelector('.responded-badge');
+        if (badge) card.remove();
+    });
+    if (notifList.querySelectorAll('.notif-card').length === 0) {
+        notifList.innerHTML = '';
+        showEmptyState();
+        cntStop = cntRun = cntTotal = cntAccept = cntWait = 0;
+        updateCounters();
+    }
+}
+
+/* ===== Browser Notification (nếu user cho phép) ===== */
+function requestBrowserNotification() {
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
+}
+
+function showBrowserNotif(title, body) {
+    if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(title, { body, icon: '/favicon.ico' });
+    }
+}
+
+/* ===== SignalR Connection ===== */
+const connection = new signalR.HubConnectionBuilder()
+    .withUrl(`${pathBase}/downtimeHub`)
+    .withAutomaticReconnect([1000, 2000, 5000, 10000])
+    .configureLogging(signalR.LogLevel.Warning)
+    .build();
+
+// Nhận thông báo STOP từ server (real-time)
+connection.on("ReceiveStopNotification", (data) => {
+    cntStop++;
+    cntTotal++;
+    updateCounters();
+    renderStopCard(data, true);  // prepend = true, thêm vào đầu
+    playStopSound();
+    flashScreen();
+    startTitleFlash(data.machineCode || 'STOP');
+    showBrowserNotif(
+        `🛑 STOP: ${data.machineCode}`,
+        `Operation: ${data.operation}\nOperator: ${data.employeeName || data.employeeCode}\nReason: ${data.reason}`
+    );
+});
+
+// Nhận thông báo RUN từ server
+connection.on("ReceiveRunNotification", (data) => {
+    cntRun++;
+    cntTotal++;
+    updateCounters();
+    renderRunCard(data);
+    playRunSound();
+    showBrowserNotif(`▶ RUN: ${data.machineCode}`, `Máy đã chạy lại\n${data.operation}`);
+});
+
+// Connection state handlers
+connection.onreconnecting(() => {
+    if (connBadge) connBadge.className = 'conn-badge connecting';
+    if (connText)  connText.textContent = 'Đang kết nối lại...';
+});
+
+connection.onreconnected(() => {
+    if (connBadge) connBadge.className = 'conn-badge connected';
+    if (connText)  connText.textContent = 'Đã kết nối ✓';
+    connection.invoke("JoinTechnicianGroup").catch(console.error);
+});
+
+connection.onclose(() => {
+    if (connBadge) connBadge.className = 'conn-badge disconnected';
+    if (connText)  connText.textContent = 'Mất kết nối ✗';
+});
+
+// Khởi động kết nối
+async function startConnection() {
+    try {
+        await connection.start();
+        await connection.invoke("JoinTechnicianGroup");
+        if (connBadge) connBadge.className = 'conn-badge connected';
+        if (connText)  connText.textContent = 'Đã kết nối ✓';
+    } catch (err) {
+        if (connBadge) connBadge.className = 'conn-badge disconnected';
+        if (connText)  connText.textContent = 'Lỗi kết nối ✗';
+        console.error('SignalR error:', err);
+        setTimeout(startConnection, 5000);
+    }
+}
+
+/* ===== Load thông báo từ DB khi Tech vào/refresh trang ===== */
+async function loadPendingFromDB() {
+    try {
+        const res  = await fetch(`${pathBase}/Status/GetPendingNotifications`);
+        if (!res.ok) return;
+        const list = await res.json();
+
+        if (!list || list.length === 0) return;
+
+        // Xóa empty state nếu có
+        const empty = document.getElementById('emptyState');
+        if (empty) empty.remove();
+
+        // Render từng bản ghi — append (cũ nhất xuống dưới, mới nhất lên đầu đã sort từ server)
+        list.forEach(item => {
+            renderStopCard(item, false); // false = append xuống dưới
+            cntTotal++;
+            if (!item.techAction) {
+                cntStop++;
+            } else if (item.techAction === 'ACCEPT') {
+                cntAccept++;
+            } else if (item.techAction === 'WAIT') {
+                cntWait++;
+            }
+        });
+
+        // Sau khi load xong, đảo ngược thứ tự để mới nhất lên đầu
+        const cards = Array.from(notifList.querySelectorAll('.notif-card'));
+        cards.reverse().forEach(c => notifList.insertBefore(c, notifList.firstChild));
+
+        updateCounters();
+    } catch (err) {
+        console.error('loadPendingFromDB error:', err);
+    }
+}
+
+/* ===== Init ===== */
+document.addEventListener('DOMContentLoaded', () => {
+    loadPendingFromDB();   // ← Load từ DB ngay khi trang mở
+    startConnection();
+    requestBrowserNotification();
+
+    const banner = document.getElementById('audioBanner');
+    banner.style.display = 'flex';
+    banner.querySelector('span').textContent =
+        '⚠ Nhấn nút bên phải để bật âm thanh cảnh báo. Chỉ cần làm 1 lần!';
+
+    document.addEventListener('click', () => {
+        ensureAudioCtx();
+        if (audioUnlocked) banner.style.display = 'none';
+    }, { passive: true });
+});
+</script>

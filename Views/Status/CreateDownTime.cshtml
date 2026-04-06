@@ -1,10 +1,22 @@
-@model MachineStatusUpdate.Models.SVN_Downtime_Info
+@model MachineStatusUpdate.Models.SVN_Downtime_Info_Devel
 @{
-    ViewData["Title"] = "Downtime Input";
+    ViewData["Title"] = "停机时间录入 (Downtime Input)";
     var ops = (IEnumerable<string>)ViewBag.OperationOptions ?? Enumerable.Empty<string>();
+    var employees = (ViewBag.Employees as IEnumerable<dynamic>) ?? Enumerable.Empty<dynamic>();
+    var smOps = (IEnumerable<string>)ViewBag.Operations ?? Enumerable.Empty<string>();
+
+    // ── Role-based button visibility ──
+    var _role        = Context.Session.GetString("UserRole") ?? "";
+    bool _isAdmin      = _role == "Admin";
+    bool _isTechnical  = _role == "Technical";
+    bool _isProduction = _role == "Production";
+
+    // Admin sees all 3; Technical sees Response+Run; Production sees Call+Run
+    bool _showCall     = _isAdmin || _isProduction;
+    bool _showResponse = _isAdmin || _isTechnical;
+    bool _showRun      = true; // all roles
 }
 
-<!-- ====== CSS (self-contained giống style Create) ====== -->
 <style>
     :root {
         --primary: #0d6efd;
@@ -33,19 +45,20 @@
 
     .form-header {
         padding: 18px 22px;
-        background: linear-gradient(0deg, #f7fbff, #ffffff);
-        border-bottom: 1px solid var(--border);
+        background: #111111;
+        border-top: 4px solid #D42B2B;
+        border-bottom: none;
     }
 
     .form-title {
         margin: 0;
         font-weight: 700;
-        color: var(--text)
+        color: #ffffff;
     }
 
     .form-sub {
         margin: 4px 0 0;
-        color: var(--muted);
+        color: #999999;
         font-size: 14px;
     }
 
@@ -81,6 +94,7 @@
         font-size: 14.5px;
         transition: border .2s, box-shadow .2s;
         background: #fff;
+        box-sizing: border-box;
     }
 
     .form-control:focus,
@@ -96,11 +110,15 @@
         resize: vertical
     }
 
+    /* ===== Button Container ===== */
     .btn-container {
-        padding: 10px 22px 22px;
+        padding: 14px 22px 22px;
         display: flex;
         gap: 10px;
         justify-content: flex-end;
+        align-items: center;
+        border-top: 1px solid var(--border);
+        flex-wrap: wrap;
     }
 
     .btn {
@@ -124,6 +142,102 @@
     .btn-danger {
         background: var(--danger);
         color: #fff;
+    }
+
+    /* ---- nút Call (đỏ) ---- */
+    .btn-call {
+        background: linear-gradient(135deg, #c0392b, #e74c3c);
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        padding: 11px 24px;
+        font-weight: 700;
+        font-size: 14px;
+        cursor: pointer;
+        min-width: 120px;
+        box-shadow: 0 4px 14px rgba(231, 76, 60, 0.35);
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .btn-call:hover {
+        box-shadow: 0 6px 20px rgba(231, 76, 60, 0.55);
+        transform: translateY(-1px);
+    }
+
+    .btn-call:active  { transform: translateY(1px); }
+
+    .btn-call:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+
+    /* ---- nút Response (vàng amber) ---- */
+    .btn-response {
+        background: linear-gradient(135deg, #d97706, #f59e0b);
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        padding: 11px 24px;
+        font-weight: 700;
+        font-size: 14px;
+        cursor: pointer;
+        min-width: 120px;
+        box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .btn-response:hover {
+        box-shadow: 0 6px 20px rgba(245, 158, 11, 0.55);
+        transform: translateY(-1px);
+    }
+
+    .btn-response:active  { transform: translateY(1px); }
+
+    .btn-response:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+
+    /* ---- nút Run (xanh dương) ---- */
+    .btn-run {
+        background: linear-gradient(135deg, #1565c0, #1e88e5);
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        padding: 11px 24px;
+        font-weight: 700;
+        font-size: 14px;
+        cursor: pointer;
+        min-width: 120px;
+        box-shadow: 0 4px 14px rgba(21, 101, 192, 0.35);
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .btn-run:hover {
+        box-shadow: 0 6px 20px rgba(21, 101, 192, 0.55);
+        transform: translateY(-1px);
+    }
+
+    .btn-run:active  { transform: translateY(1px); }
+
+    .btn-run:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
     }
 
     .helper-row {
@@ -166,14 +280,9 @@
         overflow: hidden
     }
 
-    .toast.error {
-        border-left-color: var(--danger)
-    }
+    .toast.error { border-left-color: var(--danger) }
 
-    .toast .toast-icon {
-        font-weight: 700;
-        margin-right: 8px
-    }
+    .toast .toast-icon { font-weight: 700; margin-right: 8px }
 
     .toast .toast-close {
         position: absolute;
@@ -196,13 +305,8 @@
     }
 
     @@keyframes toastbar {
-        from {
-            transform: translateX(0)
-        }
-
-        to {
-            transform: translateX(-100%)
-        }
+        from { transform: translateX(0) }
+        to   { transform: translateX(-100%) }
     }
 
     .toast.hide {
@@ -231,17 +335,9 @@
         box-shadow: 0 12px 40px rgba(0, 0, 0, .16)
     }
 
-    .modal-text {
-        font-weight: 600;
-        font-size: 16px;
-        margin-bottom: 14px
-    }
+    .modal-text { font-weight: 600; font-size: 16px; margin-bottom: 14px }
 
-    .modal-buttons {
-        display: flex;
-        gap: 10px;
-        justify-content: flex-end
-    }
+    .modal-buttons { display: flex; gap: 10px; justify-content: flex-end }
 
     .btn-yes {
         background: var(--primary);
@@ -261,15 +357,19 @@
         cursor: pointer
     }
 
-    /* Validation summary */
-    .text-danger {
-        color: #b91c1c
-    }
+    .text-danger { color: #b91c1c }
 
     @@media (max-width: 720px) {
-        .form-grid {
-            grid-template-columns: 1fr;
-            padding: 16px
+        .form-grid { grid-template-columns: 1fr; padding: 16px }
+
+        .btn-container { justify-content: stretch; }
+
+        .btn-call,
+        .btn-response,
+        .btn-run {
+            flex: 1;
+            min-width: unset;
+            justify-content: center;
         }
     }
 
@@ -280,15 +380,11 @@
         cursor: not-allowed;
     }
 
-    /* ====== Image upload (CreateDownTime) ====== */
-    .image-upload-container {
-        width: 100%;
-    }
+    .time-group-hidden { display: none; }
 
-    #imageInputDT {
-        display: none;
-        /* ẩn input file – click vào vùng upload để chọn ảnh */
-    }
+    /* ====== Image upload ====== */
+    .image-upload-container { width: 100%; }
+    #imageInputDT { display: none; }
 
     .image-upload-area {
         border: 2px dashed var(--border);
@@ -310,9 +406,7 @@
         box-shadow: 0 4px 18px rgba(0, 0, 0, .06);
     }
 
-    .image-upload-area:active {
-        transform: translateY(1px);
-    }
+    .image-upload-area:active { transform: translateY(1px); }
 
     .image-upload-area.dragover {
         border-color: var(--primary);
@@ -320,18 +414,9 @@
         box-shadow: 0 6px 22px rgba(13, 110, 253, .12);
     }
 
-    .image-upload-area .upload-text {
-        font-weight: 700;
-        color: var(--text);
-        font-size: 15px;
-    }
+    .image-upload-area .upload-text { font-weight: 700; color: var(--text); font-size: 15px; }
+    .image-upload-area .upload-hint { color: var(--muted); font-size: 13px; }
 
-    .image-upload-area .upload-hint {
-        color: var(--muted);
-        font-size: 13px;
-    }
-
-    /* Preview box */
     #imagePreviewDT {
         margin-top: 10px;
         padding: 12px;
@@ -352,151 +437,497 @@
         border: 1px solid var(--border);
     }
 
-    .file-info {
-        margin-top: 8px;
+    .file-info { margin-top: 8px; color: var(--muted); font-size: 13px; word-break: break-word; }
+    .image-actions { margin-top: 10px; display: flex; gap: 8px; }
+    .image-actions .tiny-btn:hover { filter: brightness(0.98); }
+
+    @@media (max-width: 720px) {
+        .image-upload-area { min-height: 140px; padding: 14px; }
+        .image-preview { max-height: 240px; }
+    }
+
+    /* Searchable Employee Dropdown */
+    .select-search-wrapper { position: relative; width: 100%; user-select: none; }
+
+    .select-search-trigger {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-size: 14.5px;
+        background: #fff;
+        cursor: pointer;
+        transition: border .2s, box-shadow .2s;
+        box-sizing: border-box;
+        min-height: 42px;
+        color: var(--text);
+    }
+
+    .select-search-trigger:focus,
+    .select-search-trigger.open {
+        outline: none;
+        border-color: #82d7ff;
+        box-shadow: 0 0 0 3px rgba(130, 215, 255, .25);
+    }
+
+    .select-search-trigger-text {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: var(--muted);
+    }
+
+    .select-search-trigger-text.has-value { color: var(--primary); font-weight: 600; }
+
+    .select-search-trigger::after {
+        content: "";
+        display: inline-block;
+        width: 0; height: 0;
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        border-top: 6px solid var(--muted);
+        margin-left: 10px;
+        flex-shrink: 0;
+        transition: transform .18s ease;
+    }
+
+    .select-search-trigger.open::after { transform: rotate(180deg); }
+
+    .select-search-dropdown {
+        display: none;
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0; right: 0;
+        z-index: 1000;
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, .12);
+        overflow: hidden;
+        animation: dropdownFadeIn .14s ease;
+    }
+
+    .select-search-dropdown.open { display: block; }
+
+    @@keyframes dropdownFadeIn {
+        from { opacity: 0; transform: translateY(-4px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .select-search-box {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--border);
+        background: #f9fafb;
+    }
+
+    .select-search-box input {
+        flex: 1;
+        border: none; outline: none;
+        background: transparent;
+        font-size: 14px;
+        color: var(--text);
+        padding: 2px 0;
+    }
+
+    .select-search-box input::placeholder { color: var(--muted); }
+
+    .select-search-list {
+        max-height: 220px;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    .select-search-list::-webkit-scrollbar { width: 6px; }
+    .select-search-list::-webkit-scrollbar-track { background: transparent; }
+    .select-search-list::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+
+    .select-search-option {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        padding: 9px 14px;
+        cursor: pointer;
+        font-size: 14px;
+        color: var(--text);
+        transition: background .12s;
+    }
+
+    .select-search-option:hover,
+    .select-search-option.focused { background: #f0f7ff; }
+
+    .select-search-option.selected { background: #e8f3ff; font-weight: 600; }
+
+    .select-search-option.placeholder-opt { color: var(--muted); font-style: italic; }
+
+    .opt-code { font-weight: 700; color: var(--primary); min-width: 60px; flex-shrink: 0; font-size: 13px; }
+    .opt-name { color: var(--text); font-size: 13.5px; }
+
+    .select-search-empty {
+        padding: 12px 14px;
         color: var(--muted);
         font-size: 13px;
-        word-break: break-word;
+        text-align: center;
+        font-style: italic;
     }
 
-    .image-actions {
-        margin-top: 10px;
-        display: flex;
-        gap: 8px;
+    /* Native select với custom arrow */
+    .select-arrow-wrapper { position: relative; width: 100%; }
+
+    .select-arrow-wrapper select {
+        appearance: none;
+        -webkit-appearance: none;
+        padding-right: 36px;
     }
 
-    /* “Xóa ảnh” dùng style tiny-btn có sẵn; thêm hover nhẹ */
-    .image-actions .tiny-btn:hover {
-        filter: brightness(0.98);
+    .select-arrow-wrapper::after {
+        content: "";
+        position: absolute;
+        right: 13px; top: 50%;
+        transform: translateY(-50%);
+        width: 0; height: 0;
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        border-top: 6px solid var(--muted);
+        pointer-events: none;
     }
 
-    /* Mobile */
-    @@media (max-width: 720px) {
-        .image-upload-area {
-            min-height: 140px;
-            padding: 14px;
-        }
-
-        .image-preview {
-            max-height: 240px;
-        }
-    }
+    .select-arrow-wrapper select.has-value { color: var(--primary); font-weight: 600; }
+    .select-arrow-wrapper select.has-value option { color: var(--text); font-weight: normal; }
 </style>
+
 
 <div class="toast-container" id="toastContainer"></div>
 
 <div class="confirmation-modal" id="confirmationModal">
     <div class="modal-content">
-        <div class="modal-text">Bạn có muốn xác nhận lưu downtime?</div>
+        <div class="modal-text">您要确认保存停机时间吗？ (Do you want to confirm saving downtime?)</div>
         <div class="modal-buttons">
-            <button class="btn-yes" id="btnConfirmYes">Có</button>
-            <button class="btn-no" id="btnConfirmNo">Không</button>
+            <button class="btn-yes" id="btnConfirmYes">是 (Yes)</button>
+            <button class="btn-no" id="btnConfirmNo">否 (No)</button>
         </div>
     </div>
 </div>
 
 <div class="status-form-container">
     <div class="form-header">
-        <h1 class="form-title">Nhập Downtime</h1>
-        <div class="form-sub">Chọn Operation trong ngày, trạng thái và mô tả (tùy chọn)</div>
+        <h1 class="form-title">录入停机时间 / Downtime Input</h1>
+        <div class="form-sub">系统用于管理生产过程中的设备停机情况。/ The system manages machine downtime in production.</div>
     </div>
 
-    @* <form id="downtimeForm" asp-controller="Status" asp-action="CreateDownTime" method="post"> *@
     <form id="downtimeForm" asp-controller="Status" asp-action="CreateDownTime" method="post"
-        enctype="multipart/form-data">
+          enctype="multipart/form-data">
         @Html.AntiForgeryToken()
         <div asp-validation-summary="All" class="text-danger" style="padding: 0 22px 0;"></div>
 
         <div class="form-grid">
-            <!-- SVN Code -->
-            <div class="form-group">
-                <label class="form-label" for="SVNCode">SVN Code</label>
-                <input asp-for="Code" type="text" id="SVNCode" name="Code" class="form-control"
-                    placeholder="Nhập mã SVN..." required />
-                <span asp-validation-for="Code" class="text-danger"></span>
-            </div>
 
-            <!-- Operation dropdown -->
+            <!-- ===== Employee ID — Searchable Dropdown ===== -->
             <div class="form-group">
-                <label class="form-label">Operation</label>
-                <select id="Operation" name="Operation" class="form-control" required>
-                    <option value="">-- Chọn operation (hôm nay) --</option>
-                    @foreach (var op in ops)
-                    {
-                        <option value="@op">@op</option>
-                    }
-                </select>
-            </div>
-
-            <!-- ISS code -->
-            <div class="form-group">
-                <label class="form-label" for="IssCode">Lý do</label>
-                <select id="IssCode" name="IssCode" class="form-control" required>
-                    <option value="">-- Chọn lý do --</option>
-                    @foreach (var r in (IEnumerable<dynamic>)ViewBag.ReasonOptions)
-                    {
-                        <!-- Lưu code vào cột IssCode, hiển thị tên + code -->
-                        <option value="@r.Reason_Code">@r.Reason_Name (@r.Reason_Code)</option>
-                    }
-                </select>
-            </div>
-
-            <!-- Thời gian -->
-            <div class="form-group">
-                <label id="timeLabel" class="form-label" for="Datetime">Thời gian</label>
-                <input asp-for="Datetime" type="datetime-local" class="form-control" id="Datetime" required
-                    value="@(Model?.Datetime?.ToString("yyyy-MM-ddTHH:mm") ?? DateTime.Now.ToString("yyyy-MM-ddTHH:mm"))" />
-                <span asp-validation-for="Datetime" class="text-danger"></span>
-            </div>
-
-            <!-- Ước tính thời gian (không bắt buộc) -->
-            <div class="form-group">
-                <label class="form-label" for="EstimateTime">Thời gian ước tính (tùy chọn)</label>
-                <input asp-for="EstimateTime" type="time" class="form-control" id="EstimateTime" name="EstimateTime"
-                    step="60" placeholder="hh:mm" />
-                <span asp-validation-for="EstimateTime" class="text-danger"></span>
-            </div>
-
-            <!-- Description -->
-            <div class="form-group">
-                <label class="form-label" for="Description">Mô tả (tùy chọn)</label>
-                <input asp-for="Description" id="Description" name="Description" class="form-control"
-                    placeholder="Nhập ghi chú hoặc chi tiết..." />
-                <span asp-validation-for="Description" class="text-danger"></span>
-            </div>
-            <!-- Ảnh (tùy chọn) -->
-            <div class="form-group full-width">
-                <label class="form-label">Ảnh (tùy chọn)</label>
-                <div class="image-upload-container">
-                    <div class="image-upload-area" id="imageUploadAreaDT"
-                        onclick="document.getElementById('imageInputDT').click()">
-                        <div class="upload-text">Nhấp để chọn ảnh</div>
-                        <div class="upload-hint">Hỗ trợ: JPG, PNG, GIF, BMP (tối đa 5MB)</div>
+                <label class="form-label">员工工号 / Employee ID no.</label>
+                <div class="select-search-wrapper">
+                    <!-- ✅ FIX: id đúng là EmployeeCode và EmployeeName -->
+                    <input type="hidden" id="EmployeeCode" name="EmployeeCode" />
+                    <input type="hidden" id="EmployeeName" name="EmployeeName" />
+                    <div class="select-search-trigger" id="empTrigger"
+                         tabindex="0"
+                         onclick="toggleEmpDropdown()"
+                         onkeydown="handleEmpTriggerKey(event)"
+                         role="combobox"
+                         aria-haspopup="listbox"
+                         aria-expanded="false"
+                         aria-controls="empDropdown">
+                        <span class="select-search-trigger-text" id="empTriggerText">
+                            -- 选择员工 (Select employee) --
+                        </span>
                     </div>
-                    <input type="file" id="imageInputDT" name="imageFile" accept="image/*" />
-                    <div id="imagePreviewDT" style="display:none;">
-                        <img id="previewImgDT" class="image-preview" />
-                        <div class="file-info" id="fileInfoDT" style="display:none;"></div>
-                        <div class="image-actions">
-                            <button type="button" class="btn tiny-btn" onclick="removeImageDT()">Xóa ảnh</button>
+                    <div class="select-search-dropdown" id="empDropdown" role="listbox">
+                        <div class="select-search-box">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                 stroke="#8fa8c0" stroke-width="2.5"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"/>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                            </svg>
+                            <input type="text" id="empSearchInput"
+                                   placeholder="搜索姓名... (Search name...)"
+                                   oninput="filterEmpOptions(this.value)"
+                                   onkeydown="handleEmpSearchKey(event)"
+                                   autocomplete="off"
+                                   aria-label="Search employees" />
+                        </div>
+                        <div class="select-search-list" id="empOptionList">
+                            <div class="select-search-option placeholder-opt" data-value="" data-label="">
+                                -- 选择员工 (Select employee) --
+                            </div>
+                            @foreach (var emp in employees)
+                            {
+                                <div class="select-search-option"
+                                     data-value="@emp.EnglishName"
+                                     data-label="@emp.EnglishName - @emp.ChineseName"
+                                     data-chinese="@emp.ChineseName">
+                                    <span class="opt-code">@emp.EnglishName</span>
+                                    <span class="opt-name">@emp.ChineseName</span>
+                                </div>
+                            }
                         </div>
                     </div>
                 </div>
             </div>
+
+            <!-- Machine/Fixture dropdown -->
+            <div class="form-group">
+                <label class="form-label">设备、模治具编号 / Machine/Fixture no.</label>
+                <input type="hidden" id="MachineNo" name="MachineCode" />
+                <div class="select-search-wrapper">
+                    <div class="select-search-trigger" id="machineTrigger"
+                        tabindex="0"
+                        onclick="toggleMachineDropdown()"
+                        onkeydown="handleMachineTriggerKey(event)"
+                        role="combobox"
+                        aria-haspopup="listbox"
+                        aria-expanded="false"
+                        aria-controls="machineDropdown">
+                        <span class="select-search-trigger-text" id="machineTriggerText">
+                            -- 加载中... (Loading...) --
+                        </span>
+                    </div>
+                    <div class="select-search-dropdown" id="machineDropdown" role="listbox">
+                        <div class="select-search-box">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                stroke="#8fa8c0" stroke-width="2.5"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"/>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                            </svg>
+                            <input type="text" id="machineSearchInput"
+                                placeholder="搜索设备... (Search machine...)"
+                                oninput="filterMachineOptions(this.value)"
+                                onkeydown="handleMachineSearchKey(event)"
+                                autocomplete="off"
+                                aria-label="Search machines" />
+                        </div>
+                        <div class="select-search-list" id="machineOptionList">
+                            <div class="select-search-option placeholder-opt" data-value="" data-label="">
+                                -- 选择设备编号 (Select machine/fixture no.) --
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Operation / Location dropdown -->
+            <div class="form-group">
+                <label class="form-label">操作 / Location</label>
+                <input type="hidden" id="OperationValue" name="Location" />
+                <div class="select-search-wrapper">
+                    <div class="select-search-trigger" id="opTrigger"
+                        tabindex="0"
+                        onclick="toggleOpDropdown()"
+                        onkeydown="handleOpTriggerKey(event)"
+                        role="combobox" aria-haspopup="listbox" aria-expanded="false">
+                        <span class="select-search-trigger-text" id="opTriggerText">
+                            -- 选择工序 (Select Location) --
+                        </span>
+                    </div>
+                    <div class="select-search-dropdown" id="opDropdown" role="listbox">
+                        <div class="select-search-box">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                stroke="#8fa8c0" stroke-width="2.5"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"/>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                            </svg>
+                            <input type="text" id="opSearchInput"
+                                placeholder="搜索工序... (Search operation...)"
+                                oninput="filterOpOptions(this.value)"
+                                onkeydown="handleOpSearchKey(event)"
+                                autocomplete="off" />
+                        </div>
+                        <div class="select-search-list" id="opOptionList">
+                            <div class="select-search-option placeholder-opt" data-value="" data-label="">
+                                -- 选择工序 (Select Location) --
+                            </div>
+                            @foreach (var op in smOps)
+                            {
+                                <div class="select-search-option" data-value="@op" data-label="@op">
+                                    @op
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Production Line dropdown -->
+            <div class="form-group">
+                <label class="form-label">生产线 / Operation</label>
+                <div class="select-arrow-wrapper">
+                    <select id="Operation" name="Operation" class="form-control" required>
+                        <option value="">-- 选择生产线 (Select Operation) --</option>
+                        @foreach (var op in ops)
+                        {
+                            var opDesc = op switch
+                            {
+                                "Sakura-WSS03-00300(SM)" => "Middle Panel Sakura Pink",
+                                "Sakura-WSS03-00301(SM)" => "Back Panel Sakura Pink",
+                                "Sakura-WSS03-00306(SM)" => "Middle Panel Sakura Green",
+                                "Sakura-WSS03-00307(SM)" => "Back Panel Sakura Green",
+                                "Sakura-WSS03-00303(SM)" => "Middle Panel Sakura Green",
+                                "Sakura-WSS03-00304(SM)" => "Back Panel Sakura Green",
+                                "Sakura-RM15A-1001NW(SM)" => "FG Sakura Pink",
+                                "Sakura-RM15A-1002NW(SM)" => "FG Sakura Green",
+                                "Sakura-RM15A-1000NW(SM)" => "FG Sakura Blue",
+                                _ => ""
+                            };
+                            var displayText = opDesc != "" ? $"{op} / {opDesc}" : op;
+                            <option value="@op">@displayText</option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+            <!-- ISS code / Reason -->
+            <div class="form-group">
+                <label class="form-label" for="IssCode">原因 (Reason)</label>
+                <div class="select-arrow-wrapper">
+                    <select id="IssCode" name="ISS_Code" class="form-control" required>
+                        <option value="">-- 选择原因 (Select reason) --</option>
+                        @foreach (var r in (IEnumerable<dynamic>)ViewBag.ReasonOptions)
+                        {
+                            <option value="@r.Reason_Code">@r.Reason_Name (@r.Reason_Code)</option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+            <!-- Effect -->
+            <div class="form-group">
+                <label class="form-label">影响 / Effect</label>
+                <div class="select-arrow-wrapper">
+                    <select id="Effect" name="Effect" class="form-control" required>
+                        <option value="" selected>-- 有没有影响 / Is there any effect? --</option>
+                        <option value="1">影响生产</option>
+                        <option value="2">不影响生产</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Time — hidden from UI -->
+            <div class="form-group time-group-hidden">
+                <label id="timeLabel" class="form-label" for="Datetime">时间 (Time)</label>
+                <input asp-for="Datetime" type="datetime-local" class="form-control" id="Datetime" required
+                       value="@(Model?.Datetime?.ToString("yyyy-MM-ddTHH:mm") ?? DateTime.Now.ToString("yyyy-MM-ddTHH:mm"))" />
+                <span asp-validation-for="Datetime" class="text-danger"></span>
+            </div>
+
+            <!-- Estimated time (optional) -->
+            <div class="form-group">
+                <label class="form-label" for="EstimateTime">预计时间 (Estimated time) - 可选 (Optional)</label>
+                <input asp-for="EstimateTime" type="time" class="form-control" id="EstimateTime" name="EstimateTime"
+                       step="60" placeholder="hh:mm" />
+                <span asp-validation-for="EstimateTime" class="text-danger"></span>
+            </div>
+
+            <!-- Problem Description -->
+            <div class="form-group">
+                <label class="form-label" for="Description">异常描述 / Problem Description (Optional)</label>
+                <input asp-for="Description" id="Description" name="Description" class="form-control"
+                       placeholder="输入问题描述... Enter a problem description..." />
+                <span asp-validation-for="Description" class="text-danger"></span>
+            </div>
+
+            <!-- Station -->
+            <div class="form-group">
+                <label class="form-label" for="Station">工位 / Station (Optional)</label>
+                <input id="Station" name="Station" class="form-control"
+                       placeholder="输入工位... (Enter station...)" />
+            </div>
+
+            <!-- Action -->
+            <div class="form-group">
+                <label class="form-label" for="Action">维修动作 / Action (Optional)</label>
+                <input id="Action" name="Action" class="form-control"
+                       placeholder="输入维修动作... (Enter action taken...)" />
+            </div>
+
+            <!-- Root Cause -->
+            <div class="form-group">
+                <label class="form-label" for="RootCause">根本原因 / Root Cause (Optional)</label>
+                <input id="RootCause" name="RootCause" class="form-control"
+                       placeholder="输入根本原因... (Enter root cause...)" />
+            </div>
+
+            <!-- Spare Parts -->
+            <div class="form-group">
+                <label class="form-label" for="SpareParts">更换配件 / Spare parts use (For future)</label>
+                <input id="SpareParts" name="SpareParts" class="form-control"
+                       placeholder="输入备注或详情... (Enter notes or details...)" />
+            </div>
+
+            <!-- Image (optional) -->
+            <div class="form-group full-width">
+                <label class="form-label">图片 (Image) - 可选 (optional)</label>
+                <div class="image-upload-container">
+                    <div class="image-upload-area" id="imageUploadAreaDT"
+                         onclick="document.getElementById('imageInputDT').click()">
+                        <div class="upload-text">点击选择图片 (Click to select image)</div>
+                        <div class="upload-hint">支持格式: JPG, PNG, GIF, BMP (最大 5MB)</div>
+                    </div>
+                    <input type="file" id="imageInputDT" name="imageFile" accept="image/*" />
+                    <div id="imagePreviewDT" style="display:none;">
+                        <img id="previewImgDT" class="image-preview" alt="Preview" />
+                        <div class="file-info" id="fileInfoDT"></div>
+                        <div class="image-actions">
+                            <button type="button" class="btn tiny-btn" onclick="removeImageDT()">
+                                删除图片 (Remove image)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- /form-grid -->
+
+        <!-- ===== 3 buttons — role-based visibility ===== -->
+        <div class="btn-container">
+            @if (_showCall)
+            {
+                <button type="button" id="btnCall" class="btn-call">
+                    📞 呼叫 (Call)
+                </button>
+            }
+            @if (_showResponse)
+            {
+                <button type="button" id="btnStop" class="btn-response">
+                    🔔 响应 (Response)
+                </button>
+            }
+            @if (_showRun)
+            {
+                <button type="button" id="btnRun" class="btn-run">
+                    ▶ 运行 (Run)
+                </button>
+            }
         </div>
 
-        <div class="btn-container">
-            <button type="button" id="btnRun" class="btn btn-primary" style="display:none;">Run</button>
-            <button type="button" id="btnStop" class="btn btn-danger" style="display:none;">Stop</button>
-        </div>
     </form>
 </div>
+
 <script>
     "use strict";
 
+    const pathBase = '@Context.Request.PathBase'.replace(/\/$/, '');
+
     function formatLocal(d) {
         const pad = n => String(n).padStart(2, '0');
-        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
     }
 
     /* ===================== Toast ===================== */
@@ -504,49 +935,395 @@
         const wrap = document.getElementById('toastContainer');
         const el = document.createElement('div');
         el.className = `toast ${type === 'error' ? 'error' : ''}`;
-        const icon = type === 'error' ? '✕' : '✓';
         el.innerHTML = `
-      <span class="toast-icon">${icon}</span>
-      ${message}
-      <button class="toast-close" onclick="closeToast(this)">&times;</button>
-      <div class="toast-progress" style="animation-duration:${duration}ms"></div>
-  `;
+            <span class="toast-icon">${type === 'error' ? '✕' : '✓'}</span>
+            ${message}
+            <button class="toast-close" onclick="closeToast(this)">&times;</button>
+            <div class="toast-progress" style="animation-duration:${duration}ms"></div>`;
         wrap.appendChild(el);
         setTimeout(() => { el.style.display = 'block'; }, 10);
-        setTimeout(() => { hideToast(el); }, duration);
+        setTimeout(() => hideToast(el), duration);
     }
-    function hideToast(el) { el.classList.add('hide'); setTimeout(() => el.remove(), 180); }
+    function hideToast(el)   { el.classList.add('hide'); setTimeout(() => el.remove(), 180); }
     function closeToast(btn) { hideToast(btn.closest('.toast')); }
 
-    /* ============ DOM references ============ */
-    const opEl = document.getElementById('Operation');
-    const IssCodeEl = document.getElementById('IssCode');
-    const timeEl = document.getElementById('Datetime');
-    const estimateEl = document.getElementById('EstimateTime');
-    const timeLabel = document.getElementById('timeLabel');
-    const svnCodeEl = document.getElementById('SVNCode');
-    const descEl = document.getElementById('Description');
+    /* ============ DOM refs ============ */
+    const opEl          = document.getElementById('Operation');
+    const IssCodeEl     = document.getElementById('IssCode');
+    const effectEl      = document.getElementById('Effect');
+    const machineEl     = document.getElementById('MachineNo');
+    const timeEl        = document.getElementById('Datetime');
+    const estimateEl    = document.getElementById('EstimateTime');
+    const timeLabel     = document.getElementById('timeLabel');
+    const descEl        = document.getElementById('Description');
+    const btnRun        = document.getElementById('btnRun');
+    const btnStop       = document.getElementById('btnStop');
+    const btnCall       = document.getElementById('btnCall');
+    const opValueInput  = document.getElementById('OperationValue');
 
-    const btnRun = document.getElementById('btnRun');
-    const btnStop = document.getElementById('btnStop');
+    // ✅ FIX: trỏ đúng vào #EmployeeCode và #EmployeeName (không còn svnCodeEl nữa)
+    const employeeCodeEl = document.getElementById('EmployeeCode');
+    const employeeNameEl = document.getElementById('EmployeeName');
 
+    /* =============================== Searchable Employee Dropdown ====================================== */
+    const empTrigger     = document.getElementById('empTrigger');
+    const empDropdown    = document.getElementById('empDropdown');
+    const empSearchInput = document.getElementById('empSearchInput');
+    const empOptionList  = document.getElementById('empOptionList');
+    const empTriggerText = document.getElementById('empTriggerText');
+
+    let empFocusedIndex = -1;
+
+    function getVisibleOptions() {
+        return Array.from(empOptionList.querySelectorAll('.select-search-option:not([style*="display: none"])'));
+    }
+
+    function toggleEmpDropdown() {
+        empDropdown.classList.contains('open') ? closeEmpDropdown() : openEmpDropdown();
+    }
+
+    function openEmpDropdown() {
+        empDropdown.classList.add('open');
+        empTrigger.classList.add('open');
+        empTrigger.setAttribute('aria-expanded', 'true');
+        empSearchInput.value = '';
+        filterEmpOptions('');
+        empFocusedIndex = -1;
+        setTimeout(() => empSearchInput.focus(), 30);
+    }
+
+    function closeEmpDropdown() {
+        empDropdown.classList.remove('open');
+        empTrigger.classList.remove('open');
+        empTrigger.setAttribute('aria-expanded', 'false');
+        empFocusedIndex = -1;
+    }
+
+    function filterEmpOptions(query) {
+        const q = query.trim().toLowerCase();
+        const opts = empOptionList.querySelectorAll('.select-search-option');
+        let visibleCount = 0;
+
+        opts.forEach(opt => {
+            const label = (opt.dataset.label || '').toLowerCase();
+            const value = (opt.dataset.value || '').toLowerCase();
+            const isPlaceholder = opt.classList.contains('placeholder-opt');
+
+            if (isPlaceholder) { opt.style.display = q ? 'none' : ''; return; }
+
+            const match = !q || label.includes(q) || value.includes(q);
+            opt.style.display = match ? '' : 'none';
+            if (match) visibleCount++;
+        });
+
+        let emptyEl = empOptionList.querySelector('.select-search-empty');
+        if (visibleCount === 0) {
+            if (!emptyEl) {
+                emptyEl = document.createElement('div');
+                emptyEl.className = 'select-search-empty';
+                emptyEl.textContent = '没有找到结果 (No results found)';
+                empOptionList.appendChild(emptyEl);
+            }
+        } else if (emptyEl) {
+            emptyEl.remove();
+        }
+
+        empFocusedIndex = -1;
+        updateFocusedOption();
+    }
+
+    function updateFocusedOption() {
+        const visible = getVisibleOptions();
+        visible.forEach((opt, i) => {
+            opt.classList.toggle('focused', i === empFocusedIndex);
+            if (i === empFocusedIndex) opt.scrollIntoView({ block: 'nearest' });
+        });
+    }
+
+    function selectEmpOption(opt) {
+        const value    = opt.dataset.value   || '';
+        const label    = opt.dataset.label   || '';
+        const chinese  = opt.dataset.chinese || '';
+        const isPlaceholder = opt.classList.contains('placeholder-opt');
+
+        // ✅ FIX: set đúng vào employeeCodeEl và employeeNameEl
+        if (isPlaceholder || !value) {
+            employeeCodeEl.value = '';
+            employeeNameEl.value = '';
+            empTriggerText.textContent = '-- 选择员工 (Select employee) --';
+            empTriggerText.classList.remove('has-value');
+        } else {
+            employeeCodeEl.value = value;
+            employeeNameEl.value = chinese || value;
+            empTriggerText.textContent = label;
+            empTriggerText.classList.add('has-value');
+        }
+
+        empOptionList.querySelectorAll('.select-search-option').forEach(o =>
+            o.classList.toggle('selected', o === opt)
+        );
+
+        closeEmpDropdown();
+        empTrigger.focus();
+    }
+
+    function resetEmpDropdown() {
+        // ✅ FIX: reset đúng field
+        employeeCodeEl.value = '';
+        employeeNameEl.value = '';
+        empTriggerText.textContent = '-- 选择员工 (Select employee) --';
+        empTriggerText.classList.remove('has-value');
+        empOptionList.querySelectorAll('.select-search-option').forEach(o =>
+            o.classList.remove('selected')
+        );
+    }
+
+    function handleEmpTriggerKey(e) {
+        if (['Enter', ' ', 'ArrowDown', 'ArrowUp'].includes(e.key)) {
+            e.preventDefault();
+            if (!empDropdown.classList.contains('open')) {
+                openEmpDropdown();
+            } else if (e.key === 'ArrowDown') {
+                empFocusedIndex = Math.min(empFocusedIndex + 1, getVisibleOptions().length - 1);
+                updateFocusedOption();
+            } else if (e.key === 'ArrowUp') {
+                empFocusedIndex = Math.max(empFocusedIndex - 1, 0);
+                updateFocusedOption();
+            }
+        }
+        if (e.key === 'Escape') closeEmpDropdown();
+    }
+
+    function handleEmpSearchKey(e) {
+        const visible = getVisibleOptions();
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            empFocusedIndex = Math.min(empFocusedIndex + 1, visible.length - 1);
+            updateFocusedOption();
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            empFocusedIndex = Math.max(empFocusedIndex - 1, 0);
+            updateFocusedOption();
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (empFocusedIndex >= 0 && visible[empFocusedIndex]) {
+                selectEmpOption(visible[empFocusedIndex]);
+            } else if (visible.length === 1) {
+                selectEmpOption(visible[0]);
+            }
+        } else if (e.key === 'Escape') {
+            closeEmpDropdown();
+        }
+    }
+
+    empOptionList.addEventListener('click', function(e) {
+        const opt = e.target.closest('.select-search-option');
+        if (opt) selectEmpOption(opt);
+    });
+
+    document.addEventListener('click', function(e) {
+        const wrapper = empTrigger.closest('.select-search-wrapper');
+        if (!wrapper.contains(e.target)) closeEmpDropdown();
+    });
+
+    /* =========== Searchable Operation / Location Dropdown ================================ */
+    const opTrigger     = document.getElementById('opTrigger');
+    const opDropdown    = document.getElementById('opDropdown');
+    const opSearchInput = document.getElementById('opSearchInput');
+    const opOptionList  = document.getElementById('opOptionList');
+    const opTriggerText = document.getElementById('opTriggerText');
+
+    let opFocusedIndex = -1;
+
+    function getVisibleOpOptions() {
+        return Array.from(opOptionList.querySelectorAll('.select-search-option:not([style*="display: none"])'));
+    }
+
+    function toggleOpDropdown() {
+        opDropdown.classList.contains('open') ? closeOpDropdown() : openOpDropdown();
+    }
+
+    function openOpDropdown() {
+        opDropdown.classList.add('open');
+        opTrigger.classList.add('open');
+        opTrigger.setAttribute('aria-expanded', 'true');
+        opSearchInput.value = '';
+        filterOpOptions('');
+        opFocusedIndex = -1;
+        setTimeout(() => opSearchInput.focus(), 30);
+    }
+
+    function closeOpDropdown() {
+        opDropdown.classList.remove('open');
+        opTrigger.classList.remove('open');
+        opTrigger.setAttribute('aria-expanded', 'false');
+        opFocusedIndex = -1;
+    }
+
+    function filterOpOptions(query) {
+        const q = query.trim().toLowerCase();
+        const opts = opOptionList.querySelectorAll('.select-search-option');
+        let visibleCount = 0;
+
+        opts.forEach(opt => {
+            const label = (opt.dataset.label || '').toLowerCase();
+            const value = (opt.dataset.value || '').toLowerCase();
+            const isPlaceholder = opt.classList.contains('placeholder-opt');
+
+            if (isPlaceholder) { opt.style.display = q ? 'none' : ''; return; }
+
+            const match = !q || label.includes(q) || value.includes(q);
+            opt.style.display = match ? '' : 'none';
+            if (match) visibleCount++;
+        });
+
+        let emptyEl = opOptionList.querySelector('.select-search-empty');
+        if (visibleCount === 0) {
+            if (!emptyEl) {
+                emptyEl = document.createElement('div');
+                emptyEl.className = 'select-search-empty';
+                emptyEl.textContent = '没有找到结果 (No results found)';
+                opOptionList.appendChild(emptyEl);
+            }
+        } else if (emptyEl) {
+            emptyEl.remove();
+        }
+
+        opFocusedIndex = -1;
+        updateFocusedOpOption();
+    }
+
+    function updateFocusedOpOption() {
+        const visible = getVisibleOpOptions();
+        visible.forEach((opt, i) => {
+            opt.classList.toggle('focused', i === opFocusedIndex);
+            if (i === opFocusedIndex) opt.scrollIntoView({ block: 'nearest' });
+        });
+    }
+
+    function selectOpOption(opt) {
+        const value = opt.dataset.value || '';
+        const label = opt.dataset.label || '';
+        const isPlaceholder = opt.classList.contains('placeholder-opt');
+
+        opValueInput.value = value;
+
+        if (isPlaceholder || !value) {
+            opTriggerText.textContent = '-- 选择工序 (Select Operation) --';
+            opTriggerText.classList.remove('has-value');
+        } else {
+            opTriggerText.textContent = label;
+            opTriggerText.classList.add('has-value');
+        }
+
+        opOptionList.querySelectorAll('.select-search-option').forEach(o =>
+            o.classList.toggle('selected', o === opt)
+        );
+
+        closeOpDropdown();
+        opTrigger.focus();
+    }
+
+    function resetOpDropdown() {
+        opValueInput.value = '';
+        opTriggerText.textContent = '-- 选择工序 (Select Operation) --';
+        opTriggerText.classList.remove('has-value');
+        opOptionList.querySelectorAll('.select-search-option').forEach(o =>
+            o.classList.remove('selected')
+        );
+    }
+
+    function handleOpTriggerKey(e) {
+        if (['Enter', ' ', 'ArrowDown', 'ArrowUp'].includes(e.key)) {
+            e.preventDefault();
+            if (!opDropdown.classList.contains('open')) {
+                openOpDropdown();
+            } else if (e.key === 'ArrowDown') {
+                opFocusedIndex = Math.min(opFocusedIndex + 1, getVisibleOpOptions().length - 1);
+                updateFocusedOpOption();
+            } else if (e.key === 'ArrowUp') {
+                opFocusedIndex = Math.max(opFocusedIndex - 1, 0);
+                updateFocusedOpOption();
+            }
+        }
+        if (e.key === 'Escape') closeOpDropdown();
+    }
+
+    function handleOpSearchKey(e) {
+        const visible = getVisibleOpOptions();
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            opFocusedIndex = Math.min(opFocusedIndex + 1, visible.length - 1);
+            updateFocusedOpOption();
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            opFocusedIndex = Math.max(opFocusedIndex - 1, 0);
+            updateFocusedOpOption();
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (opFocusedIndex >= 0 && visible[opFocusedIndex]) {
+                selectOpOption(visible[opFocusedIndex]);
+            } else if (visible.length === 1) {
+                selectOpOption(visible[0]);
+            }
+        } else if (e.key === 'Escape') {
+            closeOpDropdown();
+        }
+    }
+
+    opOptionList.addEventListener('click', function(e) {
+        const opt = e.target.closest('.select-search-option');
+        if (opt) selectOpOption(opt);
+    });
+
+    document.addEventListener('click', function(e) {
+        const wrapper = opTrigger.closest('.select-search-wrapper');
+        if (wrapper && !wrapper.contains(e.target)) closeOpDropdown();
+    });
+
+    /* ============ Operation label mapping ============ */
+    const operationLabels = {
+        'Sakura-WSS03-00300(SM)': 'Middle Panel Sakura Pink',
+        'Sakura-WSS03-00301(SM)': 'Back Panel Sakura Pink',
+        'Sakura-WSS03-00306(SM)': 'Middle Panel Sakura Green',
+        'Sakura-WSS03-00307(SM)': 'Back Panel Sakura Green',
+        'Sakura-WSS03-00303(SM)': 'Middle Panel Sakura Green',
+        'Sakura-WSS03-00304(SM)': 'Back Panel Sakura Green',
+        'Sakura-RM15A-1001NW(SM)': 'FG Sakura Pink',
+        'Sakura-RM15A-1002NW(SM)': 'FG Sakura Green',
+        'Sakura-RM15A-1000NW(SM)': 'FG Sakura Blue',
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+        if (!opEl) return;
+        Array.from(opEl.options).forEach(opt => {
+            if (!opt.value) return;
+            const desc = operationLabels[opt.value];
+            if (desc) opt.textContent = `${opt.value} / ${desc}`;
+        });
+    });
+
+    /* ============ Native select — màu xanh khi có giá trị ============ */
+    function syncSelectColor(el) {
+        if (!el) return;
+        el.classList.toggle('has-value', !!el.value);
+    }
+
+    [opEl, IssCodeEl, effectEl].forEach(el => {
+        if (!el) return;
+        el.addEventListener('change', () => syncSelectColor(el));
+        syncSelectColor(el);
+    });
+
+    /* ============ Datetime helpers ============ */
     function updateDatetimeRange() {
-        if (!timeEl) return;
-        const now = new Date();
-        const before = new Date(now.getTime() - 15 * 60 * 1000);
-        const after = new Date(now.getTime() + 15 * 60 * 1000);
-
-        timeEl.min = formatLocal(before);
-        timeEl.max = formatLocal(after);
+        // không giới hạn thời gian
     }
 
-    /* ============ Helpers UI ============ */
-    function hideButtons() {
-        btnRun.style.display = 'none';
-        btnStop.style.display = 'none';
-    }
-    function showRun() { btnRun.style.display = 'inline-block'; btnStop.style.display = 'none'; }
-    function showStop() { btnStop.style.display = 'inline-block'; btnRun.style.display = 'none'; }
+    /* ============ Stub functions ============ */
+    function hideButtons()  { }
+    function showRun()      { }
+    function showStop()     { }
 
     function setReasonEnabled(enabled) {
         if (!IssCodeEl) return;
@@ -559,29 +1336,33 @@
         estimateEl.classList.toggle('disabled', !enabled);
     }
 
-    /* ============ Reset inputs sau khi lưu thành công ============ */
+    /* ============ Reset sau khi lưu ============ */
     function resetInputs() {
-        if (opEl) opEl.selectedIndex = 0;
-        if (IssCodeEl) {
-            if (IssCodeEl.tagName.toLowerCase() === 'select') IssCodeEl.selectedIndex = 0;
-            else IssCodeEl.value = '';
-            setReasonEnabled(true);
-        }
-        if (timeEl) timeEl.value = formatLocal(new Date());
-        if (estimateEl) {
-            estimateEl.value = '';
-            setEstimateEnabled(true);
-        }
-        if (svnCodeEl) svnCodeEl.value = '';
-        if (descEl) descEl.value = '';
+        if (opEl)       { opEl.selectedIndex = 0;      syncSelectColor(opEl); }
+        if (IssCodeEl)  { IssCodeEl.selectedIndex = 0; syncSelectColor(IssCodeEl); setReasonEnabled(true); }
+        if (effectEl)   { effectEl.selectedIndex = 0;  syncSelectColor(effectEl); }
+        if (timeEl)     timeEl.value = formatLocal(new Date());
+        if (estimateEl) { estimateEl.value = ''; setEstimateEnabled(true); }
+        if (descEl)     descEl.value = '';
+
+        const stationEl   = document.getElementById('Station');
+        const actionEl    = document.getElementById('Action');
+        const rootCauseEl = document.getElementById('RootCause');
+        const spareEl     = document.getElementById('SpareParts');
+        if (stationEl)   stationEl.value   = '';
+        if (actionEl)    actionEl.value    = '';
+        if (rootCauseEl) rootCauseEl.value = '';
+        if (spareEl)     spareEl.value     = '';
+
+        resetMachineDropdown();
+        resetEmpDropdown();
+        resetOpDropdown();
         removeImageDT();
-        hideButtons();
     }
 
     /* ============ Load trạng thái operation ============ */
     async function onOperationChanged() {
         updateDatetimeRange();
-        hideButtons();
         setReasonEnabled(true);
         setEstimateEnabled(true);
 
@@ -589,91 +1370,72 @@
         if (!op) return;
 
         try {
-            const url = `/Status/GetLatestDowntimeForOperation?operation=${encodeURIComponent(op)}`;
-            const res = await fetch(url, { method: 'GET' });
-            if (!res.ok) { showToast('Không kiểm tra được trạng thái gần nhất!', 'error', 2400); return; }
+            const url = `${pathBase}/Status/GetLatestDowntimeForOperation?operation=${encodeURIComponent(op)}`;
+            const res  = await fetch(url);
+            if (!res.ok) { showToast('无法检查最新状态！', 'error', 2400); return; }
             const data = await res.json();
 
             if (!data?.exists) {
-                showStop();
-                if (timeLabel) timeLabel.textContent = 'Thời gian bắt đầu dừng';
+                if (timeLabel) timeLabel.textContent = '停止开始时间 (Stop start time)';
                 setReasonEnabled(true);
                 setEstimateEnabled(true);
-                if (IssCodeEl && IssCodeEl.tagName.toLowerCase() === 'select') IssCodeEl.selectedIndex = 0;
+                if (IssCodeEl) { IssCodeEl.selectedIndex = 0; syncSelectColor(IssCodeEl); }
                 return;
             }
 
-            const stateNorm = String(data.state || '').trim().toLowerCase();
+            const stateNorm = String(data.state || '').trim().toUpperCase();
 
-            if (stateNorm === 'run') {
-                showStop();
-                if (timeLabel) timeLabel.textContent = 'Thời gian bắt đầu dừng';
+            if (stateNorm === 'RUN') {
+                if (timeLabel) timeLabel.textContent = '停止开始时间 (Stop start time)';
                 setReasonEnabled(true);
                 setEstimateEnabled(true);
-            } else if (stateNorm === 'stop') {
-                showRun();
-                if (timeLabel) timeLabel.textContent = 'Thời gian kết thúc dừng';
+            } else if (stateNorm === 'STOP') {
+                if (timeLabel) timeLabel.textContent = '停止结束时间 (Stop end time)';
                 const oldDesc = (data.issCode || '').trim();
                 if (IssCodeEl) {
-                    if (IssCodeEl.tagName.toLowerCase() === 'select') {
-                        let opt = Array.from(IssCodeEl.options).find(o => o.value === oldDesc);
-                        if (!opt) {
-                            const temp = document.createElement('option');
-                            temp.value = oldDesc;
-                            temp.textContent = oldDesc || '(trống)';
-                            temp.dataset.temp = '1';
-                            IssCodeEl.appendChild(temp);
-                        }
-                        IssCodeEl.value = oldDesc;
-                    } else IssCodeEl.value = oldDesc;
+                    let opt = Array.from(IssCodeEl.options).find(o => o.value === oldDesc);
+                    if (!opt) {
+                        const temp = document.createElement('option');
+                        temp.value = temp.textContent = oldDesc || '(空白)';
+                        temp.dataset.temp = '1';
+                        IssCodeEl.appendChild(temp);
+                    }
+                    IssCodeEl.value = oldDesc;
+                    syncSelectColor(IssCodeEl);
                 }
                 setReasonEnabled(false);
                 setEstimateEnabled(false);
             } else {
-                showStop();
                 setReasonEnabled(true);
                 setEstimateEnabled(true);
             }
         } catch (e) {
             console.error(e);
-            showToast('Lỗi tra cứu trạng thái!', 'error', 2400);
+            showToast('状态查询错误！ (Error checking status!)', 'error', 2400);
         }
     }
 
-    timeEl?.addEventListener('change', () => {
-        const selected = new Date(timeEl.value);
-        const now = new Date();
-        const diffMinutes = Math.abs((selected - now) / 60000);
-        if (diffMinutes > 15) {
-            showToast('Thời gian chỉ được trong ±15 phút hiện tại!', 'error', 2400);
-            timeEl.value = formatLocal(new Date());
-        }
-    });
-
-    // ======== Upload/Preview ảnh cho Downtime ========
+    /* ======== Image upload ======== */
     let selectedFileDT = null;
 
     function handleImageSelectDT(file) {
         if (!file) return;
-
-        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/bmp'];
-        if (!allowedTypes.includes(file.type)) {
-            showToast('Chỉ cho phép upload ảnh: JPG, PNG, GIF, BMP', 'error', 3000);
+        const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/bmp'];
+        if (!allowed.includes(file.type)) {
+            showToast('只允许上传图片格式：JPG、PNG、GIF、BMP', 'error', 3000);
             return;
         }
         if (file.size > 5 * 1024 * 1024) {
-            showToast('Kích thước ảnh không được vượt quá 5MB', 'error', 3000);
+            showToast('图片大小不能超过5MB', 'error', 3000);
             return;
         }
-
         selectedFileDT = file;
-
         const reader = new FileReader();
-        reader.onload = function (e) {
+        reader.onload = e => {
             document.getElementById('previewImgDT').src = e.target.result;
             document.getElementById('fileInfoDT').textContent =
                 `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
-            document.getElementById('imagePreviewDT').style.display = 'block';
+            document.getElementById('imagePreviewDT').style.display   = 'block';
             document.getElementById('imageUploadAreaDT').style.display = 'none';
         };
         reader.readAsDataURL(file);
@@ -683,119 +1445,516 @@
         selectedFileDT = null;
         const input = document.getElementById('imageInputDT');
         if (input) input.value = '';
-        document.getElementById('imagePreviewDT').style.display = 'none';
-        document.getElementById('imageUploadAreaDT').style.display = 'block';
+        document.getElementById('imagePreviewDT').style.display    = 'none';
+        document.getElementById('imageUploadAreaDT').style.display  = 'block';
     }
 
-    // Drag & Drop
     const imageUploadAreaDT = document.getElementById('imageUploadAreaDT');
-    imageUploadAreaDT.addEventListener('dragover', function (e) {
+    imageUploadAreaDT.addEventListener('dragover',  e => { e.preventDefault(); imageUploadAreaDT.classList.add('dragover'); });
+    imageUploadAreaDT.addEventListener('dragleave', e => { e.preventDefault(); imageUploadAreaDT.classList.remove('dragover'); });
+    imageUploadAreaDT.addEventListener('drop', e => {
         e.preventDefault();
-        this.classList.add('dragover');
+        imageUploadAreaDT.classList.remove('dragover');
+        if (e.dataTransfer.files.length > 0) handleImageSelectDT(e.dataTransfer.files[0]);
     });
-    imageUploadAreaDT.addEventListener('dragleave', function (e) {
-        e.preventDefault();
-        this.classList.remove('dragover');
-    });
-    imageUploadAreaDT.addEventListener('drop', function (e) {
-        e.preventDefault();
-        this.classList.remove('dragover');
-        const files = e.dataTransfer.files;
-        if (files.length > 0) handleImageSelectDT(files[0]);
-    });
-
-    document.getElementById('imageInputDT').addEventListener('change', function (e) {
+    document.getElementById('imageInputDT').addEventListener('change', e => {
         if (e.target.files.length > 0) handleImageSelectDT(e.target.files[0]);
     });
 
+    /* ============ Validate chung cho STOP và RESPONSE ============ */
+    function validateRequiredFields() {
+        // ✅ FIX: check employeeCodeEl thay vì svnCodeEl
+        const empCode = (employeeCodeEl?.value || '').trim();
+        if (!empCode) {
+            showToast('请选择员工！ (Please select an employee!)', 'error', 2400);
+            empTrigger.focus();
+            return false;
+        }
+
+        const machineNo = (machineEl?.value || '').trim();
+        if (!machineNo) {
+            showToast('请选择设备编号！ (Please select machine/fixture no.!)', 'error', 2400);
+            machineTrigger.focus();
+            return false;
+        }
+
+        const op = (opEl?.value || '').trim();
+        if (!op) {
+            showToast('请选择生产线！ (Please select an operation!)', 'error', 2200);
+            opEl?.focus();
+            return false;
+        }
+
+        const issCode = (IssCodeEl?.value || '').trim();
+        if (!issCode) {
+            showToast('请选择原因！ (Please select a reason!)', 'error', 2400);
+            IssCodeEl?.focus();
+            return false;
+        }
+
+        const effect = (effectEl?.value || '').trim();
+        if (!effect) {
+            showToast('请选择影响！ (Please select effect!)', 'error', 2400);
+            effectEl?.focus();
+            return false;
+        }
+
+        return true;
+    }
+
     /* ============ POST save ============ */
     async function performSave(nextState) {
-        const op = (opEl?.value || '').trim();
-        if (!op) { showToast('Vui lòng chọn Operation!', 'error', 2200); return; }
-        const svnCode = (svnCodeEl?.value || '').trim();
 
-        if (!svnCode) {
-            showToast('Vui lòng nhập SVN Code trước khi gửi!', 'error', 2400);
-            svnCodeEl?.focus();
-            return;
+        if (nextState === 'STOP' || nextState === 'RESPONSE') {
+            if (!validateRequiredFields()) return;
         }
 
-        if (nextState === 'Stop') {
-            const d = (IssCodeEl?.value || '').trim();
-            if (!d) { showToast('Vui lòng chọn/nhập Lý do cho STOP!', 'error', 2400); return; }
-        }
-
-        const fd = new FormData();
-        fd.append('Operation', op);
-        fd.append('State', nextState);
-        fd.append('ISS_Code', (IssCodeEl?.value || '').trim());
-        fd.append('SVnCode', (svnCodeEl?.value || '').trim());
-        fd.append('Description', (descEl?.value || '').trim());
-        if (timeEl && timeEl.value) {
-            const selected = new Date(timeEl.value);
-            const now = new Date();
-            const diffMinutes = Math.abs((selected - now) / 60000);
-            if (diffMinutes > 15) {
-                showToast('Thời gian phải nằm trong ±15 phút quanh hiện tại!', 'error', 2600);
-                return; // ⛔ Dừng lại, không gửi
-            }
-            fd.append('Datetime', timeEl.value);
-        }
-        if (estimateEl && estimateEl.value) fd.append('EstimateTime', estimateEl.value);
-
-        const imageInputDT = document.getElementById('imageInputDT');
-        if (imageInputDT?.files?.length > 0) {
-            fd.append('imageFile', imageInputDT.files[0]);
-        }
-
-        const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
-        const token = tokenInput ? tokenInput.value : null;
-
-        const btn = nextState === 'Run' ? btnRun : btnStop;
-        btn.disabled = true;
-        const oldText = btn.textContent;
-        btn.textContent = 'Đang lưu...';
-
-        try {
-            const res = await fetch('/Status/CreateDownTime', {
-                method: 'POST',
-                body: fd,
-                headers: token ? { 'RequestVerificationToken': token } : {}
-            });
-
-            if (!res.ok) {
-                const t = await res.text();
-                console.error('Server error:', t);
-                showToast('Lỗi máy chủ khi lưu.', 'error', 2600);
+        if (nextState === 'RUN') {
+            const machineNo = (machineEl?.value || '').trim();
+            if (!machineNo) {
+                showToast('请选择设备编号！ (Please select machine/fixture no.!)', 'error', 2400);
+                machineTrigger.focus();
                 return;
             }
+        }
 
+        // ── Build FormData ──
+        const fd = new FormData();
+        fd.append('State',        nextState);
+        fd.append('Operation',    (opEl?.value || '').trim());
+        fd.append('ISS_Code',     (IssCodeEl?.value || '').trim());
+        // ✅ FIX: dùng employeeCodeEl thay vì svnCodeEl
+        fd.append('SVNCode',      (employeeCodeEl?.value || '').trim().toUpperCase());
+        fd.append('EmployeeCode', (employeeCodeEl?.value || '').trim().toUpperCase());
+        fd.append('EmployeeName', (employeeNameEl?.value || '').trim());
+        fd.append('MachineCode',  (machineEl?.value || '').trim());
+        fd.append('Location',     (opValueInput?.value || '').trim());
+        fd.append('Effect',       (effectEl?.value || '').trim());
+        fd.append('Description',  (descEl?.value || '').trim());
+        fd.append('Station',      (document.getElementById('Station')?.value || '').trim());
+        fd.append('Action',       (document.getElementById('Action')?.value || '').trim());
+        fd.append('RootCause',    (document.getElementById('RootCause')?.value || '').trim());
+        fd.append('SpareParts',   (document.getElementById('SpareParts')?.value || '').trim());
+
+        fd.append('Datetime', formatLocal(new Date()));
+        if (estimateEl?.value) fd.append('EstimateTime', estimateEl.value);
+
+        const imgInput = document.getElementById('imageInputDT');
+        if (imgInput?.files?.length > 0) fd.append('imageFile', imgInput.files[0]);
+
+        const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+        if (tokenInput) fd.append('__RequestVerificationToken', tokenInput.value);
+
+        // ── Disable buttons & show loading ──
+        const clickedBtn = nextState === 'RUN'      ? btnRun
+                         : nextState === 'RESPONSE' ? btnStop
+                         : btnCall;
+
+        [btnRun, btnStop, btnCall].forEach(b => { if (b) b.disabled = true; });
+        const oldHTML = clickedBtn.innerHTML;
+        clickedBtn.innerHTML = '⏳ 保存中...';
+
+        try {
+            const res = await fetch(`${pathBase}/Status/CreateDownTime`, { method: 'POST', body: fd });
+            if (!res.ok) {
+                console.error('Server error:', await res.text());
+                showToast('保存时服务器错误。 (Server error when saving.)', 'error', 2600);
+                return;
+            }
             let data = null;
-            try { data = await res.json(); } catch { }
+            try { data = await res.json(); } catch {}
 
             if (data?.success) {
-                showToast(data.message || 'Đã lưu downtime!');
-                resetInputs();            // 🟢 reset tất cả ô input
-                await onOperationChanged(); // reload lại trạng thái
+                showToast(data.message || '停机时间已保存！ (Downtime saved!)');
+                resetInputs();
+                await onOperationChanged();
             } else {
-                showToast(data?.message || 'Lưu thất bại!', 'error', 2400);
+                showToast(data?.message || '保存失败！ (Save failed!)', 'error', 2400);
             }
         } catch (err) {
             console.error(err);
-            showToast('Có lỗi trong quá trình lưu!', 'error', 2400);
+            showToast('保存过程中出错！ (Error occurred while saving!)', 'error', 2400);
         } finally {
-            btn.disabled = false;
-            btn.textContent = oldText;
+            [btnRun, btnStop, btnCall].forEach(b => { if (b) b.disabled = false; });
+            clickedBtn.innerHTML = oldHTML;
         }
     }
 
-    /* ============ Event bindings ============ */
+    /* ============ Bindings ============ */
     opEl?.addEventListener('change', onOperationChanged);
-    btnRun?.addEventListener('click', () => performSave('Run'));
-    btnStop?.addEventListener('click', () => performSave('Stop'));
+
+    btnCall?.addEventListener('click',  () => performSave('STOP'));
+    btnStop?.addEventListener('click',  () => performSave('RESPONSE'));
+    btnRun?.addEventListener('click',   () => performSave('RUN'));
+
+    /* ============ SignalR — nhận phản hồi từ Kỹ thuật ============ */
+    (async function initSignalR() {
+        try {
+            const signalRScript = document.createElement('script');
+            signalRScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js';
+            signalRScript.onload = async function() {
+                const conn = new signalR.HubConnectionBuilder()
+                    .withUrl(`${pathBase}/downtimeHub`)
+                    .withAutomaticReconnect([2000, 5000, 10000])
+                    .configureLogging(signalR.LogLevel.Warning)
+                    .build();
+
+                // Nhận thông báo phản hồi từ Kỹ thuật
+                conn.on("ReceiveTechResponse", (data) => {
+                    showTechResponseNotif(data);
+                });
+
+                try {
+                    await conn.start();
+                    // Join group riêng theo username của Operator
+                    const myUsername = '@(Context.Session.GetString("UserName") ?? "")';
+                    if (myUsername) {
+                        await conn.invoke("JoinOperatorGroup", myUsername);
+                    }
+                } catch (err) {
+                    console.warn("SignalR CreateDownTime connect failed:", err);
+                }
+            };
+            document.head.appendChild(signalRScript);
+        } catch(e) {
+            console.warn("SignalR init error:", e);
+        }
+    })();
+
+    /* ===== Hiển thị thông báo phản hồi từ Kỹ thuật ===== */
+    function showTechResponseNotif(data) {
+        // Tạo toast đặc biệt cho tech response — khác màu
+        const isAccept = data.action === 'ACCEPT';
+        const container = document.querySelector('.toast-container');
+        if (!container) return;
+
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+            min-width: 300px;
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-left: 6px solid ${isAccept ? '#22c55e' : '#f59e0b'};
+            padding: 14px 16px;
+            border-radius: 12px;
+            box-shadow: 0 10px 28px rgba(0,0,0,.12);
+            font-family: "Segoe UI", system-ui, sans-serif;
+            animation: techToastIn .3s ease;
+        `;
+
+        toast.innerHTML = `
+            <div style="font-weight:700;font-size:14px;margin-bottom:6px;color:${isAccept ? '#166534' : '#92400e'}">
+                ${isAccept ? '✅ Kỹ thuật đã nhận!' : '⏳ Kỹ thuật đã xem'}
+            </div>
+            <div style="font-size:13px;color:#374151;line-height:1.5;">${data.message || ''}</div>
+            <div style="font-size:11px;color:#9ca3af;margin-top:6px;">🕐 ${data.datetime || ''}</div>
+            <button onclick="this.closest('div[style]').remove()"
+                style="position:absolute;top:8px;right:10px;border:0;background:transparent;font-size:17px;cursor:pointer;color:#9ca3af;line-height:1;">×</button>
+        `;
+        toast.style.position = 'relative';
+
+        container.appendChild(toast);
+
+        // Phát âm thanh nếu Accept
+        if (isAccept) playTechAcceptSound();
+
+        // Tự ẩn sau 8 giây
+        setTimeout(() => {
+            toast.style.opacity   = '0';
+            toast.style.transform = 'translateY(-8px)';
+            toast.style.transition = 'all .25s ease';
+            setTimeout(() => toast.remove(), 300);
+        }, 8000);
+    }
+
+    /* ===== Âm thanh khi Tech Accept ===== */
+    function playTechAcceptSound() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            [0, 0.18, 0.36].forEach((offset, i) => {
+                const osc  = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.type            = 'sine';
+                osc.frequency.value = [523, 659, 784][i]; // C5 E5 G5 — tiếng vui
+                const t = ctx.currentTime + offset;
+                gain.gain.setValueAtTime(0.5, t);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+                osc.start(t);
+                osc.stop(t + 0.35);
+            });
+        } catch(e) {}
+    }
 
     /* ============ Init ============ */
     window.addEventListener('DOMContentLoaded', () => {
+        opEl?.focus();
+        updateDatetimeRange();
+        if (opEl?.value) onOperationChanged();
+    });
+
+    /* =============================== Searchable Machine Dropdown ====================================== */
+    const machineTrigger     = document.getElementById('machineTrigger');
+    const machineDropdown    = document.getElementById('machineDropdown');
+    const machineSearchInput = document.getElementById('machineSearchInput');
+    const machineOptionList  = document.getElementById('machineOptionList');
+    const machineTriggerText = document.getElementById('machineTriggerText');
+    const machineValueInput  = document.getElementById('MachineNo');
+
+    let machineFocusedIndex = -1;
+
+    function getVisibleMachineOptions() {
+        return Array.from(machineOptionList.querySelectorAll('.select-search-option:not([style*="display: none"])'));
+    }
+
+    function toggleMachineDropdown() {
+        machineDropdown.classList.contains('open') ? closeMachineDropdown() : openMachineDropdown();
+    }
+
+    function openMachineDropdown() {
+        machineDropdown.classList.add('open');
+        machineTrigger.classList.add('open');
+        machineTrigger.setAttribute('aria-expanded', 'true');
+        machineSearchInput.value = '';
+        filterMachineOptions('');
+        machineFocusedIndex = -1;
+        setTimeout(() => machineSearchInput.focus(), 30);
+    }
+
+    function closeMachineDropdown() {
+        machineDropdown.classList.remove('open');
+        machineTrigger.classList.remove('open');
+        machineTrigger.setAttribute('aria-expanded', 'false');
+        machineFocusedIndex = -1;
+    }
+
+    function filterMachineOptions(query) {
+        const q = query.trim().toLowerCase();
+        const opts = machineOptionList.querySelectorAll('.select-search-option');
+        let visibleCount = 0;
+
+        opts.forEach(opt => {
+            const label = (opt.dataset.label || '').toLowerCase();
+            const value = (opt.dataset.value || '').toLowerCase();
+            const isPlaceholder = opt.classList.contains('placeholder-opt');
+
+            if (isPlaceholder) { opt.style.display = q ? 'none' : ''; return; }
+
+            const match = !q || label.includes(q) || value.includes(q);
+            opt.style.display = match ? '' : 'none';
+            if (match) visibleCount++;
+        });
+
+        let emptyEl = machineOptionList.querySelector('.select-search-empty');
+        if (visibleCount === 0) {
+            if (!emptyEl) {
+                emptyEl = document.createElement('div');
+                emptyEl.className = 'select-search-empty';
+                emptyEl.textContent = '没有找到结果 (No results found)';
+                machineOptionList.appendChild(emptyEl);
+            }
+        } else if (emptyEl) {
+            emptyEl.remove();
+        }
+
+        machineFocusedIndex = -1;
+        updateFocusedMachineOption();
+    }
+
+    function updateFocusedMachineOption() {
+        const visible = getVisibleMachineOptions();
+        visible.forEach((opt, i) => {
+            opt.classList.toggle('focused', i === machineFocusedIndex);
+            if (i === machineFocusedIndex) opt.scrollIntoView({ block: 'nearest' });
+        });
+    }
+
+    /* ── selectMachineOption với auto-fill từ Stop gần nhất ── */
+    async function selectMachineOption(opt) {
+        const value = opt.dataset.value || '';
+        const label = opt.dataset.label || '';
+        const isPlaceholder = opt.classList.contains('placeholder-opt');
+
+        machineValueInput.value = value;
+
+        if (isPlaceholder || !value) {
+            machineTriggerText.textContent = '-- 选择设备编号 (Select machine/fixture no.) --';
+            machineTriggerText.classList.remove('has-value');
+        } else {
+            machineTriggerText.textContent = label;
+            machineTriggerText.classList.add('has-value');
+        }
+
+        machineOptionList.querySelectorAll('.select-search-option').forEach(o =>
+            o.classList.toggle('selected', o === opt)
+        );
+
+        closeMachineDropdown();
+        machineTrigger.focus();
+
+        // ── Auto-fill từ lần Stop gần nhất theo Machine ──
+        if (value) {
+            try {
+                const url = `${pathBase}/Status/GetLatestStopByMachine?machineNo=${encodeURIComponent(value)}`;
+                const res  = await fetch(url);
+                if (!res.ok) return;
+                const json = await res.json();
+                if (!json.exists) return;
+
+                const d = json.data;
+
+                // ✅ FIX: Auto-fill Employee — set vào employeeCodeEl
+                if (d.svnCode) {
+                    employeeCodeEl.value = d.svnCode;
+                    const empOpt = Array.from(empOptionList.querySelectorAll('.select-search-option'))
+                        .find(o => (o.dataset.value || '').toLowerCase() === d.svnCode.toLowerCase());
+                    if (empOpt) {
+                        employeeNameEl.value = empOpt.dataset.chinese || d.svnCode;
+                        empTriggerText.textContent = empOpt.dataset.label || d.svnCode;
+                        empTriggerText.classList.add('has-value');
+                        empOptionList.querySelectorAll('.select-search-option').forEach(o =>
+                            o.classList.toggle('selected', o === empOpt));
+                    }
+                }
+
+                // Operation (生产线 — native select)
+                if (d.operation && opEl) {
+                    const found = Array.from(opEl.options).find(o => o.value === d.operation);
+                    if (found) {
+                        opEl.value = d.operation;
+                        syncSelectColor(opEl);
+                        await onOperationChanged();
+                    }
+                }
+
+                // Location (搜索下拉 OperationValue)
+                if (d.opValue) {
+                    const locOpt = Array.from(opOptionList.querySelectorAll('.select-search-option'))
+                        .find(o => o.dataset.value === d.opValue);
+                    if (locOpt) {
+                        opValueInput.value = d.opValue;
+                        opTriggerText.textContent = locOpt.dataset.label || d.opValue;
+                        opTriggerText.classList.add('has-value');
+                        opOptionList.querySelectorAll('.select-search-option').forEach(o =>
+                            o.classList.toggle('selected', o === locOpt));
+                    }
+                }
+
+                // Reason (ISS Code)
+                if (d.reason && IssCodeEl) {
+                    const found = Array.from(IssCodeEl.options).find(o => o.value === d.reason);
+                    if (found) { IssCodeEl.value = d.reason; syncSelectColor(IssCodeEl); }
+                }
+
+                // Effect
+                if (d.effect && effectEl) {
+                    const found = Array.from(effectEl.options).find(o => o.value === d.effect);
+                    if (found) {
+                        effectEl.value = d.effect;
+                        syncSelectColor(effectEl);
+                    }
+                }
+
+                showToast('已自动填写上次停机信息 (Auto-filled from last stop)', 'success', 2200);
+
+            } catch (e) {
+                console.error('Auto-fill error:', e);
+            }
+        }
+    }
+
+    function resetMachineDropdown() {
+        machineValueInput.value = '';
+        machineTriggerText.textContent = '-- 选择设备编号 (Select machine/fixture no.) --';
+        machineTriggerText.classList.remove('has-value');
+        machineOptionList.querySelectorAll('.select-search-option').forEach(o =>
+            o.classList.remove('selected')
+        );
+    }
+
+    function handleMachineTriggerKey(e) {
+        if (['Enter', ' ', 'ArrowDown', 'ArrowUp'].includes(e.key)) {
+            e.preventDefault();
+            if (!machineDropdown.classList.contains('open')) {
+                openMachineDropdown();
+            } else if (e.key === 'ArrowDown') {
+                machineFocusedIndex = Math.min(machineFocusedIndex + 1, getVisibleMachineOptions().length - 1);
+                updateFocusedMachineOption();
+            } else if (e.key === 'ArrowUp') {
+                machineFocusedIndex = Math.max(machineFocusedIndex - 1, 0);
+                updateFocusedMachineOption();
+            }
+        }
+        if (e.key === 'Escape') closeMachineDropdown();
+    }
+
+    function handleMachineSearchKey(e) {
+        const visible = getVisibleMachineOptions();
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            machineFocusedIndex = Math.min(machineFocusedIndex + 1, visible.length - 1);
+            updateFocusedMachineOption();
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            machineFocusedIndex = Math.max(machineFocusedIndex - 1, 0);
+            updateFocusedMachineOption();
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (machineFocusedIndex >= 0 && visible[machineFocusedIndex]) {
+                selectMachineOption(visible[machineFocusedIndex]);
+            } else if (visible.length === 1) {
+                selectMachineOption(visible[0]);
+            }
+        } else if (e.key === 'Escape') {
+            closeMachineDropdown();
+        }
+    }
+
+    machineOptionList.addEventListener('click', function(e) {
+        const opt = e.target.closest('.select-search-option');
+        if (opt) selectMachineOption(opt);
+    });
+
+    document.addEventListener('click', function(e) {
+        if (machineTrigger && !machineTrigger.closest('.select-search-wrapper').contains(e.target)) {
+            closeMachineDropdown();
+        }
+    });
+
+    /* ============ Load Machine/Fixture từ Odoo API ============ */
+    async function loadMachineOptions() {
+        machineTriggerText.textContent = '⏳ 加载中... (Loading...)';
+
+        try {
+            const res = await fetch(`${pathBase}/api/odoo/equipments/sm-eq`);
+            if (!res.ok) throw new Error('API error');
+
+            const data = await res.json();
+
+            machineOptionList.querySelectorAll('.select-search-option:not(.placeholder-opt)').forEach(o => o.remove());
+
+            data.records.forEach(eq => {
+                const serialPart = eq.serialNo ? ` - ${eq.serialNo}` : '';
+                const label = `${eq.name}${serialPart}`;
+
+                const opt = document.createElement('div');
+                opt.className = 'select-search-option';
+                opt.dataset.value = label;
+                opt.dataset.label = label;
+                opt.textContent = label;
+                machineOptionList.appendChild(opt);
+            });
+
+            machineTriggerText.textContent = '-- 选择设备编号 (Select machine/fixture no.) --';
+
+        } catch (err) {
+            console.error('Lỗi load machine:', err);
+            machineTriggerText.textContent = '⚠ Lỗi load dữ liệu';
+        }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        loadMachineOptions();
         opEl?.focus();
         updateDatetimeRange();
         if (opEl?.value) onOperationChanged();
