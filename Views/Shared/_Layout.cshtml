@@ -272,94 +272,136 @@
     <script>
     (function() {
         "use strict";
-        const pathBase    = '@Context.Request.PathBase'.replace(/\/$/, '');
-        const myUsername  = '@userName';
-        const myRole      = '@userRole';
-        const bellBtn     = document.getElementById('bellBtn');
-        const bellBadge   = document.getElementById('bellBadge');
-        const bellList    = document.getElementById('bellList');
-        const bellDrop    = document.getElementById('bellDropdown');
-        let unreadCount   = 0;
+        const pathBase   = '@Context.Request.PathBase'.replace(/\/$/, '');
+        const myUsername = '@userName';
+        const myRole     = '@userRole';
+        const bellBtn    = document.getElementById('bellBtn');
+        const bellBadge  = document.getElementById('bellBadge');
+        const bellList   = document.getElementById('bellList');
+        const bellDrop   = document.getElementById('bellDropdown');
 
-        /* ── Toggle dropdown ── */
-        window.toggleBellDropdown = function(e) {
-            e.stopPropagation();
-            const isOpen = bellDrop.classList.toggle('open');
-            if (isOpen) {
-                unreadCount = 0;
-                bellBadge.style.display = 'none';
-                bellBadge.textContent = '0';
+        if (!myUsername) return;
+
+        // ─── Render 1 notification item ──────────────────────────────
+        function renderItem(n) {
+            const isRead    = n.isRead;
+            const type      = n.notifType;   // 'STOP' | 'TECH_RESPONSE' | 'RUN'
+            const isAccept  = n.techAction === 'ACCEPT';
+            const isWait    = n.techAction === 'WAIT';
+            const readStyle = isRead ? 'opacity:0.6;' : '';
+
+            let borderColor = '#ef4444'; // STOP = đỏ
+            let icon = '🛑';
+            if (type === 'TECH_RESPONSE') { borderColor = isAccept ? '#22c55e' : '#f59e0b'; icon = isAccept ? '✅' : '⏳'; }
+            if (type === 'RUN')           { borderColor = '#3b82f6'; icon = '✅'; }
+
+            const unreadDot = !isRead
+                ? `<span style="display:inline-block;width:8px;height:8px;background:#ef4444;border-radius:50%;margin-left:6px;vertical-align:middle;"></span>`
+                : '';
+
+            return `
+                <div class="bell-notif-item" data-id="${n.id}"
+                     style="border-left:4px solid ${borderColor}; ${readStyle} cursor:pointer;"
+                     onclick="markOneRead(${n.id}, this)">
+                    <div class="bell-notif-title" style="color:#1e293b;">
+                        ${icon} ${n.title} ${unreadDot}
+                    </div>
+                    ${n.body ? `<div class="bell-notif-body">${n.body}</div>` : ''}
+                    <div class="bell-notif-time">🕐 ${n.createdAt}${n.techName ? ` &nbsp;·&nbsp; 👤 ${n.techName}` : ''}</div>
+                </div>`;
+        }
+
+        // ─── Load từ DB ───────────────────────────────────────────────
+        async function loadNotifications() {
+            try {
+                const res  = await fetch(`${pathBase}/Status/GetMyNotifications`);
+                const data = await res.json();
+                if (!data.success) return;
+
+                bellList.innerHTML = '';
+
+                if (!data.notifications || data.notifications.length === 0) {
+                    bellList.innerHTML = '<div class="bell-drop-empty" id="bellEmpty">Chưa có thông báo nào.</div>';
+                } else {
+                    data.notifications.forEach(n => {
+                        bellList.insertAdjacentHTML('beforeend', renderItem(n));
+                    });
+                }
+
+                // Cập nhật badge
+                const count = data.unreadCount || 0;
+                if (count > 0) {
+                    bellBadge.textContent  = count > 9 ? '9+' : String(count);
+                    bellBadge.style.display = 'block';
+                } else {
+                    bellBadge.style.display = 'none';
+                }
+            } catch(e) {
+                console.warn('loadNotifications error:', e);
             }
-        };
+        }
 
-        document.addEventListener('click', function(e) {
-            const wrapper = document.getElementById('bellWrapper');
-            if (wrapper && !wrapper.contains(e.target)) bellDrop.classList.remove('open');
-        });
-
-        /* ── Thêm item vào bell list ── */
-        function addBellItem(html) {
-            const emptyEl = document.getElementById('bellEmpty');
-            if (emptyEl) emptyEl.style.display = 'none';
-
-            const item = document.createElement('div');
-            item.innerHTML = html;
-            bellList.insertBefore(item.firstElementChild, bellList.firstChild);
-
-            unreadCount++;
-            bellBadge.textContent = unreadCount > 9 ? '9+' : String(unreadCount);
-            bellBadge.style.display = 'block';
-
+        // ─── Thêm real-time item (SignalR) + reload để đồng bộ ────────
+        function addRealTimeItem() {
+            // Shake bell
             if (bellBtn) {
                 bellBtn.classList.remove('shake');
                 void bellBtn.offsetWidth;
                 bellBtn.classList.add('shake');
                 setTimeout(() => bellBtn.classList.remove('shake'), 700);
             }
+            // Reload toàn bộ list từ DB để luôn đồng bộ
+            loadNotifications();
         }
 
-        /* ── Thông báo: Tech phản hồi → hiện với Prod & Admin ── */
-        function onTechResponse(data) {
-            const isAccept = data.action === 'ACCEPT';
-            addBellItem(`
-                <div class="bell-notif-item ${isAccept ? 'accept-item' : 'wait-item'}">
-                    <div class="bell-notif-title ${isAccept ? 'accept' : 'wait'}">
-                        ${isAccept ? '✅ Kỹ thuật đã nhận — đang đến sửa' : '⏳ Kỹ thuật đã xem — vui lòng chờ'}
-                    </div>
-                    <div class="bell-notif-body">
-                        🔧 Máy: <strong>${data.machineCode || '-'}</strong>
-                        &nbsp;·&nbsp; Kỹ thuật: <strong>${data.techName || '-'}</strong>
-                    </div>
-                    <div class="bell-notif-time">🕐 ${data.datetime || ''}</div>
-                </div>`);
-        }
-
-        /* ── Thông báo: Prod gửi STOP → hiện với Tech & Admin ── */
-        function onStopNotification(data) {
-            addBellItem(`
-                <div class="bell-notif-item accept-item" style="border-left-color:#ef4444;">
-                    <div class="bell-notif-title" style="color:#991b1b;">
-                        🛑 STOP / CALL — ${data.machineCode || '-'}
-                    </div>
-                    <div class="bell-notif-body">
-                        📍 ${data.operation || '-'}
-                        &nbsp;·&nbsp; 👤 ${data.employeeName || data.employeeCode || '-'}
-                        &nbsp;·&nbsp; 🔴 ${data.reason || '-'}
-                    </div>
-                    <div class="bell-notif-time">🕐 ${data.datetime || ''}</div>
-                </div>`);
-        }
-
-        /* ── Clear all ── */
-        window.clearBellNotifs = function() {
-            bellList.innerHTML = '<div class="bell-drop-empty" id="bellEmpty">Chưa có thông báo nào.</div>';
-            unreadCount = 0;
-            bellBadge.style.display = 'none';
+        // ─── Đánh dấu 1 item đã đọc khi click ────────────────────────
+        window.markOneRead = async function(id, el) {
+            if (el.style.opacity === '0.6') return; // đã đọc rồi
+            try {
+                await fetch(`${pathBase}/Status/MarkNotificationRead`, {
+                    method : 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body   : JSON.stringify({ id })
+                });
+                el.style.opacity = '0.6';
+                // Ẩn unread dot
+                const dot = el.querySelector('span[style*="border-radius:50%"]');
+                if (dot) dot.remove();
+                // Cập nhật badge
+                loadNotifications();
+            } catch(e) {}
         };
 
-        /* ── SignalR ── */
-        if (!myUsername) return;
+        // ─── Toggle dropdown + đánh dấu tất cả đã đọc khi mở ─────────
+        window.toggleBellDropdown = function(e) {
+            e.stopPropagation();
+            const isOpen = bellDrop.classList.toggle('open');
+            if (isOpen) {
+                markAllRead();
+            }
+        };
 
+        async function markAllRead() {
+            try {
+                await fetch(`${pathBase}/Status/MarkAllNotificationsRead`, { method: 'POST' });
+                loadNotifications(); // reload để cập nhật trạng thái
+            } catch(e) {}
+        }
+
+        document.addEventListener('click', function(e) {
+            const wrapper = document.getElementById('bellWrapper');
+            if (wrapper && !wrapper.contains(e.target)) bellDrop.classList.remove('open');
+        });
+
+        // ─── Clear all (chỉ ẩn khỏi UI, không xóa DB) ────────────────
+        window.clearBellNotifs = function(e) {
+            if (e) e.stopPropagation();
+            bellList.innerHTML = '<div class="bell-drop-empty" id="bellEmpty">Chưa có thông báo nào.</div>';
+            bellBadge.style.display = 'none';
+            markAllRead();
+        };
+
+        // ─── SignalR ──────────────────────────────────────────────────
         const conn = new signalR.HubConnectionBuilder()
             .withUrl(`${pathBase}/downtimeHub`)
             .withAutomaticReconnect([2000, 5000, 10000])
@@ -368,31 +410,30 @@
 
         // Prod & Admin: nhận phản hồi từ Tech
         if (myRole === 'Production' || myRole === 'Admin') {
-            conn.on("ReceiveTechResponse", onTechResponse);
+            conn.on("ReceiveTechResponse", () => addRealTimeItem());
         }
-
         // Tech & Admin: nhận STOP từ Prod
         if (myRole === 'Technical' || myRole === 'Admin') {
-            conn.on("ReceiveStopNotification", onStopNotification);
+            conn.on("ReceiveStopNotification", () => addRealTimeItem());
+            conn.on("ReceiveRunNotification",  () => addRealTimeItem());
         }
 
         async function startConn() {
             try {
                 await conn.start();
-                // Prod & Admin join group riêng để nhận phản hồi Tech
-                if (myRole === 'Production' || myRole === 'Admin') {
+                if (myRole === 'Production' || myRole === 'Admin')
                     await conn.invoke("JoinOperatorGroup", myUsername);
-                }
-                // Tech & Admin join TechnicianGroup để nhận STOP
-                if (myRole === 'Technical' || myRole === 'Admin') {
+                if (myRole === 'Technical' || myRole === 'Admin')
                     await conn.invoke("JoinTechnicianGroup");
-                }
             } catch(e) {
                 setTimeout(startConn, 5000);
             }
         }
 
+        // Load notifications ngay khi trang mở
+        loadNotifications();
         startConn();
+
     })();
     </script>
     }

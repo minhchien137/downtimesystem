@@ -238,55 +238,58 @@
                             <i class="fas fa-list"></i> 每页记录数 (Records per page)
                         </label>
                         <select class="form-control form-control-sm" name="pageSize" id="pageSize">
-                            <option value="1" selected="@(pageSize == 1)">1 条记录 (1 record)</option>
-                            <option value="5" selected="@(pageSize == 5)">5 条记录 (5 records)</option>
-                            <option value="10" selected="@(pageSize == 10)">10 条记录 (10 records)</option>
-                            <option value="25" selected="@(pageSize == 25)">25 条记录 (25 records)</option>
-                            <option value="50" selected="@(pageSize == 50)">50 条记录 (50 records)</option>
+                            <option value="5"  selected="@(pageSize == 5)">5 records</option>
+                            <option value="10" selected="@(pageSize == 10)">10 records</option>
+                            <option value="25" selected="@(pageSize == 25)">25 records</option>
+                            <option value="50" selected="@(pageSize == 50)">50 records</option>
                         </select>
                     </div>
                     <div class="col-md-3">
                         <button type="submit" class="btn btn-primary btn-sm w-100 mt-md-0 mt-2">
-                            <i class="fas fa-search"></i> 筛选数据 (Filter data)
+                            <i class="fas fa-search"></i> 筛选数据 (Filter)
                         </button>
                     </div>
                 </div>
             </form>
         </div>
 
+        @{
+            var allDataPct   = ViewBag.AllDataWithPct as List<MachineStatusUpdate.Models.DowntimeReportByOperationWithPct>;
+            var machineData  = ViewBag.MachineData     as List<MachineStatusUpdate.Models.DowntimeReportByMachine>;
+            var machineChart = ViewBag.MachineChartData as MachineStatusUpdate.Models.MachineDowntimeChartData;
+        }
+
         @if (allData != null && allData.Any())
         {
-            <!-- THỐNG KÊ TỔNG QUAN - DÙNG TOÀN BỘ DỮ LIỆU -->
+            <!-- TỔNG QUAN -->
             <div class="row mb-3">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <div class="stats-card">
-                        <h5 class="text-muted mb-1">
-                            <i class="fas fa-cogs"></i> 操作总数 (Total Operations)
-                        </h5>
+                        <h5 class="text-muted mb-1"><i class="fas fa-cogs"></i> Total Lines</h5>
                         <h2 class="text-primary mb-0">@allData.Count</h2>
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <div class="stats-card">
-                        <h5 class="text-muted mb-1">
-                            <i class="fas fa-exclamation-triangle"></i> 停机总次数 (Total Downtime Count)
-                        </h5>
+                        <h5 class="text-muted mb-1"><i class="fas fa-exclamation-triangle"></i> Total DT Count</h5>
                         <h2 class="text-danger mb-0">@allData.Sum(x => x.TotalDowntimeCount)</h2>
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <div class="stats-card">
-                        <h5 class="text-muted mb-1">
-                            <i class="fas fa-clock"></i> 停机总时间 (Total Downtime Time)
-                        </h5>
+                        <h5 class="text-muted mb-1"><i class="fas fa-clock"></i> Total DT Time</h5>
                         <h2 class="text-warning mb-0">
-                            @{
-                                var totalMinutes = allData.Sum(x => x.TotalDowntimeMinutes);
-                                var hours = (int)(totalMinutes / 60);
-                                var mins = (int)(totalMinutes % 60);
-                            }
-                            @hours 小时 @mins 分钟 (@hours h @mins m)
+                            @{ var totalMinutes = allData.Sum(x => x.TotalDowntimeMinutes);
+                               var hours = (int)(totalMinutes / 60);
+                               var mins  = (int)(totalMinutes % 60); }
+                            @hours h @mins m
                         </h2>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card">
+                        <h5 class="text-muted mb-1"><i class="fas fa-microchip"></i> Total EQ affected</h5>
+                        <h2 class="text-info mb-0">@(machineData?.Count ?? 0)</h2>
                     </div>
                 </div>
             </div>
@@ -294,818 +297,565 @@
             <div class="mb-3 text-end">
                 <a href="@Url.Action("ExportDowntimeReportToExcel", new { fromDate = ViewBag.FromDate, toDate = ViewBag.ToDate })"
                     class="btn-export">
-                    <i class="fas fa-file-excel"></i> 导出Excel (Export Excel)
+                    <i class="fas fa-file-excel"></i> Export Excel (2 Sheets)
                 </a>
             </div>
 
-            <!-- BIỂU ĐỒ - DÙNG TOÀN BỘ DỮ LIỆU -->
+            <!-- CHARTS ROW -->
             <div class="row">
                 <div class="col-md-4">
                     <div class="chart-container">
-                        <h4 class="mb-2">
-                            <i class="fas fa-chart-bar"></i> 按工序的停机时间 (Downtime by Operation)
-                        </h4>
+                        <h4 class="mb-2"><i class="fas fa-chart-bar"></i> DT by Line (min)</h4>
                         <canvas id="operationChart"></canvas>
                     </div>
                 </div>
                 <div class="col-md-4">
                     <div class="chart-container">
-                        <h4 class="mb-2">
-                            <i class="fas fa-chart-pie"></i> 停机分布 (Downtime Distribution)
-                        </h4>
+                        <h4 class="mb-2"><i class="fas fa-chart-pie"></i> DT Distribution</h4>
                         <canvas id="pieChart"></canvas>
                     </div>
                 </div>
                 <div class="col-md-4">
                     <div class="chart-container">
-                        <h4 class="mb-2">
-                            <i class="fas fa-exclamation-triangle"></i> 按错误代码的停机时间 (Downtime by Error Code)
-                        </h4>
+                        <h4 class="mb-2"><i class="fas fa-exclamation-triangle"></i> DT by Reason Code</h4>
                         <canvas id="issCodeChart"></canvas>
                     </div>
                 </div>
             </div>
 
-            <!-- BIỂU ĐỒ ĐƯỜNG THEO NGÀY - REAL TIME -->
+            <!-- EQ CHART -->
+            @if (machineChart != null && machineChart.MachineCodes.Any())
+            {
+                <div class="row mt-3">
+                    <div class="col-md-12">
+                        <div class="daily-chart-container" style="height:380px">
+                            <h4 class="mb-2"><i class="fas fa-microchip"></i> Downtime by EQ No. (分钟)</h4>
+                            <canvas id="machineChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- DAILY TREND CHART -->
             @if (dailyChartData != null && dailyChartData.Dates.Any())
             {
-                <div class="row mt-4">
+                <div class="row mt-3">
                     <div class="col-md-12">
                         <div class="daily-chart-container">
-                            <h4 class="mb-3">
-                                <i class="fas fa-chart-line"></i> 停机历史趋势图 (Downtime History Trend)
-                                <small class="text-muted"></small>
-                            </h4>
+                            <h4 class="mb-3"><i class="fas fa-chart-line"></i> 停机历史趋势图 (Daily Trend)</h4>
                             <canvas id="dailyTrendChart"></canvas>
                         </div>
                     </div>
                 </div>
 
                 <script>
-                    // Biểu đồ đường theo ngày với animation
                     const dailyCtx = document.getElementById('dailyTrendChart').getContext('2d');
-                    
-                    // Tạo gradient cho line chart
                     const gradient = dailyCtx.createLinearGradient(0, 0, 0, 400);
                     gradient.addColorStop(0, 'rgba(54, 162, 235, 0.6)');
                     gradient.addColorStop(1, 'rgba(54, 162, 235, 0.1)');
-
-                    // Tạo gradient cho line thứ 2
                     const gradient2 = dailyCtx.createLinearGradient(0, 0, 0, 400);
                     gradient2.addColorStop(0, 'rgba(255, 99, 132, 0.3)');
                     gradient2.addColorStop(1, 'rgba(255, 99, 132, 0.05)');
-
                     new Chart(dailyCtx, {
                         type: 'line',
                         data: {
                             labels: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(dailyChartData.Dates)),
                             datasets: [
                                 {
-                                    label: '停机时间 (分钟) (Downtime minutes)',
+                                    label: 'DT Minutes',
                                     data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(dailyChartData.DowntimeMinutes)),
                                     borderColor: 'rgba(54, 162, 235, 1)',
                                     backgroundColor: gradient,
-                                    borderWidth: 4,
-                                    fill: true,
-                                    tension: 0.4,
+                                    borderWidth: 4, fill: true, tension: 0.4,
                                     pointBackgroundColor: 'rgba(54, 162, 235, 1)',
-                                    pointBorderColor: '#fff',
-                                    pointBorderWidth: 3,
-                                    pointRadius: 8,
-                                    pointHoverRadius: 12,
-                                    pointHoverBorderWidth: 4,
-                                    // Animation settings
-                                    animation: {
-                                        duration: 2000,
-                                        easing: 'easeOutQuart'
-                                    }
+                                    pointBorderColor: '#fff', pointBorderWidth: 3, pointRadius: 8,
+                                    yAxisID: 'y'
                                 },
                                 {
-                                    label: '停机次数 (Downtime count)',
+                                    label: 'DT Count',
                                     data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(dailyChartData.DowntimeCounts)),
                                     borderColor: 'rgba(255, 99, 132, 1)',
                                     backgroundColor: gradient2,
-                                    borderWidth: 3,
-                                    borderDash: [5, 5],
-                                    fill: true,
-                                    tension: 0.4,
+                                    borderWidth: 3, fill: true, tension: 0.4,
                                     pointBackgroundColor: 'rgba(255, 99, 132, 1)',
-                                    pointBorderColor: '#fff',
-                                    pointBorderWidth: 2,
-                                    pointRadius: 6,
-                                    pointHoverRadius: 10,
-                                    pointHoverBorderWidth: 3,
-                                    yAxisID: 'y1',
-                                    // Animation settings với delay
-                                    animation: {
-                                        duration: 2500,
-                                        easing: 'easeOutQuart',
-                                        delay: 500
-                                    }
+                                    pointBorderColor: '#fff', pointBorderWidth: 2, pointRadius: 6,
+                                    yAxisID: 'y1'
                                 }
                             ]
                         },
                         options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            interaction: {
-                                mode: 'index',
-                                intersect: false
-                            },
-                            plugins: {
-                                legend: {
-                                    display: true,
-                                    position: 'top',
-                                    labels: {
-                                        font: {
-                                            size: 13
-                                        },
-                                        usePointStyle: true,
-                                        padding: 20
-                                    }
-                                },
-                                tooltip: {
-                                    bodyFont: {
-                                        size: 14
-                                    },
-                                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                                    padding: 12,
-                                    cornerRadius: 8,
-                                    usePointStyle: true,
-                                    callbacks: {
-                                        label: function(context) {
-                                            let label = context.dataset.label || '';
-                                            let value = context.parsed.y;
-                                            
-                                            if (context.dataset.label.includes('分钟')) {
-                                                let hours = Math.floor(value / 60);
-                                                let mins = Math.round(value % 60);
-                                                return `${label}: ${hours}小时 ${mins}分钟 (${value.toFixed(1)} 分钟)`;
-                                            } else {
-                                                return `${label}: ${value} 次`;
-                                            }
-                                        }
-                                    }
-                                }
-                            },
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: { legend: { display: true, position: 'top' } },
                             scales: {
-                                x: {
-                                    title: {
-                                        display: true,
-                                        text: '日期 (Date)',
-                                        font: {
-                                            size: 12,
-                                            weight: 'bold'
-                                        }
-                                    },
-                                    ticks: {
-                                        font: {
-                                            size: 11
-                                        }
-                                    },
-                                    grid: {
-                                        color: 'rgba(0, 0, 0, 0.1)',
-                                        drawBorder: false
-                                    }
-                                },
-                                y: {
-                                    type: 'linear',
-                                    display: true,
-                                    position: 'left',
-                                    title: {
-                                        display: true,
-                                        text: '时间 (分钟) (Time - minutes)',
-                                        font: {
-                                            size: 12,
-                                            weight: 'bold'
-                                        }
-                                    },
-                                    ticks: {
-                                        font: {
-                                            size: 11
-                                        }
-                                    },
-                                    grid: {
-                                        color: 'rgba(0, 0, 0, 0.1)',
-                                        drawBorder: false
-                                    }
-                                },
-                                y1: {
-                                    type: 'linear',
-                                    display: true,
-                                    position: 'right',
-                                    title: {
-                                        display: true,
-                                        text: '次数 (Count)',
-                                        font: {
-                                            size: 12,
-                                            weight: 'bold'
-                                        }
-                                    },
-                                    ticks: {
-                                        font: {
-                                            size: 11
-                                        }
-                                    },
-                                    grid: {
-                                        drawOnChartArea: false,
-                                        drawBorder: false
-                                    }
-                                }
+                                x: { title: { display: true, text: 'Date' } },
+                                y: { position: 'left', title: { display: true, text: 'Minutes' } },
+                                y1: { position: 'right', title: { display: true, text: 'Count' }, grid: { drawOnChartArea: false } }
                             },
-                            // Cấu hình animation tổng thể
-                            animation: {
-                                duration: 2000,
-                                easing: 'easeOutQuart',
-                                onProgress: function(animation) {
-                                    // Thêm hiệu ứng di chuyển cho các điểm
-                                    const chart = this;
-                                    const meta = chart.getDatasetMeta(0);
-                                    if (meta && meta.data) {
-                                        meta.data.forEach((point, index) => {
-                                            point.custom = point.custom || {};
-                                            point.custom.originalRadius = point.custom.originalRadius || point.options.radius;
-                                            
-                                            // Hiệu ứng pulse cho điểm
-                                            if (animation.currentStep / animation.numSteps > 0.8) {
-                                                const scale = 1 + Math.sin(Date.now() / 500 + index) * 0.3;
-                                                point.radius = point.custom.originalRadius * scale;
-                                            }
-                                        });
-                                    }
-                                },
-                                onComplete: function() {
-                                    // Hoàn thành animation
-                                    console.log('Chart animation completed');
-                                }
-                            },
-                            // Hiệu ứng hover
-                            hover: {
-                                animationDuration: 300
-                            },
-                            // Hiệu ứng resize
-                            responsiveAnimationDuration: 1000
+                            animation: { duration: 2000, easing: 'easeOutQuart' }
                         }
                     });
-
-                    // Auto-refresh mỗi 30 giây để tạo hiệu ứng real-time
-                    setInterval(function() {
-                        // Gọi API để cập nhật dữ liệu (có thể implement sau)
-                        console.log('Auto-refresh chart data...');
-                        
-                        // Hiệu ứng refresh visual
-                        const chart = Chart.getChart('dailyTrendChart');
-                        if (chart) {
-                            chart.update('none'); // Cập nhật không có animation
-                        }
-                    }, 30000);
                 </script>
             }
-            else
-            {
-                <div class="row mt-4">
-                    <div class="col-md-12">
-                        <div class="daily-chart-container">
-                            <h4 class="mb-3">
-                                <i class="fas fa-chart-line"></i> 停机历史趋势图 (Downtime History Trend)
-                            </h4>
-                            <div class="alert alert-info text-center mt-5">
-                                <i class="fas fa-info-circle"></i>
-                                所选时间段内没有按日期的停机数据。 (No daily downtime data in the selected period.)
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            }
 
-            @if (Model != null && Model.Any())
-            {
-                <div class="row mt-4">
-                    <div class="col-md-12">
-                        <h4 class="mb-3">
-                            <i class="fas fa-list"></i> 按操作的详细数据 (Details by Operation)
-                            <small class="text-muted">(@Model.Count/@totalRecords)</small>
-                        </h4>
-                    </div>
-                </div>
+            <!-- TABS: By Line | By EQ -->
+            <ul class="nav nav-tabs mt-4" id="reportTab" role="tablist">
+                <li class="nav-item">
+                    <button class="nav-link active" id="line-tab" data-bs-toggle="tab" data-bs-target="#tabLine" type="button">
+                        <i class="fas fa-industry"></i> By Line
+                        <span class="badge bg-primary ms-1">@(allDataPct?.Count ?? 0)</span>
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" id="eq-tab" data-bs-toggle="tab" data-bs-target="#tabEQ" type="button">
+                        <i class="fas fa-microchip"></i> By EQ No.
+                        <span class="badge bg-info ms-1">@(machineData?.Count ?? 0)</span>
+                    </button>
+                </li>
+            </ul>
 
-                @foreach (var operation in Model)
-                {
-                    <div class="operation-section">
-                        <div class="operation-header">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <h4 class="mb-1">
-                                        <i class="fas fa-industry"></i> @operation.Operation
-                                    </h4>
-                                </div>
-                                <div class="col-md-6 text-end">
-                                    <span class="badge bg-light text-dark">
-                                        <i class="fas fa-stopwatch"></i> @operation.TotalDowntimeFormatted
-                                    </span>
-                                    <span class="badge bg-light text-dark ms-2">
-                                        <i class="fas fa-list"></i> @operation.TotalDowntimeCount 次 (times)
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
+            <div class="tab-content mt-3" id="reportTabContent">
 
-                        <table class="table table-hover error-table">
-                            <thead>
-                                <tr>
-                                    <th width="5%">#</th>
-                                    <th width="15%">ISS 代码 (ISS Code)</th>
-                                    <th width="30%">错误名称 (Error Name)</th>
-                                    <th width="10%" class="text-center">次数 (Count)</th>
-                                    <th width="15%" class="text-center">总时间 (Total Time)</th>
-                                    <th width="25%">比例 (Percentage)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @{
-                                    int index = 0;
-                                }
-                                @foreach (var error in operation.ErrorDetails)
-                                {
-                                    index++;
-                                    var percentage = operation.TotalDowntimeMinutes > 0
-                                    ? (error.TotalDowntimeMinutes / operation.TotalDowntimeMinutes * 100)
-                                    : 0;
-                                    <tr>
-                                        <td class="text-center">@index</td>
-                                        <td>
-                                            <span class="badge bg-info">@error.ISS_Code</span>
-                                        </td>
-                                        <td>@error.ErrorName</td>
-                                        <td class="text-center">
-                                            <span class="badge bg-secondary">@error.DowntimeCount</span>
-                                        </td>
-                                        <td class="text-center">
-                                            <strong>@error.TotalDowntimeFormatted</strong>
-                                            <br />
-                                            <small class="text-muted">
-                                                (@Math.Round(error.TotalDowntimeMinutes, 1) 分钟 (minutes))
-                                            </small>
-                                        </td>
-                                        <td>
-                                            <div class="progress progress-bar-custom">
-                                                <div class="progress-bar" role="progressbar" style="width: @percentage%" 
-                                                    aria-valuenow="@percentage" aria-valuemin="0" aria-valuemax="100">
-                                                    @Math.Round(percentage, 1)%
-                                                </div>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                            <tfoot>
-                                <tr class="table-info fw-bold">
-                                    <td colspan="3" class="text-end">总计 (TOTAL):</td>
-                                    <td class="text-center">@operation.TotalDowntimeCount</td>
-                                    <td class="text-center">@operation.TotalDowntimeFormatted</td>
-                                    <td>100%</td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
-                }
-
-                <!-- PHÂN TRANG - CHỈ CHO DANH SÁCH OPERATION -->
-                @if (totalPages > 1)
-                {
-                    <div class="pagination-container">
-                        <div class="row">
-                            <div class="col-md-12">
-                                <nav aria-label="Page navigation">
-                                    <ul class="pagination justify-content-center">
-                                        <!-- Nút Previous -->
-                                        <li class="page-item @(!hasPreviousPage ? "disabled" : "")">
-                                            @if (hasPreviousPage)
-                                            {
-                                                <a class="page-link" href="@Url.Action("ReportDowntime", new { 
-                                                    fromDate = ViewBag.FromDate, 
-                                                    toDate = ViewBag.ToDate, 
-                                                    page = currentPage - 1, 
-                                                    pageSize = pageSize 
-                                                })">
-                                                    <i class="fas fa-chevron-left"></i> 上一页 (Previous)
-                                                </a>
-                                            }
-                                            else
-                                            {
-                                                <span class="page-link"><i class="fas fa-chevron-left"></i> 上一页 (Previous)</span>
-                                            }
-                                        </li>
-
-                                        <!-- Các số trang -->
-                                        @for (int i = 1; i <= totalPages; i++)
+                <!-- ══════ TAB 1: BY LINE ══════ -->
+                <div class="tab-pane fade show active" id="tabLine">
+                    @if (allDataPct != null && allDataPct.Any())
+                    {
+                        <!-- Summary table By Line -->
+                        <div class="operation-section mb-3">
+                            <h5 class="mb-2"><i class="fas fa-table"></i> Summary — Downtime by Line vs Running Time</h5>
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-hover table-sm" style="font-size:13px">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Line (Operation)</th>
+                                            <th class="text-center">DT Count</th>
+                                            <th class="text-center">DT Time</th>
+                                            <th class="text-center">Running Time</th>
+                                            <th class="text-center">DT %</th>
+                                            <th>DT% Bar</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @{ int lineIdx = 0; }
+                                        @foreach (var op in allDataPct)
                                         {
-                                            if (i == 1 || i == totalPages || (i >= currentPage - 2 && i <= currentPage + 2))
-                                            {
-                                                <li class="page-item @(i == currentPage ? "active" : "")">
-                                                    <a class="page-link" href="@Url.Action("ReportDowntime", new { 
-                                                        fromDate = ViewBag.FromDate, 
-                                                        toDate = ViewBag.ToDate, 
-                                                        page = i, 
-                                                        pageSize = pageSize 
-                                                    })">@i</a>
-                                                </li>
-                                            }
-                                            else if (i == currentPage - 3 || i == currentPage + 3)
-                                            {
-                                                <li class="page-item disabled">
-                                                    <span class="page-link">...</span>
-                                                </li>
-                                            }
+                                            lineIdx++;
+                                            var pctColor = op.DowntimePct >= 15 ? "danger" : op.DowntimePct >= 8 ? "warning" : "success";
+                                            <tr>
+                                                <td class="text-center">@lineIdx</td>
+                                                <td><strong>@op.Operation</strong></td>
+                                                <td class="text-center"><span class="badge bg-secondary">@op.TotalDowntimeCount</span></td>
+                                                <td class="text-center"><strong>@op.TotalDowntimeFormatted</strong><br/><small class="text-muted">@Math.Round(op.TotalDowntimeMinutes,1) min</small></td>
+                                                <td class="text-center">@op.RunningTimeFormatted<br/><small class="text-muted">@Math.Round(op.RunningTimeMinutes,1) min</small></td>
+                                                <td class="text-center"><span class="badge bg-@pctColor fs-6">@op.DowntimePct%</span></td>
+                                                <td>
+                                                    <div class="progress" style="height:20px">
+                                                        <div class="progress-bar bg-@pctColor" style="width:@(Math.Min(op.DowntimePct,100))%">
+                                                            @op.DowntimePct%
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
                                         }
-
-                                        <!-- Nút Next -->
-                                        <li class="page-item @(!hasNextPage ? "disabled" : "")">
-                                            @if (hasNextPage)
-                                            {
-                                                <a class="page-link" href="@Url.Action("ReportDowntime", new { 
-                                                    fromDate = ViewBag.FromDate, 
-                                                    toDate = ViewBag.ToDate, 
-                                                    page = currentPage + 1, 
-                                                    pageSize = pageSize 
-                                                })">
-                                                    下一页 (Next) <i class="fas fa-chevron-right"></i>
-                                                </a>
-                                            }
-                                            else
-                                            {
-                                                <span class="page-link">下一页 (Next) <i class="fas fa-chevron-right"></i></span>
-                                            }
-                                        </li>
-                                    </ul>
-                                </nav>
+                                    </tbody>
+                                    <tfoot class="table-secondary fw-bold">
+                                        <tr>
+                                            <td colspan="2" class="text-end">TOTAL:</td>
+                                            <td class="text-center">@allDataPct.Sum(x => x.TotalDowntimeCount)</td>
+                                            <td class="text-center">@{ var tDT = allDataPct.Sum(x=>x.TotalDowntimeMinutes); var tRun = allDataPct.Sum(x=>x.RunningTimeMinutes); }
+                                                @((int)(tDT/60))h @((int)(tDT%60))m</td>
+                                            <td class="text-center">@((int)(tRun/60))h @((int)(tRun%60))m</td>
+                                            <td class="text-center">@(tRun > 0 ? Math.Round(tDT/tRun*100,1) : 0)%</td>
+                                            <td></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
                             </div>
                         </div>
 
-                        <!-- Thông tin phân trang -->
-                        <div class="row mt-2">
-                            <div class="col-md-12 text-center">
-                                <small class="page-info">
-                                    显示第 @currentPage 页 / 共 @totalPages 页 - 总共 @totalRecords 个操作
-                                    (Showing page @currentPage/@totalPages - Total @totalRecords operations)
-                                </small>
+                        <!-- Detail per Line (paged) -->
+                        @if (Model != null && Model.Any())
+                        {
+                            <h5 class="mb-2"><i class="fas fa-list"></i> Detail by Line (@Model.Count / @totalRecords)</h5>
+                            @foreach (var operation in Model)
+                            {
+                                <div class="operation-section">
+                                    <div class="operation-header">
+                                        <div class="row">
+                                            <div class="col-md-7">
+                                                <h4 class="mb-1"><i class="fas fa-industry"></i> @operation.Operation</h4>
+                                            </div>
+                                            <div class="col-md-5 text-end">
+                                                <span class="badge bg-light text-dark"><i class="fas fa-stopwatch"></i> @operation.TotalDowntimeFormatted</span>
+                                                <span class="badge bg-light text-dark ms-1"><i class="fas fa-list"></i> @operation.TotalDowntimeCount times</span>
+                                                @{
+                                                    var opPct = allDataPct?.FirstOrDefault(x => x.Operation == operation.Operation);
+                                                    if (opPct != null)
+                                                    {
+                                                        var pc = opPct.DowntimePct >= 15 ? "danger" : opPct.DowntimePct >= 8 ? "warning" : "success";
+                                                        <span class="badge bg-@pc ms-1">DT @opPct.DowntimePct% of Run Time</span>
+                                                    }
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <table class="table table-hover error-table">
+                                        <thead>
+                                            <tr>
+                                                <th width="4%">#</th>
+                                                <th width="13%">Reason Code</th>
+                                                <th width="28%">Reason Name</th>
+                                                <th width="9%" class="text-center">Count</th>
+                                                <th width="14%" class="text-center">Total Time</th>
+                                                <th width="12%" class="text-center">% of Line DT</th>
+                                                <th>Bar</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @{ int idx = 0; }
+                                            @foreach (var error in operation.ErrorDetails)
+                                            {
+                                                idx++;
+                                                var pct = operation.TotalDowntimeMinutes > 0
+                                                    ? error.TotalDowntimeMinutes / operation.TotalDowntimeMinutes * 100 : 0;
+                                                <tr>
+                                                    <td class="text-center">@idx</td>
+                                                    <td><span class="badge bg-info">@error.ISS_Code</span></td>
+                                                    <td>@error.ErrorName</td>
+                                                    <td class="text-center"><span class="badge bg-secondary">@error.DowntimeCount</span></td>
+                                                    <td class="text-center">
+                                                        <strong>@error.TotalDowntimeFormatted</strong><br/>
+                                                        <small class="text-muted">@Math.Round(error.TotalDowntimeMinutes,1) min</small>
+                                                    </td>
+                                                    <td class="text-center fw-bold">@Math.Round(pct,1)%</td>
+                                                    <td>
+                                                        <div class="progress progress-bar-custom">
+                                                            <div class="progress-bar" style="width:@pct%">@Math.Round(pct,1)%</div>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                        <tfoot>
+                                            <tr class="table-info fw-bold">
+                                                <td colspan="3" class="text-end">TOTAL:</td>
+                                                <td class="text-center">@operation.TotalDowntimeCount</td>
+                                                <td class="text-center">@operation.TotalDowntimeFormatted</td>
+                                                <td class="text-center">100%</td>
+                                                <td></td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            }
+
+                            <!-- Phân trang -->
+                            @if (totalPages > 1)
+                            {
+                                <div class="pagination-container">
+                                    <nav>
+                                        <ul class="pagination justify-content-center">
+                                            <li class="page-item @(!hasPreviousPage ? "disabled" : "")">
+                                                @if (hasPreviousPage)
+                                                { <a class="page-link" href="@Url.Action("ReportDowntime", new { fromDate=ViewBag.FromDate,toDate=ViewBag.ToDate,page=currentPage-1,pageSize })"><i class="fas fa-chevron-left"></i> Prev</a> }
+                                                else { <span class="page-link"><i class="fas fa-chevron-left"></i> Prev</span> }
+                                            </li>
+                                            @for (int i = 1; i <= totalPages; i++)
+                                            {
+                                                if (i==1||i==totalPages||(i>=currentPage-2&&i<=currentPage+2))
+                                                { <li class="page-item @(i==currentPage?"active":"")"><a class="page-link" href="@Url.Action("ReportDowntime", new{fromDate=ViewBag.FromDate,toDate=ViewBag.ToDate,page=i,pageSize})">@i</a></li> }
+                                                else if (i==currentPage-3||i==currentPage+3)
+                                                { <li class="page-item disabled"><span class="page-link">...</span></li> }
+                                            }
+                                            <li class="page-item @(!hasNextPage ? "disabled" : "")">
+                                                @if (hasNextPage)
+                                                { <a class="page-link" href="@Url.Action("ReportDowntime", new{fromDate=ViewBag.FromDate,toDate=ViewBag.ToDate,page=currentPage+1,pageSize})">Next <i class="fas fa-chevron-right"></i></a> }
+                                                else { <span class="page-link">Next <i class="fas fa-chevron-right"></i></span> }
+                                            </li>
+                                        </ul>
+                                    </nav>
+                                    <div class="text-center mt-1">
+                                        <small class="page-info">Page @currentPage / @totalPages — Total @totalRecords operations</small>
+                                    </div>
+                                </div>
+                            }
+                        }
+                    }
+                </div>
+
+                <!-- ══════ TAB 2: BY EQ ══════ -->
+                <div class="tab-pane fade" id="tabEQ">
+                    @if (machineData != null && machineData.Any())
+                    {
+                        <!-- Summary table By EQ -->
+                        <div class="operation-section mb-3">
+                            <h5 class="mb-2"><i class="fas fa-table"></i> Summary — Downtime by EQ No.</h5>
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-hover table-sm" style="font-size:13px">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>#</th>
+                                            <th>EQ No.</th>
+                                            <th>Line (Operation)</th>
+                                            <th class="text-center">DT Count</th>
+                                            <th class="text-center">Total DT Time</th>
+                                            <th class="text-center">% of All EQ DT</th>
+                                            <th>Bar</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @{ int eqIdx = 0;
+                                           var grandEqTotal = machineData.Sum(x => x.TotalDowntimeMinutes); }
+                                        @foreach (var m in machineData)
+                                        {
+                                            eqIdx++;
+                                            var eqPct = grandEqTotal > 0 ? m.TotalDowntimeMinutes / grandEqTotal * 100 : 0;
+                                            var eqColor = eqPct >= 30 ? "danger" : eqPct >= 15 ? "warning" : "success";
+                                            <tr>
+                                                <td class="text-center">@eqIdx</td>
+                                                <td><strong>@m.MachineCode</strong></td>
+                                                <td>@m.Operation</td>
+                                                <td class="text-center"><span class="badge bg-secondary">@m.DowntimeCount</span></td>
+                                                <td class="text-center">
+                                                    <strong>@m.TotalDowntimeFormatted</strong><br/>
+                                                    <small class="text-muted">@Math.Round(m.TotalDowntimeMinutes,1) min</small>
+                                                </td>
+                                                <td class="text-center"><span class="badge bg-@eqColor">@Math.Round(eqPct,1)%</span></td>
+                                                <td>
+                                                    <div class="progress" style="height:18px">
+                                                        <div class="progress-bar bg-@eqColor" style="width:@(Math.Min(eqPct,100))%">@Math.Round(eqPct,1)%</div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                    <tfoot class="table-secondary fw-bold">
+                                        <tr>
+                                            <td colspan="3" class="text-end">TOTAL:</td>
+                                            <td class="text-center">@machineData.Sum(x=>x.DowntimeCount)</td>
+                                            <td class="text-center">@((int)(grandEqTotal/60))h @((int)(grandEqTotal%60))m</td>
+                                            <td class="text-center">100%</td>
+                                            <td></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
                             </div>
                         </div>
-                    </div>
-                }
-            }
+
+                        <!-- Detail per EQ -->
+                        <h5 class="mb-2"><i class="fas fa-list"></i> Detail by EQ</h5>
+                        @foreach (var m in machineData)
+                        {
+                            <div class="operation-section">
+                                <div class="operation-header" style="background:linear-gradient(135deg,#11998e 0%,#38ef7d 100%)">
+                                    <div class="row">
+                                        <div class="col-md-7">
+                                            <h4 class="mb-1"><i class="fas fa-microchip"></i> EQ: @m.MachineCode
+                                                <small class="ms-2" style="font-size:0.85rem">| Line: @m.Operation</small>
+                                            </h4>
+                                        </div>
+                                        <div class="col-md-5 text-end">
+                                            <span class="badge bg-light text-dark"><i class="fas fa-stopwatch"></i> @m.TotalDowntimeFormatted</span>
+                                            <span class="badge bg-light text-dark ms-1"><i class="fas fa-list"></i> @m.DowntimeCount times</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <table class="table table-hover error-table">
+                                    <thead>
+                                        <tr>
+                                            <th width="4%">#</th>
+                                            <th width="13%">Reason Code</th>
+                                            <th width="30%">Reason Name</th>
+                                            <th width="9%" class="text-center">Count</th>
+                                            <th width="14%" class="text-center">Total Time</th>
+                                            <th width="10%" class="text-center">%</th>
+                                            <th>Bar</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @{ int ri = 0; }
+                                        @foreach (var rd in m.ReasonDetails)
+                                        {
+                                            ri++;
+                                            var rPct = m.TotalDowntimeMinutes > 0 ? rd.TotalDowntimeMinutes / m.TotalDowntimeMinutes * 100 : 0;
+                                            <tr>
+                                                <td class="text-center">@ri</td>
+                                                <td><span class="badge bg-info">@rd.ReasonCode</span></td>
+                                                <td>@rd.ReasonName</td>
+                                                <td class="text-center"><span class="badge bg-secondary">@rd.DowntimeCount</span></td>
+                                                <td class="text-center">
+                                                    <strong>@rd.TotalDowntimeFormatted</strong><br/>
+                                                    <small class="text-muted">@Math.Round(rd.TotalDowntimeMinutes,1) min</small>
+                                                </td>
+                                                <td class="text-center fw-bold">@Math.Round(rPct,1)%</td>
+                                                <td>
+                                                    <div class="progress progress-bar-custom">
+                                                        <div class="progress-bar bg-success" style="width:@rPct%">@Math.Round(rPct,1)%</div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                    <tfoot>
+                                        <tr class="table-success fw-bold">
+                                            <td colspan="3" class="text-end">TOTAL:</td>
+                                            <td class="text-center">@m.DowntimeCount</td>
+                                            <td class="text-center">@m.TotalDowntimeFormatted</td>
+                                            <td class="text-center">100%</td>
+                                            <td></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="alert alert-info"><i class="fas fa-info-circle"></i> No EQ downtime data in the selected period.</div>
+                    }
+                </div>
+            </div>
         }
         else
         {
             <div class="alert alert-info">
                 <i class="fas fa-info-circle"></i>
-                所选时间段内没有停机数据。 (No downtime data in the selected period.)
+                No downtime data in the selected period.
             </div>
         }
     </div>
 
-   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 
 @if (chartData != null && chartData.Operations.Any())
 {
     var issCodeData = ViewBag.IssCodeChartData as MachineStatusUpdate.Models.IssCodeChartData;
     <script>
-        // Function to format minutes to readable time
         function formatMinutes(minutes) {
-            const hours = Math.floor(minutes / 60);
-            const mins = Math.round(minutes % 60);
-            return `${hours}小时 ${mins}分钟`;
+            const h = Math.floor(minutes / 60), m = Math.round(minutes % 60);
+            return `${h}h ${m}m`;
         }
 
-        // Function to calculate percentage
-        function calculatePercentage(value, total) {
-            return total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-        }
-
-        // ***** LOGIC gộp Operation dùng cho Downtime theo công đoạn ******
-    
-
+        // ── 1. DT by Line bar chart ──
         var originalLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(chartData.Operations));
-        var originalData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(chartData.DowntimeMinutes));
-
+        var originalData   = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(chartData.DowntimeMinutes));
         var aggregatedData = {};
-
-        // Hàm quyết định nhãn mới dựa trên nhãn gốc
-        function getNewLabel(originalLabel) {
-            // 1. Injection_POP -> POP
-            if (originalLabel.includes('Injection_POP')) {
-                return 'POP';
-            }
-            // Quy tắc gộp Operation trước dấu '-'
-            var firstDashIndex = originalLabel.indexOf('-');
-            if (firstDashIndex !== -1) {
-                return originalLabel.substring(0, firstDashIndex);
-            }
-            // 5. Mặc định
-            return originalLabel;
+        function getNewLabel(l) {
+            if (l.includes('Injection_POP')) return 'POP';
+            var idx = l.indexOf('-');
+            return idx !== -1 ? l.substring(0, idx) : l;
         }
-
-        // Thực hiện tổng hợp dữ liệu
         for (var i = 0; i < originalLabels.length; i++) {
-            var newLabel = getNewLabel(originalLabels[i]);
-            var minutes = originalData[i];
-
-            if (aggregatedData[newLabel]) {
-                aggregatedData[newLabel] += minutes;
-            } else {
-                aggregatedData[newLabel] = minutes;
-            }
+            var nl = getNewLabel(originalLabels[i]);
+            aggregatedData[nl] = (aggregatedData[nl] || 0) + originalData[i];
         }
-
-        // Chuyển đối tượng aggregatedData thành mảng labels và data cuối cùng
         var finalLabels = Object.keys(aggregatedData);
-        var finalData = Object.values(aggregatedData);
-        // ******************************************************
+        var finalData   = Object.values(aggregatedData);
 
-        // 1. Downtime theo công đoạn chart
         const operationCtx = document.getElementById('operationChart').getContext('2d');
         new Chart(operationCtx, {
             type: 'bar',
-            data: {
-                labels: finalLabels,
-                datasets: [{
-                    label: '停机时间 (分钟) (Downtime minutes)',
-                    data: finalData,
-                    backgroundColor: 'rgba(102, 126, 234, 0.8)',
-                    borderColor: 'rgba(102, 126, 234, 1)',
-                    borderWidth: 2
-                }]
-            },
+            data: { labels: finalLabels, datasets: [{ label: 'DT minutes', data: finalData, backgroundColor: 'rgba(102,126,234,0.8)', borderColor: 'rgba(102,126,234,1)', borderWidth: 2 }] },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'top',
-                        labels: {
-                            font: {
-                                size: 13
-                            }
-                        }
-                    },
-                    tooltip: {
-                        bodyFont: {
-                            size: 14
-                        },
-                        callbacks: {
-                            label: function (context) {
-                                let minutes = context.parsed.y;
-                                let hours = Math.floor(minutes / 60);
-                                let mins = Math.round(minutes % 60);
-                                return `${hours}小时 ${mins}分钟 (${minutes.toFixed(1)} 分钟)`;
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            font: {
-                                size: 11
-                            }
-                        },
-                        title: {
-                            display: true,
-                            text: '时间 (分钟) (Time - minutes)',
-                            font: {
-                                size: 12,
-                                weight: 'bold'
-                            }
-                        }
-                    },
-                    x: {
-                        ticks: {
-                            font: {
-                                size: 11
-                            }
-                        },
-                        title: {
-                            display: true,
-                            text: '操作 (Operation)',
-                            font: {
-                                size: 12,
-                                weight: 'bold'
-                            }
-                        },
-                        categoryPercentage: 0.9,
-                        barPercentage: 0.95
-                    }
-                },
-                animation: {
-                    duration: 1500,
-                    easing: 'easeOutQuart'
-                }
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: true, position: 'top' }, tooltip: { callbacks: { label: ctx => { let m=ctx.parsed.y; return `${Math.floor(m/60)}h ${Math.round(m%60)}m (${m.toFixed(1)} min)`; } } } },
+                scales: { y: { beginAtZero: true, title: { display: true, text: 'Minutes' } }, x: { title: { display: true, text: 'Operation' } } },
+                animation: { duration: 1500, easing: 'easeOutQuart' }
             }
         });
 
-
-        // 2. Phân bố downtime chart
+        // ── 2. Pie/Doughnut ──
         const pieCtx = document.getElementById('pieChart').getContext('2d');
         new Chart(pieCtx, {
             type: 'doughnut',
             data: {
                 labels: originalLabels,
-                datasets: [{
-                    data: originalData,
-                    backgroundColor: [
-                        'rgba(255, 99, 132, 0.8)',
-                        'rgba(54, 162, 235, 0.8)',
-                        'rgba(255, 206, 86, 0.8)',
-                        'rgba(75, 192, 192, 0.8)',
-                        'rgba(153, 102, 255, 0.8)',
-                        'rgba(255, 159, 64, 0.8)',
-                        'rgba(199, 199, 199, 0.8)',
-                        'rgba(83, 102, 255, 0.8)',
-                        'rgba(255, 99, 255, 0.8)',
-                        'rgba(99, 255, 132, 0.8)'
-                    ],
-                    borderWidth: 2
-                }]
+                datasets: [{ data: originalData, backgroundColor: ['rgba(255,99,132,0.8)','rgba(54,162,235,0.8)','rgba(255,206,86,0.8)','rgba(75,192,192,0.8)','rgba(153,102,255,0.8)','rgba(255,159,64,0.8)','rgba(199,199,199,0.8)','rgba(83,102,255,0.8)','rgba(255,99,255,0.8)','rgba(99,255,132,0.8)'], borderWidth: 2 }]
             },
-            plugins: [ChartDataLabels], // THÊM DÒNG NÀY
+            plugins: [ChartDataLabels],
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '60%',
+                responsive: true, maintainAspectRatio: false, cutout: '60%',
                 plugins: {
-                    legend: {
-                        display: true,
-                        position: 'right',
-                        labels: {
-                            font: {
-                                size: 12
-                            },
-                            padding: 10
-                        }
-                    },
-                    tooltip: {
-                        bodyFont: {
-                            size: 14
-                        },
-                        callbacks: {
-                            label: function (context) {
-                                let label = context.label || '';
-                                let value = context.parsed;
-                                let hours = Math.floor(value / 60);
-                                let mins = Math.round(value % 60);
-                                let total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                let percentage = ((value / total) * 100).toFixed(1);
-                                return `${label}: ${hours}小时 ${mins}分钟 (${percentage}%)`;
-                            }
-                        }
-                    },
-                    datalabels: {
-                        formatter: (value, context) => {
-                            const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
-                            const percentage = (value / total * 100).toFixed(1);
-                            // Chỉ hiển thị % nếu >= 3% để tránh text bị chồng chéo
-                            return percentage >= 3 ? percentage + '%' : '';
-                        },
-                        color: '#fff',
-                        font: {
-                            weight: 'bold',
-                            size: 13  
-                        },
-                        textAlign: 'center',
-                        align: 'center',
-                        anchor: 'center'
-                    }
+                    legend: { display: true, position: 'right' },
+                    tooltip: { callbacks: { label: ctx => { let v=ctx.parsed,t=ctx.dataset.data.reduce((a,b)=>a+b,0); return `${ctx.label}: ${Math.floor(v/60)}h ${Math.round(v%60)}m (${(v/t*100).toFixed(1)}%)`; } } },
+                    datalabels: { formatter: (v,ctx) => { let t=ctx.chart.data.datasets[0].data.reduce((a,b)=>a+b,0),p=(v/t*100).toFixed(1); return p>=3?p+'%':''; }, color:'#fff', font:{weight:'bold',size:13}, align:'center', anchor:'center' }
                 }
             }
         });
 
-        // 3. Downtime theo mã lỗi
+        // ── 3. DT by Reason Code ──
         @if (issCodeData != null && issCodeData.IssCodeLabels.Any())
         {
-            var issCodeLabelsJson = System.Text.Json.JsonSerializer.Serialize(issCodeData.IssCodeLabels);
-            var issCodeMinutesJson = System.Text.Json.JsonSerializer.Serialize(issCodeData.DowntimeMinutes);
-            var issCodeCountsJson = System.Text.Json.JsonSerializer.Serialize(issCodeData.DowntimeCounts);
-
+            var issLabelsJson  = System.Text.Json.JsonSerializer.Serialize(issCodeData.IssCodeLabels);
+            var issMinsJson    = System.Text.Json.JsonSerializer.Serialize(issCodeData.DowntimeMinutes);
+            var issCountsJson  = System.Text.Json.JsonSerializer.Serialize(issCodeData.DowntimeCounts);
             <text>
-                const issCodeCtx = document.getElementById('issCodeChart').getContext('2d');
-                const issCodeCounts = @Html.Raw(issCodeCountsJson);
-
-                // Kiểm tra dữ liệu ISS Code
-                const issCodeLabels = @Html.Raw(issCodeLabelsJson);
-                const issCodeMinutes = @Html.Raw(issCodeMinutesJson);
-
-                if (issCodeLabels && issCodeLabels.length > 0 && issCodeMinutes && issCodeMinutes.length > 0) {
-                    new Chart(issCodeCtx, {
-                        type: 'bar',
-                        data: {
-                            labels: issCodeLabels,
-                            datasets: [{
-                                label: '停机时间 (分钟) (Downtime minutes)',
-                                data: issCodeMinutes,
-                                backgroundColor: 'rgba(255, 99, 132, 0.8)',
-                                borderColor: 'rgba(255, 99, 132, 1)',
-                                borderWidth: 2
-                            }]
-                        },
-                        options: {
-                            indexAxis: 'y', // Hiển thị ngang
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                legend: {
-                                    display: true,
-                                    position: 'top',
-                                    labels: {
-                                        font: {
-                                            size: 13
-                                        }
-                                    }
-                                },
-                                tooltip: {
-                                    bodyFont: {
-                                        size: 14
-                                    },
-                                    callbacks: {
-                                        label: function(ctx) {
-                                            let minutes = ctx.parsed.x;
-                                            let hours = Math.floor(minutes / 60);
-                                            let mins = Math.round(minutes % 60);
-                                            let count = issCodeCounts[ctx.dataIndex] || 0;
-                                            return [
-                                                `时间: ${hours}小时 ${mins}分钟 (${minutes.toFixed(1)} 分钟)`,
-                                                `次数: ${count}`
-                                            ];
-                                        }
-                                    }
-                                }
-                            },
-                            scales: {
-                                x: {
-                                    beginAtZero: true,
-                                    ticks: {
-                                        font: {
-                                            size: 11
-                                        }
-                                    },
-                                    title: {
-                                        display: true,
-                                        text: '时间 (分钟) (Time - minutes)',
-                                        font: {
-                                            size: 12,
-                                            weight: 'bold'
-                                        }
-                                    }
-                                },
-                                y: {
-                                    ticks: {
-                                        font: {
-                                            size: 11
-                                        }
-                                    },
-                                    title: {
-                                        display: true,
-                                        text: 'ISS 代码 - 错误名称 (ISS Code - Error Name)',
-                                        font: {
-                                            size: 12,
-                                            weight: 'bold'
-                                        }
-                                    },
-                                    categoryPercentage: 0.9,
-                                    barPercentage: 0.95
-                                }
-                            },
-                            animation: {
-                                duration: 1800,
-                                easing: 'easeOutQuart'
-                            }
-                        }
-                    });
-                } else {
-                    // Hiển thị thông báo nếu không có dữ liệu ISS Code
-                    issCodeCtx.fillStyle = '#6c757d';
-                    issCodeCtx.font = '14px Arial';
-                    issCodeCtx.textAlign = 'center';
-                    issCodeCtx.fillText('没有 ISS 代码数据 (No ISS Code data)', 150, 100);
-                }
+                const issCodeCtx    = document.getElementById('issCodeChart').getContext('2d');
+                const issCodeLabels = @Html.Raw(issLabelsJson);
+                const issCodeMins   = @Html.Raw(issMinsJson);
+                const issCodeCounts = @Html.Raw(issCountsJson);
+                new Chart(issCodeCtx, {
+                    type: 'bar',
+                    data: { labels: issCodeLabels, datasets: [{ label: 'DT minutes', data: issCodeMins, backgroundColor: 'rgba(255,99,132,0.8)', borderColor: 'rgba(255,99,132,1)', borderWidth: 2 }] },
+                    options: {
+                        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { display: true, position: 'top' }, tooltip: { callbacks: { label: ctx => { let m=ctx.parsed.x; return [`Time: ${Math.floor(m/60)}h ${Math.round(m%60)}m`, `Count: ${issCodeCounts[ctx.dataIndex]||0}`]; } } } },
+                        scales: { x: { beginAtZero: true, title: { display: true, text: 'Minutes' } }, y: { title: { display: true, text: 'Reason' } } },
+                        animation: { duration: 1800, easing: 'easeOutQuart' }
+                    }
+                });
             </text>
         }
         else
         {
             <text>
-                // Hiển thị thông báo nếu không có dữ liệu ISS Code
                 const issCodeCtx = document.getElementById('issCodeChart').getContext('2d');
-                issCodeCtx.fillStyle = '#6c757d';
-                issCodeCtx.font = '14px Arial';
-                issCodeCtx.textAlign = 'center';
-                issCodeCtx.fillText('没有 ISS 代码数据 (No ISS Code data)', 150, 100);
+                issCodeCtx.fillStyle='#6c757d'; issCodeCtx.font='14px Arial'; issCodeCtx.textAlign='center';
+                issCodeCtx.fillText('No Reason Code data', 150, 100);
+            </text>
+        }
+
+        // ── 4. DT by EQ chart ──
+        @if (machineChart != null && machineChart.MachineCodes.Any())
+        {
+            var mcLabels = System.Text.Json.JsonSerializer.Serialize(machineChart.MachineCodes);
+            var mcMins   = System.Text.Json.JsonSerializer.Serialize(machineChart.DowntimeMinutes);
+            var mcCounts = System.Text.Json.JsonSerializer.Serialize(machineChart.DowntimeCounts);
+            <text>
+                const machineCtx    = document.getElementById('machineChart').getContext('2d');
+                const mcLabels      = @Html.Raw(mcLabels);
+                const mcMins        = @Html.Raw(mcMins);
+                const mcCounts      = @Html.Raw(mcCounts);
+                new Chart(machineCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: mcLabels,
+                        datasets: [
+                            { label: 'DT Minutes', data: mcMins, backgroundColor: 'rgba(255,159,64,0.8)', borderColor: 'rgba(255,159,64,1)', borderWidth: 2, yAxisID: 'y' },
+                            { label: 'DT Count', data: mcCounts, type: 'line', borderColor: 'rgba(54,162,235,1)', backgroundColor: 'rgba(54,162,235,0.1)', borderWidth: 3, pointRadius: 6, fill: false, yAxisID: 'y1' }
+                        ]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: true, position: 'top' },
+                            tooltip: { callbacks: { label: ctx => { if(ctx.dataset.yAxisID==='y'){let m=ctx.parsed.y;return `DT: ${Math.floor(m/60)}h ${Math.round(m%60)}m (${m.toFixed(1)} min)`;}return `Count: ${ctx.parsed.y}`; } } }
+                        },
+                        scales: {
+                            x: { title: { display: true, text: 'EQ No.' }, ticks: { maxRotation: 45 } },
+                            y: { position: 'left', beginAtZero: true, title: { display: true, text: 'DT Minutes' } },
+                            y1: { position: 'right', beginAtZero: true, title: { display: true, text: 'DT Count' }, grid: { drawOnChartArea: false } }
+                        },
+                        animation: { duration: 1500, easing: 'easeOutQuart' }
+                    }
+                });
             </text>
         }
     </script>
 }
 
 </body>
-
 </html>

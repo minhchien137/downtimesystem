@@ -29,6 +29,8 @@ namespace MachineStatusUpdate.Models
         public DbSet<SVN_Downtime_Account> SVN_Downtime_Accounts { get; set; }
 
         public DbSet<SVN_Downtime_TechResponse> SVN_Downtime_TechResponses { get; set; }
+
+        public DbSet<SVN_Notification> SVN_Notifications { get; set; }
         
         // SM tables
         public DbSet<SM_Downtime_Reason> SM_Downtime_Reasons { get; set; }

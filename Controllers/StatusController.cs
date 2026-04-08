@@ -179,7 +179,7 @@ namespace MachineStatusUpdate.Controllers
             try
             {
                 var query = from d in _context.SVN_Downtime_Infos_Devel
-                            join r in _context.SM_Downtime_Reasons
+                            join r in _context.SVN_Downtime_Reasons
                             on d.Reason equals r.Reason_Code into reasons
                             from r in reasons.DefaultIfEmpty()
                             select new SVN_Downtime_Info_Devel
@@ -370,7 +370,7 @@ namespace MachineStatusUpdate.Controllers
             try
             {
                 var query = from d in _context.SVN_Downtime_Infos_Devel
-                            join r in _context.SM_Downtime_Reasons
+                            join r in _context.SVN_Downtime_Reasons
                             on d.Reason equals r.Reason_Code into reasons
                             from r in reasons.DefaultIfEmpty()
                             select new SVN_Downtime_Info_Devel
@@ -681,6 +681,30 @@ namespace MachineStatusUpdate.Controllers
                     _context.SVN_Downtime_TechResponses.Add(techResp);
                     await _context.SaveChangesAsync();
 
+                    await SaveNotificationAsync(
+                        recipientUsername : "ALL_TECH",
+                        recipientRole     : "Technical",
+                        notifType         : "STOP",
+                        title             : $"🛑 STOP — Máy: {model.MachineCode ?? "-"}",
+                        body              : $"Operation: {model.Operation ?? "-"} | Nhân viên: {model.EmployeeName ?? model.EmployeeCode ?? "-"} | Lý do: {model.Reason ?? "-"}",
+                        machineCode       : model.MachineCode,
+                        operation         : model.Operation,
+                        techResponseId    : techResp.Id
+                    );
+
+                    // ── Lưu notification cho Admin ──
+                    await SaveNotificationAsync(
+                        recipientUsername: "ALL_ADMIN",
+                        recipientRole: "Admin",
+                        notifType: "STOP",
+                        title: $"🛑 STOP — Máy: {model.MachineCode ?? "-"}",
+                        body: $"Operation: {model.Operation ?? "-"} | Nhân viên: {model.EmployeeName ?? model.EmployeeCode ?? "-"} | Lý do: {model.Reason ?? "-"}",
+                        machineCode: model.MachineCode,
+                        operation: model.Operation,
+                        techResponseId: techResp.Id
+                    );
+    
+
                     // Gửi thông báo đến tất cả Kỹ thuật trong TechnicianGroup
                     await _hubContext.Clients.Group("TechnicianGroup").SendAsync("ReceiveStopNotification", new
                     {
@@ -702,6 +726,26 @@ namespace MachineStatusUpdate.Controllers
                 }
                 else if (state == "RUN")
                 {
+                    await SaveNotificationAsync(
+                        recipientUsername : "ALL_TECH",
+                        recipientRole     : "Technical",
+                        notifType         : "RUN",
+                        title             : $"✅ RUN — Máy: {model.MachineCode ?? "-"} đã chạy lại",
+                        body              : $"Operation: {model.Operation ?? "-"}",
+                        machineCode       : model.MachineCode,
+                        operation         : model.Operation
+                    );
+
+                    await SaveNotificationAsync(
+                        recipientUsername: "ALL_ADMIN",
+                        recipientRole: "Admin",
+                        notifType: "RUN",
+                        title: $"✅ RUN — Máy: {model.MachineCode ?? "-"} đã chạy lại",
+                        body: $"Operation: {model.Operation ?? "-"}",
+                        machineCode: model.MachineCode,
+                        operation: model.Operation
+                    );
+    
                     // Thông báo máy đã chạy lại để Kỹ thuật biết
                     await _hubContext.Clients.Group("TechnicianGroup").SendAsync("ReceiveRunNotification", new
                     {
@@ -723,7 +767,7 @@ namespace MachineStatusUpdate.Controllers
         /* Hàm fill danh sách dropdown mã lỗi */
         private async Task RefillReasonsAsync()
         {
-            ViewBag.ReasonOptions = await _context.SM_Downtime_Reasons
+            ViewBag.ReasonOptions = await _context.SVN_Downtime_Reasons
                 .AsNoTracking()
                 .OrderBy(r => r.Reason_Name)
                 .Select(r => new { r.Reason_Code, r.Reason_Name })
@@ -805,30 +849,35 @@ namespace MachineStatusUpdate.Controllers
         {
             try
             {
-                var allData = await GetDowntimeReportData(fromDate, toDate);
+                var allData    = await GetDowntimeReportData(fromDate, toDate);
+                var allDataPct = await GetDowntimeReportDataWithPct(fromDate, toDate);
+                var machineData = await GetDowntimeReportByMachine(fromDate, toDate);
 
                 var totalRecords = allData.Count;
                 var totalPages   = (int)Math.Ceiling(totalRecords / (double)pageSize);
 
-                page = Math.Max(1, Math.Min(page, totalPages));
+                page = Math.Max(1, Math.Min(page, Math.Max(1, totalPages)));
 
                 var pagedData = allData
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
                     .ToList();
 
-                ViewBag.FromDate         = fromDate;
-                ViewBag.ToDate           = toDate;
-                ViewBag.ChartData        = PrepareChartData(allData);
-                ViewBag.IssCodeChartData = PrepareIssCodeChartData(allData);
-                ViewBag.DailyChartData   = PrepareDailyDowntimeChartData(allData, fromDate, toDate);
-                ViewBag.AllData          = allData;
-                ViewBag.CurrentPage      = page;
-                ViewBag.PageSize         = pageSize;
-                ViewBag.TotalRecords     = totalRecords;
-                ViewBag.TotalPages       = totalPages;
-                ViewBag.HasPreviousPage  = page > 1;
-                ViewBag.HasNextPage      = page < totalPages;
+                ViewBag.FromDate            = fromDate;
+                ViewBag.ToDate              = toDate;
+                ViewBag.ChartData           = PrepareChartData(allData);
+                ViewBag.IssCodeChartData    = PrepareIssCodeChartData(allData);
+                ViewBag.DailyChartData      = PrepareDailyDowntimeChartData(allData, fromDate, toDate);
+                ViewBag.AllData             = allData;
+                ViewBag.AllDataWithPct      = allDataPct;
+                ViewBag.MachineData         = machineData;
+                ViewBag.MachineChartData    = PrepareMachineChartData(machineData);
+                ViewBag.CurrentPage         = page;
+                ViewBag.PageSize            = pageSize;
+                ViewBag.TotalRecords        = totalRecords;
+                ViewBag.TotalPages          = totalPages;
+                ViewBag.HasPreviousPage     = page > 1;
+                ViewBag.HasNextPage         = page < totalPages;
 
                 return View(pagedData);
             }
@@ -848,29 +897,25 @@ namespace MachineStatusUpdate.Controllers
         }
 
         /* Hàm chuẩn bị dữ liệu downtime ngày => Chart */
-        private DailyDowntimeChartData PrepareDailyDowntimeChartData(List<DowntimeReportByOperation> reportData, string fromDate, string toDate)
+        private DailyDowntimeChartData PrepareDailyDowntimeChartData(
+    List<DowntimeReportByOperation> reportData, string fromDate, string toDate)
         {
             var dailyData = new DailyDowntimeChartData
             {
-                Dates           = new List<string>(),
+                Dates = new List<string>(),
                 DowntimeMinutes = new List<double>(),
-                DowntimeCounts  = new List<int>()
+                DowntimeCounts = new List<int>()
             };
 
             try
             {
                 var query = from d in _context.SVN_Downtime_Infos_Devel
-                            join r in _context.SM_Downtime_Reasons
-                            on d.Reason equals r.Reason_Code into reasons
-                            from r in reasons.DefaultIfEmpty()
                             select new
                             {
                                 d.Operation,
+                                d.MachineCode,      // ← THÊM
                                 d.State,
-                                d.Reason,
-                                ErrorName    = r != null ? r.Reason_Name : "未确定",
-                                d.Datetime,
-                                d.EmployeeCode
+                                d.Datetime
                             };
 
                 query = query.Where(x => x.Operation != null && x.Operation.Contains("(SM)"));
@@ -881,24 +926,25 @@ namespace MachineStatusUpdate.Controllers
                 if (!string.IsNullOrEmpty(toDate) && DateTime.TryParse(toDate, out var to))
                     query = query.Where(x => x.Datetime.HasValue && x.Datetime.Value.Date <= to.Date);
 
-                var allRecords     = query.ToList();
+                var allRecords = query.ToList();
                 var downtimeByDate = new Dictionary<DateTime, (double Minutes, int Count)>();
 
-                var groupedByEmpAndOp = allRecords
-                    .Where(x => !string.IsNullOrEmpty(x.Operation) && !string.IsNullOrEmpty(x.EmployeeCode))
-                    .GroupBy(x => new { x.EmployeeCode, x.Operation });
+                // ── Group theo MachineCode + Operation ──
+                var grouped = allRecords
+                    .Where(x => !string.IsNullOrEmpty(x.Operation) && !string.IsNullOrEmpty(x.MachineCode))
+                    .GroupBy(x => new { x.MachineCode, x.Operation });   // ← ĐỔI
 
-                foreach (var group in groupedByEmpAndOp)
+                foreach (var group in grouped)
                 {
                     var records = group.OrderBy(x => x.Datetime).ToList();
 
                     for (int i = 0; i < records.Count - 1; i++)
                     {
                         var current = records[i];
-                        var next    = records[i + 1];
+                        var next = records[i + 1];
 
                         if (current.State?.Trim().ToUpper() == "STOP" &&
-                            next.State?.Trim().ToUpper()    == "RUN"  &&
+                            next.State?.Trim().ToUpper() == "RUN" &&
                             current.Datetime.HasValue &&
                             next.Datetime.HasValue)
                         {
@@ -906,7 +952,8 @@ namespace MachineStatusUpdate.Controllers
                             var dateKey = current.Datetime.Value.Date;
 
                             if (downtimeByDate.ContainsKey(dateKey))
-                                downtimeByDate[dateKey] = (downtimeByDate[dateKey].Minutes + downtimeMinutes, downtimeByDate[dateKey].Count + 1);
+                                downtimeByDate[dateKey] = (downtimeByDate[dateKey].Minutes + downtimeMinutes,
+                                                           downtimeByDate[dateKey].Count + 1);
                             else
                                 downtimeByDate[dateKey] = (downtimeMinutes, 1);
                         }
@@ -929,21 +976,22 @@ namespace MachineStatusUpdate.Controllers
         }
 
 
+
         /* Hàm lấy dữ liệu downtime STOP -> RUN */
         private async Task<List<DowntimeReportByOperation>> GetDowntimeReportData(string fromDate, string toDate)
         {
             var query = from d in _context.SVN_Downtime_Infos_Devel
-                        join r in _context.SM_Downtime_Reasons
+                        join r in _context.SVN_Downtime_Reasons
                         on d.Reason equals r.Reason_Code into reasons
                         from r in reasons.DefaultIfEmpty()
                         select new
                         {
                             d.Operation,
+                            d.MachineCode,          // ← THÊM
                             d.State,
                             d.Reason,
-                            ErrorName    = r != null ? r.Reason_Name : "未确定",
-                            d.Datetime,
-                            d.EmployeeCode
+                            ErrorName = r != null ? r.Reason_Name : "未确定",
+                            d.Datetime
                         };
 
             query = query.Where(x => x.Operation != null && x.Operation.Contains("(SM)"));
@@ -955,40 +1003,41 @@ namespace MachineStatusUpdate.Controllers
                 query = query.Where(x => x.Datetime.HasValue && x.Datetime.Value.Date <= to.Date);
 
             var allRecords = await query
-                .OrderBy(x => x.EmployeeCode)
+                .OrderBy(x => x.MachineCode)    // ← ĐỔI (bỏ EmployeeCode)
                 .ThenBy(x => x.Operation)
                 .ThenBy(x => x.Datetime)
                 .ToListAsync();
 
             var downtimeRecords = new List<DowntimeRecord>();
 
-            var groupedByEmpAndOp = allRecords
-                .Where(x => !string.IsNullOrEmpty(x.Operation) && !string.IsNullOrEmpty(x.EmployeeCode))
-                .GroupBy(x => new { x.EmployeeCode, x.Operation });
+            // ── Group theo MachineCode + Operation thay vì EmployeeCode + Operation ──
+            var grouped = allRecords
+                .Where(x => !string.IsNullOrEmpty(x.Operation) && !string.IsNullOrEmpty(x.MachineCode))
+                .GroupBy(x => new { x.MachineCode, x.Operation });   // ← ĐỔI
 
-            foreach (var group in groupedByEmpAndOp)
+            foreach (var group in grouped)
             {
                 var records = group.OrderBy(x => x.Datetime).ToList();
 
                 for (int i = 0; i < records.Count - 1; i++)
                 {
                     var current = records[i];
-                    var next    = records[i + 1];
+                    var next = records[i + 1];
 
                     if (current.State?.Trim().ToUpper() == "STOP" &&
-                        next.State?.Trim().ToUpper()    == "RUN"  &&
+                        next.State?.Trim().ToUpper() == "RUN" &&
                         current.Datetime.HasValue &&
                         next.Datetime.HasValue)
                     {
                         var downtimeMinutes = (next.Datetime.Value - current.Datetime.Value).TotalMinutes;
-                        var reason    = string.IsNullOrWhiteSpace(current.Reason)    ? "N/A"    : current.Reason.Trim();
+                        var reason = string.IsNullOrWhiteSpace(current.Reason) ? "N/A" : current.Reason.Trim();
                         var errorName = string.IsNullOrWhiteSpace(current.ErrorName) ? "未确定" : current.ErrorName.Trim();
 
                         downtimeRecords.Add(new DowntimeRecord
                         {
-                            Operation       = current.Operation.Trim(),
-                            ISS_Code        = reason,
-                            ErrorName       = errorName,
+                            Operation = current.Operation.Trim(),
+                            ISS_Code = reason,
+                            ErrorName = errorName,
                             DowntimeMinutes = downtimeMinutes
                         });
                     }
@@ -999,19 +1048,19 @@ namespace MachineStatusUpdate.Controllers
                 .GroupBy(x => x.Operation)
                 .Select(opGroup => new DowntimeReportByOperation
                 {
-                    Operation              = opGroup.Key,
-                    TotalDowntimeCount     = opGroup.Count(),
-                    TotalDowntimeMinutes   = opGroup.Sum(x => x.DowntimeMinutes),
+                    Operation = opGroup.Key,
+                    TotalDowntimeCount = opGroup.Count(),
+                    TotalDowntimeMinutes = opGroup.Sum(x => x.DowntimeMinutes),
                     TotalDowntimeFormatted = FormatMinutesToTime(opGroup.Sum(x => x.DowntimeMinutes)),
                     ErrorDetails = opGroup
                         .GroupBy(x => new { x.ISS_Code, x.ErrorName })
                         .Select(errGroup => new DowntimeReportByOperationError
                         {
-                            Operation              = opGroup.Key,
-                            ISS_Code               = errGroup.Key.ISS_Code,
-                            ErrorName              = errGroup.Key.ErrorName,
-                            DowntimeCount          = errGroup.Count(),
-                            TotalDowntimeMinutes   = errGroup.Sum(x => x.DowntimeMinutes),
+                            Operation = opGroup.Key,
+                            ISS_Code = errGroup.Key.ISS_Code,
+                            ErrorName = errGroup.Key.ErrorName,
+                            DowntimeCount = errGroup.Count(),
+                            TotalDowntimeMinutes = errGroup.Sum(x => x.DowntimeMinutes),
                             TotalDowntimeFormatted = FormatMinutesToTime(errGroup.Sum(x => x.DowntimeMinutes))
                         })
                         .OrderByDescending(x => x.TotalDowntimeMinutes)
@@ -1022,6 +1071,7 @@ namespace MachineStatusUpdate.Controllers
 
             return groupedReport;
         }
+
 
         /* Hàm chuyển đổi phút sang chuỗi thời gian */
         private string FormatMinutesToTime(double minutes)
@@ -1073,11 +1123,235 @@ namespace MachineStatusUpdate.Controllers
 
             return new IssCodeChartData
             {
-                IssCodeLabels   = allErrors.Select(e => $"{e.IssCode} - {e.ErrorName}").ToList(),
+                IssCodeLabels = allErrors.Select(e => e.IssCode == "N/A" ? "Không xác định": $"{e.ErrorName} ({e.IssCode})").ToList(),
                 DowntimeMinutes = allErrors.Select(e => Math.Round(e.TotalMinutes, 2)).ToList(),
-                DowntimeCounts  = allErrors.Select(e => e.Count).ToList()
+                DowntimeCounts = allErrors.Select(e => e.Count).ToList()
             };
         }
+
+        /* Hàm lấy dữ liệu downtime STOP -> RUN kèm % running time */
+        private async Task<List<DowntimeReportByOperationWithPct>> GetDowntimeReportDataWithPct(string fromDate, string toDate)
+        {
+            var query = from d in _context.SVN_Downtime_Infos_Devel
+                        join r in _context.SVN_Downtime_Reasons
+                        on d.Reason equals r.Reason_Code into reasons
+                        from r in reasons.DefaultIfEmpty()
+                        select new
+                        {
+                            d.Operation,
+                            d.MachineCode,          // ← THÊM
+                            d.State,
+                            d.Reason,
+                            ErrorName = r != null ? r.Reason_Name : "未确定",
+                            d.Datetime
+                        };
+
+            query = query.Where(x => x.Operation != null && x.Operation.Contains("(SM)"));
+
+            if (!string.IsNullOrEmpty(fromDate) && DateTime.TryParse(fromDate, out var from))
+                query = query.Where(x => x.Datetime.HasValue && x.Datetime.Value.Date >= from.Date);
+
+            if (!string.IsNullOrEmpty(toDate) && DateTime.TryParse(toDate, out var to))
+                query = query.Where(x => x.Datetime.HasValue && x.Datetime.Value.Date <= to.Date);
+
+            var allRecords = await query
+                .OrderBy(x => x.MachineCode)    // ← ĐỔI
+                .ThenBy(x => x.Operation)
+                .ThenBy(x => x.Datetime)
+                .ToListAsync();
+
+            var downtimeByOp = new Dictionary<string, List<(double Minutes, string Reason, string ErrorName)>>();
+
+            // ── Group theo MachineCode + Operation ──
+            var grouped = allRecords
+                .Where(x => !string.IsNullOrEmpty(x.Operation) && !string.IsNullOrEmpty(x.MachineCode))
+                .GroupBy(x => new { x.MachineCode, x.Operation });   // ← ĐỔI
+
+            foreach (var group in grouped)
+            {
+                var records = group.OrderBy(x => x.Datetime).ToList();
+                for (int i = 0; i < records.Count - 1; i++)
+                {
+                    var cur = records[i];
+                    var next = records[i + 1];
+                    if (cur.State?.Trim().ToUpper() == "STOP" &&
+                        next.State?.Trim().ToUpper() == "RUN" &&
+                        cur.Datetime.HasValue && next.Datetime.HasValue)
+                    {
+                        var mins = (next.Datetime.Value - cur.Datetime.Value).TotalMinutes;
+                        var op = cur.Operation!.Trim();
+                        if (!downtimeByOp.ContainsKey(op))
+                            downtimeByOp[op] = new List<(double, string, string)>();
+                        downtimeByOp[op].Add((mins,
+                            string.IsNullOrWhiteSpace(cur.Reason) ? "N/A" : cur.Reason.Trim(),
+                            string.IsNullOrWhiteSpace(cur.ErrorName) ? "未确定" : cur.ErrorName.Trim()));
+                    }
+                }
+            }
+
+            // Running time: từ bản ghi đầu → cuối của mỗi Operation (không đổi logic này)
+            var runningByOp = allRecords
+                .Where(x => !string.IsNullOrEmpty(x.Operation) && x.Datetime.HasValue)
+                .GroupBy(x => x.Operation!.Trim())
+                .ToDictionary(
+                    g => g.Key,
+                    g => (g.Min(x => x.Datetime!.Value), g.Max(x => x.Datetime!.Value))
+                );
+
+            var result = downtimeByOp
+                .Select(kvp =>
+                {
+                    var op = kvp.Key;
+                    var items = kvp.Value;
+                    var totalDt = items.Sum(x => x.Minutes);
+
+                    double runningMins = 0;
+                    if (runningByOp.TryGetValue(op, out var range))
+                        runningMins = (range.Item2 - range.Item1).TotalMinutes;
+
+                    var pct = runningMins > 0 ? Math.Round(totalDt / runningMins * 100, 2) : 0;
+
+                    return new DowntimeReportByOperationWithPct
+                    {
+                        Operation = op,
+                        TotalDowntimeCount = items.Count,
+                        TotalDowntimeMinutes = totalDt,
+                        TotalDowntimeFormatted = FormatMinutesToTime(totalDt),
+                        RunningTimeMinutes = runningMins,
+                        RunningTimeFormatted = FormatMinutesToTime(runningMins),
+                        DowntimePct = pct,
+                        ErrorDetails = items
+                            .GroupBy(x => new { ISS_Code = x.Reason, ErrorName = x.ErrorName })
+                            .Select(g => new DowntimeReportByOperationError
+                            {
+                                Operation = op,
+                                ISS_Code = g.Key.ISS_Code,
+                                ErrorName = g.Key.ErrorName,
+                                DowntimeCount = g.Count(),
+                                TotalDowntimeMinutes = g.Sum(x => x.Minutes),
+                                TotalDowntimeFormatted = FormatMinutesToTime(g.Sum(x => x.Minutes))
+                            })
+                            .OrderByDescending(x => x.TotalDowntimeMinutes)
+                            .ToList()
+                    };
+                })
+                .OrderByDescending(x => x.TotalDowntimeMinutes)
+                .ToList();
+
+            return result;
+        }
+
+
+
+        /* Hàm lấy dữ liệu downtime theo EQ (Machine Code) */
+        private async Task<List<DowntimeReportByMachine>> GetDowntimeReportByMachine(string fromDate, string toDate)
+        {
+            var query = from d in _context.SVN_Downtime_Infos_Devel
+                        join r in _context.SVN_Downtime_Reasons
+                        on d.Reason equals r.Reason_Code into reasons
+                        from r in reasons.DefaultIfEmpty()
+                        select new
+                        {
+                            d.Operation,
+                            d.MachineCode,
+                            d.State,
+                            d.Reason,
+                            ReasonName = r != null ? r.Reason_Name : "未确定",
+                            d.Datetime
+                        };
+
+            query = query.Where(x => x.Operation != null && x.Operation.Contains("(SM)"));
+
+            if (!string.IsNullOrEmpty(fromDate) && DateTime.TryParse(fromDate, out var from))
+                query = query.Where(x => x.Datetime.HasValue && x.Datetime.Value.Date >= from.Date);
+
+            if (!string.IsNullOrEmpty(toDate) && DateTime.TryParse(toDate, out var to))
+                query = query.Where(x => x.Datetime.HasValue && x.Datetime.Value.Date <= to.Date);
+
+            var allRecords = await query
+                .OrderBy(x => x.MachineCode)
+                .ThenBy(x => x.Operation)
+                .ThenBy(x => x.Datetime)
+                .ToListAsync();
+
+            var machineDowntimes = new Dictionary<string, List<(string Operation, double Minutes, string ReasonCode, string ReasonName)>>();
+
+            // ── Group theo MachineCode + Operation (bỏ EmployeeCode) ──
+            var grouped = allRecords
+                .Where(x => !string.IsNullOrEmpty(x.MachineCode) && !string.IsNullOrEmpty(x.Operation))
+                .GroupBy(x => new { x.MachineCode, x.Operation });   // ← ĐỔI
+
+            foreach (var group in grouped)
+            {
+                var records = group.OrderBy(x => x.Datetime).ToList();
+                for (int i = 0; i < records.Count - 1; i++)
+                {
+                    var cur = records[i];
+                    var next = records[i + 1];
+                    if (cur.State?.Trim().ToUpper() == "STOP" &&
+                        next.State?.Trim().ToUpper() == "RUN" &&
+                        cur.Datetime.HasValue && next.Datetime.HasValue)
+                    {
+                        var mins = (next.Datetime.Value - cur.Datetime.Value).TotalMinutes;
+                        var machineKey = cur.MachineCode!.Trim();
+                        if (!machineDowntimes.ContainsKey(machineKey))
+                            machineDowntimes[machineKey] = new();
+                        machineDowntimes[machineKey].Add((
+                            cur.Operation?.Trim() ?? "",
+                            mins,
+                            string.IsNullOrWhiteSpace(cur.Reason) ? "N/A" : cur.Reason.Trim(),
+                            string.IsNullOrWhiteSpace(cur.ReasonName) ? "未确定" : cur.ReasonName.Trim()
+                        ));
+                    }
+                }
+            }
+
+            return machineDowntimes
+                .Select(kvp =>
+                {
+                    var machine = kvp.Key;
+                    var items = kvp.Value;
+                    var totalDt = items.Sum(x => x.Minutes);
+                    var mainOp = items.GroupBy(x => x.Operation).OrderByDescending(g => g.Count()).First().Key;
+                    return new DowntimeReportByMachine
+                    {
+                        MachineCode = machine,
+                        Operation = mainOp,
+                        DowntimeCount = items.Count,
+                        TotalDowntimeMinutes = totalDt,
+                        TotalDowntimeFormatted = FormatMinutesToTime(totalDt),
+                        ReasonDetails = items
+                            .GroupBy(x => new { x.ReasonCode, x.ReasonName })
+                            .Select(g => new DowntimeReportByMachineReason
+                            {
+                                MachineCode = machine,
+                                ReasonCode = g.Key.ReasonCode,
+                                ReasonName = g.Key.ReasonName,
+                                DowntimeCount = g.Count(),
+                                TotalDowntimeMinutes = g.Sum(x => x.Minutes),
+                                TotalDowntimeFormatted = FormatMinutesToTime(g.Sum(x => x.Minutes))
+                            })
+                            .OrderByDescending(x => x.TotalDowntimeMinutes)
+                            .ToList()
+                    };
+                })
+                .OrderByDescending(x => x.TotalDowntimeMinutes)
+                .ToList();
+        }
+
+
+
+        /* Hàm chuẩn bị chart data theo Machine */
+        private MachineDowntimeChartData PrepareMachineChartData(List<DowntimeReportByMachine> machineData)
+        {
+            return new MachineDowntimeChartData
+            {
+                MachineCodes    = machineData.Select(x => x.MachineCode).ToList(),
+                DowntimeMinutes = machineData.Select(x => Math.Round(x.TotalDowntimeMinutes, 2)).ToList(),
+                DowntimeCounts  = machineData.Select(x => x.DowntimeCount).ToList()
+            };
+        }
+
 
         /* Hàm xuất Excel báo cáo downtime */
         [HttpGet]
@@ -1085,18 +1359,20 @@ namespace MachineStatusUpdate.Controllers
         {
             try
             {
-                var reportData = await GetDowntimeReportData(fromDate, toDate);
+                var reportData   = await GetDowntimeReportDataWithPct(fromDate, toDate);
+                var machineData  = await GetDowntimeReportByMachine(fromDate, toDate);
 
                 using (var workbook = new XLWorkbook())
                 {
-                    var ws = workbook.Worksheets.Add("Downtime Report");
+                    // ══════════ Sheet 1: By Line ══════════
+                    var ws = workbook.Worksheets.Add("By Line");
                     var currentRow = 1;
 
                     ws.Style.Font.FontName = "Times New Roman";
                     ws.Style.Font.FontSize = 11;
 
-                    ws.Cell(currentRow, 1).Value = "按操作和错误分类的停机时间报告";
-                    ws.Range(currentRow, 1, currentRow, 6).Merge();
+                    ws.Cell(currentRow, 1).Value = "按工序停机时间报告 (Downtime Report by Line)";
+                    ws.Range(currentRow, 1, currentRow, 8).Merge();
                     ws.Cell(currentRow, 1).Style.Font.Bold = true;
                     ws.Cell(currentRow, 1).Style.Font.FontSize = 14;
                     ws.Cell(currentRow, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
@@ -1104,28 +1380,35 @@ namespace MachineStatusUpdate.Controllers
 
                     if (!string.IsNullOrEmpty(fromDate) || !string.IsNullOrEmpty(toDate))
                     {
-                        ws.Cell(currentRow, 1).Value = $"从日期: {fromDate} - 到日期: {toDate}";
-                        ws.Range(currentRow, 1, currentRow, 6).Merge();
+                        ws.Cell(currentRow, 1).Value = $"From: {fromDate}   To: {toDate}";
+                        ws.Range(currentRow, 1, currentRow, 8).Merge();
                         currentRow += 2;
                     }
 
                     foreach (var operation in reportData)
                     {
-                        ws.Cell(currentRow, 1).Value = $"Operation: {operation.Operation}";
+                        ws.Cell(currentRow, 1).Value = $"Line: {operation.Operation}";
                         ws.Cell(currentRow, 1).Style.Font.Bold = true;
                         ws.Cell(currentRow, 1).Style.Fill.BackgroundColor = XLColor.LightBlue;
-                        ws.Range(currentRow, 1, currentRow, 6).Merge();
+                        ws.Range(currentRow, 1, currentRow, 8).Merge();
                         currentRow++;
 
-                        ws.Cell(currentRow, 1).Value = "停机总次数:";
+                        ws.Cell(currentRow, 1).Value = "Downtime Count:";
                         ws.Cell(currentRow, 2).Value = operation.TotalDowntimeCount;
-                        ws.Cell(currentRow, 3).Value = "总时间:";
+                        ws.Cell(currentRow, 3).Value = "Total DT:";
                         ws.Cell(currentRow, 4).Value = operation.TotalDowntimeFormatted;
+                        ws.Cell(currentRow, 5).Value = "Running Time:";
+                        ws.Cell(currentRow, 6).Value = operation.RunningTimeFormatted;
+                        ws.Cell(currentRow, 7).Value = "DT %:";
+                        ws.Cell(currentRow, 8).Value = $"{operation.DowntimePct}%";
                         ws.Cell(currentRow, 1).Style.Font.Bold = true;
                         ws.Cell(currentRow, 3).Style.Font.Bold = true;
+                        ws.Cell(currentRow, 5).Style.Font.Bold = true;
+                        ws.Cell(currentRow, 7).Style.Font.Bold = true;
+                        ws.Cell(currentRow, 8).Style.Font.FontColor = operation.DowntimePct >= 10 ? XLColor.Red : XLColor.DarkGreen;
                         currentRow++;
 
-                        string[] headers = { "#", "Reason Code", "Error Name", "Count", "Total (min)", "%" };
+                        string[] headers = { "#", "Reason Code", "Reason Name", "Count", "Total (min)", "Total Time", "%" };
                         for (int i = 0; i < headers.Length; i++)
                         {
                             var cell = ws.Cell(currentRow, i + 1);
@@ -1137,29 +1420,115 @@ namespace MachineStatusUpdate.Controllers
                         }
                         currentRow++;
 
+                        int seq = 1;
                         foreach (var error in operation.ErrorDetails)
                         {
-                            ws.Cell(currentRow, 1).Value = currentRow - 3;
+                            ws.Cell(currentRow, 1).Value = seq++;
                             ws.Cell(currentRow, 2).Value = error.ISS_Code;
                             ws.Cell(currentRow, 3).Value = error.ErrorName;
                             ws.Cell(currentRow, 4).Value = error.DowntimeCount;
                             ws.Cell(currentRow, 5).Value = Math.Round(error.TotalDowntimeMinutes, 2);
-
-                            double percentage = operation.TotalDowntimeMinutes > 0
-                                ? (error.TotalDowntimeMinutes / operation.TotalDowntimeMinutes * 100) : 0;
-                            ws.Cell(currentRow, 6).Value = $"{Math.Round(percentage, 1)}%";
+                            ws.Cell(currentRow, 6).Value = error.TotalDowntimeFormatted;
+                            double pct = operation.TotalDowntimeMinutes > 0
+                                ? error.TotalDowntimeMinutes / operation.TotalDowntimeMinutes * 100 : 0;
+                            ws.Cell(currentRow, 7).Value = $"{Math.Round(pct, 1)}%";
                             currentRow++;
                         }
-
                         currentRow += 2;
                     }
 
-                    ws.Column(1).Width = 8;
-                    ws.Column(2).Width = 15;
-                    ws.Column(3).Width = 30;
-                    ws.Column(4).Width = 12;
-                    ws.Column(5).Width = 20;
-                    ws.Column(6).Width = 10;
+                    ws.Column(1).Width = 6;  ws.Column(2).Width = 14; ws.Column(3).Width = 30;
+                    ws.Column(4).Width = 10; ws.Column(5).Width = 14; ws.Column(6).Width = 14;
+                    ws.Column(7).Width = 10; ws.Column(8).Width = 10;
+
+                    // ══════════ Sheet 2: By EQ (Machine) ══════════
+                    var ws2 = workbook.Worksheets.Add("By EQ");
+                    ws2.Style.Font.FontName = "Times New Roman";
+                    ws2.Style.Font.FontSize = 11;
+                    int r2 = 1;
+
+                    ws2.Cell(r2, 1).Value = "按设备停机时间报告 (Downtime Report by EQ No.)";
+                    ws2.Range(r2, 1, r2, 7).Merge();
+                    ws2.Cell(r2, 1).Style.Font.Bold = true;
+                    ws2.Cell(r2, 1).Style.Font.FontSize = 14;
+                    ws2.Cell(r2, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                    r2 += 2;
+
+                    if (!string.IsNullOrEmpty(fromDate) || !string.IsNullOrEmpty(toDate))
+                    {
+                        ws2.Cell(r2, 1).Value = $"From: {fromDate}   To: {toDate}";
+                        ws2.Range(r2, 1, r2, 7).Merge();
+                        r2 += 2;
+                    }
+
+                    // Summary table header
+                    string[] sumHdr = { "#", "EQ No.", "Operation / Line", "DT Count", "Total (min)", "Total Time", "% of Total DT" };
+                    for (int i = 0; i < sumHdr.Length; i++)
+                    {
+                        var c = ws2.Cell(r2, i + 1);
+                        c.Value = sumHdr[i];
+                        c.Style.Font.Bold = true;
+                        c.Style.Fill.BackgroundColor = XLColor.FromTheme(XLThemeColor.Accent1, 0.5);
+                        c.Style.Font.FontColor = XLColor.White;
+                        c.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                    }
+                    r2++;
+
+                    var grandTotal = machineData.Sum(x => x.TotalDowntimeMinutes);
+                    int mSeq = 1;
+                    foreach (var m in machineData)
+                    {
+                        ws2.Cell(r2, 1).Value = mSeq++;
+                        ws2.Cell(r2, 2).Value = m.MachineCode;
+                        ws2.Cell(r2, 3).Value = m.Operation;
+                        ws2.Cell(r2, 4).Value = m.DowntimeCount;
+                        ws2.Cell(r2, 5).Value = Math.Round(m.TotalDowntimeMinutes, 2);
+                        ws2.Cell(r2, 6).Value = m.TotalDowntimeFormatted;
+                        double pctGrand = grandTotal > 0 ? m.TotalDowntimeMinutes / grandTotal * 100 : 0;
+                        ws2.Cell(r2, 7).Value = $"{Math.Round(pctGrand, 1)}%";
+                        r2++;
+                    }
+
+                    r2 += 2;
+
+                    // Detail by machine
+                    foreach (var m in machineData)
+                    {
+                        ws2.Cell(r2, 1).Value = $"EQ: {m.MachineCode}  |  Line: {m.Operation}  |  Total DT: {m.TotalDowntimeFormatted}  |  Count: {m.DowntimeCount}";
+                        ws2.Cell(r2, 1).Style.Font.Bold = true;
+                        ws2.Cell(r2, 1).Style.Fill.BackgroundColor = XLColor.LightSteelBlue;
+                        ws2.Range(r2, 1, r2, 7).Merge();
+                        r2++;
+
+                        string[] dHdr = { "#", "Reason Code", "Reason Name", "Count", "Total (min)", "Total Time", "%" };
+                        for (int i = 0; i < dHdr.Length; i++)
+                        {
+                            var c = ws2.Cell(r2, i + 1);
+                            c.Value = dHdr[i];
+                            c.Style.Font.Bold = true;
+                            c.Style.Fill.BackgroundColor = XLColor.LightGray;
+                        }
+                        r2++;
+
+                        int dSeq = 1;
+                        foreach (var rd in m.ReasonDetails)
+                        {
+                            ws2.Cell(r2, 1).Value = dSeq++;
+                            ws2.Cell(r2, 2).Value = rd.ReasonCode;
+                            ws2.Cell(r2, 3).Value = rd.ReasonName;
+                            ws2.Cell(r2, 4).Value = rd.DowntimeCount;
+                            ws2.Cell(r2, 5).Value = Math.Round(rd.TotalDowntimeMinutes, 2);
+                            ws2.Cell(r2, 6).Value = rd.TotalDowntimeFormatted;
+                            double pct = m.TotalDowntimeMinutes > 0 ? rd.TotalDowntimeMinutes / m.TotalDowntimeMinutes * 100 : 0;
+                            ws2.Cell(r2, 7).Value = $"{Math.Round(pct, 1)}%";
+                            r2++;
+                        }
+                        r2 += 2;
+                    }
+
+                    ws2.Column(1).Width = 6;  ws2.Column(2).Width = 16; ws2.Column(3).Width = 30;
+                    ws2.Column(4).Width = 10; ws2.Column(5).Width = 14; ws2.Column(6).Width = 14;
+                    ws2.Column(7).Width = 12;
 
                     using (var stream = new MemoryStream())
                     {
@@ -1191,10 +1560,42 @@ namespace MachineStatusUpdate.Controllers
             if (record == null)
                 return Json(new { success = false, message = "Record not found" });
 
-            record.TechAction      = dto.Action;   // "ACCEPT" hoặc "WAIT"
-            record.TechUsername    = techUser;
+            record.TechAction = dto.Action;   // "ACCEPT" hoặc "WAIT"
+            record.TechUsername = techUser;
             record.RespondDatetime = DateTime.Now;
             await _context.SaveChangesAsync();
+
+            // ── Lưu notification phản hồi của Tech → Prod ──
+            if (!string.IsNullOrWhiteSpace(dto.OperatorUsername))
+            {
+                var notifTitle = dto.Action == "ACCEPT"
+                    ? $"✅ Kỹ thuật [{techUser}] đang đến sửa máy {dto.MachineCode ?? "-"}"
+                    : $"⏳ Kỹ thuật [{techUser}] đã xem — vui lòng chờ thêm";
+
+                // Gửi cho Prod cụ thể
+                await SaveNotificationAsync(
+                    recipientUsername: dto.OperatorUsername,
+                    recipientRole: "Production",
+                    notifType: "TECH_RESPONSE",
+                    title: notifTitle,
+                    machineCode: dto.MachineCode,
+                    techResponseId: dto.TechResponseId,
+                    techAction: dto.Action,
+                    techName: techUser
+                );
+
+                // Gửi thêm cho Admin
+                await SaveNotificationAsync(
+                    recipientUsername: "ALL_ADMIN",
+                    recipientRole: "Admin",
+                    notifType: "TECH_RESPONSE",
+                    title: notifTitle,
+                    machineCode: dto.MachineCode,
+                    techResponseId: dto.TechResponseId,
+                    techAction: dto.Action,
+                    techName: techUser
+                );
+            }
 
             // Push SignalR ngược về Operator
             if (!string.IsNullOrWhiteSpace(dto.OperatorUsername))
@@ -1203,18 +1604,177 @@ namespace MachineStatusUpdate.Controllers
                     .Group($"Operator_{dto.OperatorUsername}")
                     .SendAsync("ReceiveTechResponse", new
                     {
-                        action      = dto.Action,
-                        techName    = techUser,
+                        action = dto.Action,
+                        techName = techUser,
                         machineCode = dto.MachineCode ?? "",
-                        message     = dto.Action == "ACCEPT"
+                        message = dto.Action == "ACCEPT"
                             ? $"✅ Kỹ thuật [{techUser}] đã nhận thông tin và đang chuẩn bị đến sửa máy {dto.MachineCode}."
                             : $"⏳ Kỹ thuật [{techUser}] đã xem thông báo, vui lòng chờ thêm.",
-                        datetime    = DateTime.Now.ToString("dd/MM/yyyy HH:mm")
+                        datetime = DateTime.Now.ToString("dd/MM/yyyy HH:mm")
                     });
             }
 
             return Json(new { success = true });
         }
+        // ══════════════════════════════════════════════════════════════════════
+// NOTIFICATION API — thêm vào StatusController.cs
+// ══════════════════════════════════════════════════════════════════════
+// Vị trí: dán vào trong class StatusController, gần khu vực TechnicianRespond
+
+// ── Helper: lưu notification vào DB ──────────────────────────────────
+private async Task SaveNotificationAsync(
+    string recipientUsername,
+    string recipientRole,
+    string notifType,
+    string title,
+    string? body        = null,
+    string? machineCode = null,
+    string? operation   = null,
+    int?    techResponseId = null,
+    string? techAction  = null,
+    string? techName    = null)
+{
+    var notif = new SVN_Notification
+    {
+        RecipientUsername = recipientUsername,
+        RecipientRole     = recipientRole,
+        NotifType         = notifType,
+        Title             = title,
+        Body              = body,
+        MachineCode       = machineCode,
+        Operation         = operation,
+        TechResponseId    = techResponseId,
+        CreatedAt         = DateTime.Now,
+        IsRead            = false,
+        TechAction        = techAction,
+        TechName          = techName
+    };
+    _context.SVN_Notifications.Add(notif);
+    await _context.SaveChangesAsync();
+}
+
+
+// ── GET /Status/GetMyNotifications ────────────────────────────────────
+// Trả về notifications cho user hiện tại (dùng khi load trang / refresh)
+[HttpGet]
+public async Task<IActionResult> GetMyNotifications()
+{
+    var username = HttpContext.Session.GetString("UserName") ?? "";
+    var role     = HttpContext.Session.GetString("UserRole") ?? "";
+
+    if (string.IsNullOrEmpty(username))
+        return Json(new { success = false });
+
+    IQueryable<SVN_Notification> query = _context.SVN_Notifications.AsNoTracking();
+
+    if (role == "Technical")
+    {
+        // Tech nhận tất cả thông báo STOP và RUN gửi đến "ALL_TECH"
+        query = query.Where(n => n.RecipientUsername == "ALL_TECH"
+                              || n.RecipientUsername == username);
+    }
+    else if (role == "Admin")
+    {
+        // Admin nhận tất cả
+        query = query.Where(n => n.RecipientUsername == "ALL_TECH"
+                              || n.RecipientUsername == "ALL_ADMIN"
+                              || n.RecipientUsername == username);
+    }
+    else
+    {
+        // Production: chỉ nhận thông báo gửi đến chính username họ
+        query = query.Where(n => n.RecipientUsername == username);
+    }
+
+    var today = DateTime.Now.Date;
+    var list = await query
+        .Where(n => n.CreatedAt.Date == today)          // chỉ lấy hôm nay (tùy chỉnh nếu muốn)
+        .OrderByDescending(n => n.CreatedAt)
+        .Take(50)
+        .Select(n => new {
+            id             = n.Id,
+            notifType      = n.NotifType,
+            title          = n.Title,
+            body           = n.Body ?? "",
+            machineCode    = n.MachineCode ?? "",
+            operation      = n.Operation  ?? "",
+            techResponseId = n.TechResponseId,
+            techAction     = n.TechAction  ?? "",
+            techName       = n.TechName    ?? "",
+            createdAt      = n.CreatedAt.ToString("dd/MM/yyyy HH:mm"),
+            isRead         = n.IsRead,
+            readAt         = n.ReadAt.HasValue ? n.ReadAt.Value.ToString("dd/MM/yyyy HH:mm") : ""
+        })
+        .ToListAsync();
+
+    int unreadCount = await query
+        .Where(n => !n.IsRead && n.CreatedAt.Date == today)
+        .CountAsync();
+
+    return Json(new { success = true, notifications = list, unreadCount });
+}
+
+
+// ── POST /Status/MarkNotificationRead ─────────────────────────────────
+// Đánh dấu 1 notification là đã đọc
+[HttpPost]
+[IgnoreAntiforgeryToken]
+public async Task<IActionResult> MarkNotificationRead([FromBody] MarkReadDto dto)
+{
+    var username = HttpContext.Session.GetString("UserName") ?? "";
+    if (string.IsNullOrEmpty(username)) return Json(new { success = false });
+
+    var notif = await _context.SVN_Notifications.FindAsync(dto.Id);
+    if (notif == null) return Json(new { success = false, message = "Not found" });
+
+    notif.IsRead = true;
+    notif.ReadAt = DateTime.Now;
+    await _context.SaveChangesAsync();
+
+    return Json(new { success = true });
+}
+
+
+// ── POST /Status/MarkAllNotificationsRead ─────────────────────────────
+// Đánh dấu tất cả notifications của user hiện tại là đã đọc
+[HttpPost]
+[IgnoreAntiforgeryToken]
+public async Task<IActionResult> MarkAllNotificationsRead()
+{
+    var username = HttpContext.Session.GetString("UserName") ?? "";
+    var role     = HttpContext.Session.GetString("UserRole") ?? "";
+    if (string.IsNullOrEmpty(username)) return Json(new { success = false });
+
+    var today = DateTime.Now.Date;
+
+    IQueryable<SVN_Notification> query = _context.SVN_Notifications
+        .Where(n => !n.IsRead && n.CreatedAt.Date == today);
+
+    if (role == "Technical")
+        query = query.Where(n => n.RecipientUsername == "ALL_TECH" || n.RecipientUsername == username);
+    else if (role == "Admin")
+        query = query.Where(n => n.RecipientUsername == "ALL_TECH"
+                              || n.RecipientUsername == "ALL_ADMIN"
+                              || n.RecipientUsername == username);
+    else
+        query = query.Where(n => n.RecipientUsername == username);
+
+    var items = await query.ToListAsync();
+    var now = DateTime.Now;
+    foreach (var n in items) { n.IsRead = true; n.ReadAt = now; }
+    await _context.SaveChangesAsync();
+
+    return Json(new { success = true, markedCount = items.Count });
+}
+
+
+        // ── DTO ──
+        public class MarkReadDto
+        {
+            public int Id { get; set; }
+        }
+
+
 
         public class TechRespondDto
         {
