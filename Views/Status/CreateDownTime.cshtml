@@ -797,11 +797,11 @@
             <div class="form-group">
                 <label class="form-label" for="IssCode">原因 (Reason)</label>
                 <div class="select-arrow-wrapper">
-                    <select id="IssCode" name="ISS_Code" class="form-control" required>
+                    <select id="IssCode" name="Reason" class="form-control" required>
                         <option value="">-- 选择原因 (Select reason) --</option>
                         @foreach (var r in (IEnumerable<dynamic>)ViewBag.ReasonOptions)
                         {
-                            <option value="@r.Reason_Code">@r.Reason_Name (@r.Reason_Code)</option>
+                            <option value="@r.Reason_Name">@r.Reason_Name (@r.Reason_Code)</option>
                         }
                     </select>
                 </div>
@@ -1358,6 +1358,7 @@
         resetEmpDropdown();
         resetOpDropdown();
         removeImageDT();
+        setTimeout(() => machineTrigger?.focus(), 50);
     }
 
     /* ============ Load trạng thái operation ============ */
@@ -1481,7 +1482,7 @@
         const op = (opEl?.value || '').trim();
         if (!op) {
             showToast('请选择生产线！ (Please select an operation!)', 'error', 2200);
-            opEl?.focus();
+            machineTrigger?.focus();
             return false;
         }
 
@@ -1522,7 +1523,7 @@
         const fd = new FormData();
         fd.append('State',        nextState);
         fd.append('Operation',    (opEl?.value || '').trim());
-        fd.append('ISS_Code',     (IssCodeEl?.value || '').trim());
+        fd.append('Reason',       (IssCodeEl?.value || '').trim());
         // ✅ FIX: dùng employeeCodeEl thay vì svnCodeEl
         fd.append('SVNCode',      (employeeCodeEl?.value || '').trim().toUpperCase());
         fd.append('EmployeeCode', (employeeCodeEl?.value || '').trim().toUpperCase());
@@ -1688,7 +1689,7 @@
 
     /* ============ Init ============ */
     window.addEventListener('DOMContentLoaded', () => {
-        opEl?.focus();
+        machineTrigger?.focus();
         updateDatetimeRange();
         if (opEl?.value) onOperationChanged();
     });
@@ -1819,12 +1820,17 @@
 
                 // Operation (生产线 — native select)
                 if (d.operation && opEl) {
-                    const found = Array.from(opEl.options).find(o => o.value === d.operation);
-                    if (found) {
-                        opEl.value = d.operation;
-                        syncSelectColor(opEl);
-                        await onOperationChanged();
+                    let found = Array.from(opEl.options).find(o => o.value === d.operation);
+                    if (!found) {
+                        const newOpt = document.createElement("option");
+                        newOpt.value = d.operation;
+                        newOpt.textContent = d.operation;
+                        newOpt.dataset.dynamic = "1";
+                        opEl.appendChild(newOpt);
                     }
+                    opEl.value = d.operation;
+                    syncSelectColor(opEl);
+                    await onOperationChanged();
                 }
 
                 // Location (搜索下拉 OperationValue)
@@ -1955,7 +1961,7 @@
 
     window.addEventListener('DOMContentLoaded', () => {
         loadMachineOptions();
-        opEl?.focus();
+        machineTrigger?.focus();
         updateDatetimeRange();
         if (opEl?.value) onOperationChanged();
     });

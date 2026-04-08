@@ -73,15 +73,12 @@ namespace MachineStatusUpdate.Controllers
             if (string.IsNullOrWhiteSpace(machineNo))
                 return Json(new { exists = false });
 
-            var today = DateTime.Now.Date;
-
             var latest = await _context.SVN_Downtime_Infos_Devel
                 .Where(x => x.MachineCode != null
                             && x.MachineCode.Trim() == machineNo.Trim()
                             && x.State != null
                             && x.State.Trim().ToUpper() == "STOP"
-                            && x.Datetime.HasValue
-                            && x.Datetime.Value.Date == today)
+                            && x.Datetime.HasValue)
                 .OrderByDescending(x => x.Datetime)
                 .Select(x => new
                 {
