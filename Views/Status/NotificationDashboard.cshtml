@@ -178,6 +178,29 @@
     .btn-wait:active { transform: translateY(1px); }
     .btn-wait:disabled { opacity: .55; cursor: not-allowed; transform: none; }
 
+    /* ===== Response — Đã sửa xong button ===== */
+    .btn-fix-complete {
+        background: linear-gradient(135deg, #0d6efd, #3b82f6);
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 9px 20px;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        box-shadow: 0 3px 10px rgba(13,110,253,.35);
+        transition: all .18s;
+        margin-top: 6px;
+    }
+    .btn-fix-complete:hover  { filter: brightness(1.08); transform: translateY(-1px); }
+    .btn-fix-complete:active { transform: translateY(1px); }
+    .btn-fix-complete:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+
+    .responded-badge.fix-done { background: #dbeafe; color: #1e40af; }
+
     .responded-badge {
         display: inline-flex;
         align-items: center;
@@ -686,7 +709,7 @@ function renderStopCard(data, prepend = true) {
     // Nếu đã có techAction (load từ DB), render ngay trạng thái đã respond
     const alreadyResponded = data.techAction && data.techAction !== '';
     const actionsHtml = alreadyResponded
-        ? buildRespondedBadge(data.techAction, data.techUsername, data.respondDatetime)
+        ? buildRespondedBadge(data.techAction, data.techUsername, data.respondDatetime, !!data.fixComplete)
         : `<button class="btn-accept" onclick="respondToOperator(this,'ACCEPT')">✅ Accept — Đang đến sửa</button>
            <button class="btn-wait"   onclick="respondToOperator(this,'WAIT')">⏳ Wait — Vui lòng chờ</button>`;
 
@@ -731,10 +754,16 @@ function renderStopCard(data, prepend = true) {
     else card.classList.remove('new-card');
 }
 
-function buildRespondedBadge(action, techUser, respondTime) {
-    if (action === 'ACCEPT')
-        return `<span class="responded-badge accepted">✅ Đã Accept${techUser ? ' bởi ' + techUser : ''}${respondTime ? ' · ' + respondTime : ''}</span>`;
-    return `<span class="responded-badge waited">⏳ Đã Wait${techUser ? ' bởi ' + techUser : ''}${respondTime ? ' · ' + respondTime : ''}</span>`;
+function buildRespondedBadge(action, techUser, respondTime, fixComplete = false) {
+    const badge = action === 'ACCEPT'
+        ? `<span class="responded-badge accepted">✅ Đã Accept${techUser ? ' bởi ' + techUser : ''}${respondTime ? ' · ' + respondTime : ''}</span>`
+        : `<span class="responded-badge waited">⏳ Đã Wait${techUser ? ' bởi ' + techUser : ''}${respondTime ? ' · ' + respondTime : ''}</span>`;
+
+    const responseBtn = fixComplete
+        ? `<span class="responded-badge fix-done">🔧 Đã gửi thông báo sửa xong</span>`
+        : `<button class="btn-fix-complete" onclick="techFixComplete(this)">🔧 Response — Đã sửa xong</button>`;
+
+    return badge + responseBtn;
 }
 
 /* ===== Tech respond: gửi Accept hoặc Wait ngược về Operator ===== */
@@ -774,6 +803,44 @@ async function respondToOperator(btn, action) {
         console.error('respondToOperator error:', err);
         card.querySelectorAll('.btn-accept, .btn-wait').forEach(b => b.disabled = false);
         btn.innerHTML = action === 'ACCEPT' ? '✅ Accept — Đang đến sửa' : '⏳ Wait — Vui lòng chờ';
+    }
+}
+
+/* ===== Tech bấm Response (Đã sửa xong) — tạo RUN record + notify Prod ===== */
+async function techFixComplete(btn) {
+    const card = btn.closest('.notif-card');
+    if (!card) return;
+
+    const techResponseId   = card.dataset.techResponseId   || '';
+    const actionsDiv       = card.querySelector('.notif-actions');
+
+    btn.disabled  = true;
+    btn.innerHTML = '⏳ Đang gửi...';
+
+    try {
+        const res = await fetch(`${pathBase}/Status/TechnicianFixComplete`, {
+            method : 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body   : JSON.stringify({ techResponseId: parseInt(techResponseId) || 0 })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            // Thay nút bằng badge "Đã gửi"
+            btn.replaceWith((() => {
+                const s = document.createElement('span');
+                s.className   = 'responded-badge fix-done';
+                s.textContent = '🔧 Đã gửi thông báo sửa xong';
+                return s;
+            })());
+        } else {
+            btn.disabled  = false;
+            btn.innerHTML = '🔧 Response — Đã sửa xong';
+        }
+    } catch (err) {
+        console.error('techFixComplete error:', err);
+        btn.disabled  = false;
+        btn.innerHTML = '🔧 Response — Đã sửa xong';
     }
 }
 

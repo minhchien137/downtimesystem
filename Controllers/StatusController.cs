@@ -434,14 +434,26 @@ namespace MachineStatusUpdate.Controllers
                 using (var workbook = new XLWorkbook())
                 {
                     var ws = workbook.Worksheets.Add("DowntimeList");
-                    var currentRow = 1;
 
                     ws.Style.Font.FontName = "Times New Roman";
                     ws.Style.Font.FontSize = 11;
 
+                    // ── Tiêu đề "Downtime History" ──
+                    int totalCols = 18;
+                    var titleCell = ws.Cell(1, 1);
+                    titleCell.Value = "Downtime History";
+                    titleCell.Style.Font.Bold     = true;
+                    titleCell.Style.Font.FontSize = 16;
+                    titleCell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                    titleCell.Style.Alignment.Vertical   = XLAlignmentVerticalValues.Center;
+                    ws.Range(1, 1, 1, totalCols).Merge();
+                    ws.Row(1).Height = 32;
+
+                    var currentRow = 2;
+
                     // Header theo thứ tự cột SQL
                     string[] headers = {
-                        "#", "Code", "Name", "Operation", "Machine", "Location",
+                        "#", "Operation", "Machine", "Location",
                         "Reason", "Error Name", "Effect", "Station", "Estimate Time",
                         "State", "Action", "Description", "Root Cause", "Spare Parts",
                         "Employee Code", "Employee Name", "Datetime", "Image"
@@ -472,24 +484,22 @@ namespace MachineStatusUpdate.Controllers
                                         : (item.Effect ?? "-");
 
                         ws.Cell(currentRow,  1).Value = rowIndex;
-                        ws.Cell(currentRow,  2).Value = item.Code;
-                        ws.Cell(currentRow,  3).Value = item.Name;
-                        ws.Cell(currentRow,  4).Value = item.Operation;
-                        ws.Cell(currentRow,  5).Value = item.MachineCode;
-                        ws.Cell(currentRow,  6).Value = item.Location;
-                        ws.Cell(currentRow,  7).Value = item.Reason;
-                        ws.Cell(currentRow,  8).Value = item.ErrorName;
-                        ws.Cell(currentRow,  9).Value = effLabel;
-                        ws.Cell(currentRow, 10).Value = item.Station;
-                        ws.Cell(currentRow, 11).Value = string.IsNullOrEmpty(item.EstimateTime) ? "-" : item.EstimateTime;
-                        ws.Cell(currentRow, 12).Value = item.State;
-                        ws.Cell(currentRow, 13).Value = item.Action;
-                        ws.Cell(currentRow, 14).Value = item.Description;
-                        ws.Cell(currentRow, 15).Value = item.RootCause;
-                        ws.Cell(currentRow, 16).Value = item.SpareParts;
-                        ws.Cell(currentRow, 17).Value = item.EmployeeCode;
-                        ws.Cell(currentRow, 18).Value = item.EmployeeName;
-                        ws.Cell(currentRow, 19).Value = item.Datetime?.ToString("dd/MM/yyyy HH:mm") ?? "-";
+                        ws.Cell(currentRow,  2).Value = item.Operation;
+                        ws.Cell(currentRow,  3).Value = item.MachineCode;
+                        ws.Cell(currentRow,  4).Value = item.Location;
+                        ws.Cell(currentRow,  5).Value = item.Reason;
+                        ws.Cell(currentRow,  6).Value = item.ErrorName;
+                        ws.Cell(currentRow,  7).Value = effLabel;
+                        ws.Cell(currentRow,  8).Value = item.Station;
+                        ws.Cell(currentRow,  9).Value = string.IsNullOrEmpty(item.EstimateTime) ? "-" : item.EstimateTime;
+                        ws.Cell(currentRow, 10).Value = item.State;
+                        ws.Cell(currentRow, 11).Value = item.Action;
+                        ws.Cell(currentRow, 12).Value = item.Description;
+                        ws.Cell(currentRow, 13).Value = item.RootCause;
+                        ws.Cell(currentRow, 14).Value = item.SpareParts;
+                        ws.Cell(currentRow, 15).Value = item.EmployeeCode;
+                        ws.Cell(currentRow, 16).Value = item.EmployeeName;
+                        ws.Cell(currentRow, 17).Value = item.Datetime?.ToString("dd/MM/yyyy HH:mm") ?? "-";
 
                         if (!string.IsNullOrEmpty(item.Image))
                         {
@@ -502,58 +512,55 @@ namespace MachineStatusUpdate.Controllers
                                 if (System.IO.File.Exists(imagePath))
                                 {
                                     var picture = ws.AddPicture(imagePath);
-                                    picture.MoveTo(ws.Cell(currentRow, 20), 8, 5);
+                                    picture.MoveTo(ws.Cell(currentRow, 18), 8, 5);
                                     picture.WithSize(100, 70);
-                                    ws.Cell(currentRow, 20).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                                    ws.Cell(currentRow, 20).Style.Alignment.Vertical   = XLAlignmentVerticalValues.Center;
+                                    ws.Cell(currentRow, 18).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                                    ws.Cell(currentRow, 18).Style.Alignment.Vertical   = XLAlignmentVerticalValues.Center;
                                 }
                                 else
                                 {
-                                    ws.Cell(currentRow, 20).Value = "No image";
-                                    ws.Cell(currentRow, 20).Style.Font.FontColor = XLColor.Gray;
+                                    ws.Cell(currentRow, 18).Value = "No image";
+                                    ws.Cell(currentRow, 18).Style.Font.FontColor = XLColor.Gray;
                                 }
                             }
                             catch (Exception ex)
                             {
-                                ws.Cell(currentRow, 20).Value = $"Error: {ex.Message}";
-                                ws.Cell(currentRow, 20).Style.Font.FontColor = XLColor.Red;
+                                ws.Cell(currentRow, 18).Value = $"Error: {ex.Message}";
+                                ws.Cell(currentRow, 18).Style.Font.FontColor = XLColor.Red;
                             }
                         }
                         else
                         {
-                            ws.Cell(currentRow, 20).Value = "-";
-                            ws.Cell(currentRow, 20).Style.Font.FontColor = XLColor.Gray;
+                            ws.Cell(currentRow, 18).Value = "-";
+                            ws.Cell(currentRow, 18).Style.Font.FontColor = XLColor.Gray;
                         }
                     }
 
-                    ws.Columns(1, 19).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                    ws.Columns(1, 19).Style.Alignment.Vertical   = XLAlignmentVerticalValues.Center;
-                    // Description, Action, RootCause, SpareParts căn trái
+                    ws.Columns(1, 18).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                    ws.Columns(1, 18).Style.Alignment.Vertical   = XLAlignmentVerticalValues.Center;
+                    // Description, Root Cause, Spare Parts căn trái
+                    ws.Column(12).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;
                     ws.Column(13).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;
                     ws.Column(14).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;
-                    ws.Column(15).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;
-                    ws.Column(16).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;
 
-                    ws.Column(1).Width  = 6;
-                    ws.Column(2).Width  = 12;
-                    ws.Column(3).Width  = 15;
-                    ws.Column(4).Width  = 28;
-                    ws.Column(5).Width  = 22;
-                    ws.Column(6).Width  = 18;
-                    ws.Column(7).Width  = 14;
-                    ws.Column(8).Width  = 25;
-                    ws.Column(9).Width  = 15;
-                    ws.Column(10).Width = 14;
-                    ws.Column(11).Width = 14;
-                    ws.Column(12).Width = 12;
-                    ws.Column(13).Width = 28;
-                    ws.Column(14).Width = 30;
-                    ws.Column(15).Width = 28;
-                    ws.Column(16).Width = 22;
-                    ws.Column(17).Width = 15;
-                    ws.Column(18).Width = 18;
-                    ws.Column(19).Width = 18;
-                    ws.Column(20).Width = 15;
+                    ws.Column(1).Width  = 6;   // #
+                    ws.Column(2).Width  = 28;  // Operation
+                    ws.Column(3).Width  = 22;  // Machine
+                    ws.Column(4).Width  = 18;  // Location
+                    ws.Column(5).Width  = 14;  // Reason
+                    ws.Column(6).Width  = 25;  // Error Name
+                    ws.Column(7).Width  = 15;  // Effect
+                    ws.Column(8).Width  = 14;  // Station
+                    ws.Column(9).Width  = 14;  // Estimate Time
+                    ws.Column(10).Width = 12;  // State
+                    ws.Column(11).Width = 28;  // Action
+                    ws.Column(12).Width = 30;  // Description
+                    ws.Column(13).Width = 28;  // Root Cause
+                    ws.Column(14).Width = 22;  // Spare Parts
+                    ws.Column(15).Width = 15;  // Employee Code
+                    ws.Column(16).Width = 18;  // Employee Name
+                    ws.Column(17).Width = 18;  // Datetime
+                    ws.Column(18).Width = 15;  // Image
 
                     using (var stream = new MemoryStream())
                     {
@@ -801,6 +808,7 @@ namespace MachineStatusUpdate.Controllers
                 .OrderByDescending(x => x.StopDatetime)
                 .Select(x => new {
                     id               = x.Id,
+                    techResponseId   = x.Id,   // alias rõ ràng để JS dùng card.dataset.techResponseId
                     downtimeId       = x.DowntimeId,
                     machineCode      = x.MachineCode      ?? "",
                     operation        = x.Operation        ?? "",
@@ -818,7 +826,11 @@ namespace MachineStatusUpdate.Controllers
                     techAction       = x.TechAction   ?? "",  // "" | "ACCEPT" | "WAIT"
                     techUsername     = x.TechUsername  ?? "",
                     respondDatetime  = x.RespondDatetime.HasValue
-                                       ? x.RespondDatetime.Value.ToString("dd/MM/yyyy HH:mm") : ""
+                                       ? x.RespondDatetime.Value.ToString("dd/MM/yyyy HH:mm") : "",
+                    fixComplete      = x.TechAction != null && x.TechAction != "" &&
+                                       // Kiểm tra xem đã có notification FIX_COMPLETE cho downtime này chưa
+                                       _context.SVN_Notifications
+                                           .Any(n => n.TechResponseId == x.Id && n.NotifType == "FIX_COMPLETE")
                 })
                 .ToListAsync();
 
@@ -1614,6 +1626,104 @@ namespace MachineStatusUpdate.Controllers
             return Json(new { success = true });
         }
         // ══════════════════════════════════════════════════════════════════════
+        // POST /Status/TechnicianFixComplete
+        // Tech bấm "Đã sửa xong" trong card → tạo RUN record + notify Prod
+        // ══════════════════════════════════════════════════════════════════════
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> TechnicianFixComplete([FromBody] TechFixCompleteDto dto)
+        {
+            var techUser = HttpContext.Session.GetString("UserName") ?? "Kỹ thuật";
+
+            var techResp = await _context.SVN_Downtime_TechResponses.FindAsync(dto.TechResponseId);
+            if (techResp == null)
+                return Json(new { success = false, message = "Record not found" });
+
+            // Lấy STOP record gốc để copy Code / Name
+            var stopRecord = await _context.SVN_Downtime_Infos_Devel.FindAsync(techResp.DowntimeId);
+
+            // Tạo bản ghi RUN mới, copy toàn bộ trường từ STOP
+            var runRecord = new SVN_Downtime_Info_Devel
+            {
+                State        = "RUN",
+                Operation    = techResp.Operation,
+                MachineCode  = techResp.MachineCode,
+                Location     = techResp.Location,
+                EmployeeCode = techResp.EmployeeCode,
+                EmployeeName = techResp.EmployeeName,
+                Reason       = techResp.Reason,
+                Effect       = techResp.Effect,
+                Station      = techResp.Station,
+                Description  = techResp.Description,
+                EstimateTime = techResp.EstimateTime,
+                Code         = stopRecord?.Code,
+                Name         = stopRecord?.Name,
+                Datetime     = DateTime.Now
+            };
+            _context.SVN_Downtime_Infos_Devel.Add(runRecord);
+            await _context.SaveChangesAsync();
+
+            var title = $"✅ Máy {techResp.MachineCode ?? "-"} đã sửa xong!";
+            var body  = $"Kỹ thuật [{techUser}] đã sửa xong. Operation: {techResp.Operation ?? "-"} | Máy đã chạy lại bình thường.";
+
+            // ── Notify Prod ──
+            if (!string.IsNullOrWhiteSpace(techResp.OperatorUsername))
+            {
+                await SaveNotificationAsync(
+                    recipientUsername : techResp.OperatorUsername,
+                    recipientRole     : "Production",
+                    notifType         : "FIX_COMPLETE",
+                    title             : title,
+                    body              : body,
+                    machineCode       : techResp.MachineCode,
+                    operation         : techResp.Operation,
+                    techResponseId    : dto.TechResponseId,
+                    techName          : techUser
+                );
+
+                // SignalR → Prod
+                await _hubContext.Clients
+                    .Group($"Operator_{techResp.OperatorUsername}")
+                    .SendAsync("ReceiveFixComplete", new
+                    {
+                        machineCode = techResp.MachineCode ?? "",
+                        operation   = techResp.Operation   ?? "",
+                        techName    = techUser,
+                        message     = $"✅ Máy {techResp.MachineCode} ({techResp.Operation}) đã được sửa xong và chạy lại bình thường.",
+                        datetime    = DateTime.Now.ToString("dd/MM/yyyy HH:mm")
+                    });
+            }
+
+            // ── Notify Admin ──
+            await SaveNotificationAsync(
+                recipientUsername : "ALL_ADMIN",
+                recipientRole     : "Admin",
+                notifType         : "FIX_COMPLETE",
+                title             : title,
+                body              : body,
+                machineCode       : techResp.MachineCode,
+                operation         : techResp.Operation,
+                techResponseId    : dto.TechResponseId,
+                techName          : techUser
+            );
+
+            // ── Push RUN card lên TechnicianGroup (Tech thấy máy đã run) ──
+            await _hubContext.Clients.Group("TechnicianGroup").SendAsync("ReceiveRunNotification", new
+            {
+                machineCode = techResp.MachineCode ?? "",
+                operation   = techResp.Operation   ?? "",
+                datetime    = DateTime.Now.ToString("dd/MM/yyyy HH:mm")
+            });
+
+            return Json(new { success = true });
+        }
+
+        public class TechFixCompleteDto
+        {
+            public int TechResponseId { get; set; }
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
 // NOTIFICATION API — thêm vào StatusController.cs
 // ══════════════════════════════════════════════════════════════════════
 // Vị trí: dán vào trong class StatusController, gần khu vực TechnicianRespond
@@ -1956,4 +2066,4 @@ public async Task<IActionResult> MarkAllNotificationsRead()
             public string Code { get; set; }
         }
     }
-}
+} 

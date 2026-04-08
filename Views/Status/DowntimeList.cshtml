@@ -435,8 +435,6 @@
             <thead>
                 <tr>
                     <!--  Column order matches SQL table column order -->
-                    <th>Code</th>
-                    <th>名称 (Name)</th>
                     <th>生产线 (Operation)</th>
                     <th>设备 (Machine)</th>
                     <th>位置 (Location)</th>
@@ -459,7 +457,7 @@
                 @if (!Model.Any())
                 {
                     <tr>
-                        <td colspan="18" class="no-data">🗂 无数据 (No data)</td>
+                        <td colspan="16" class="no-data">🗂 无数据 (No data)</td>
                     </tr>
                 }
                 else
@@ -470,8 +468,6 @@
                         bool isResponse = string.Equals(item.State, "RESPONSE", StringComparison.OrdinalIgnoreCase);
                         string badgeCss = isStop ? "badge-stop" : isResponse ? "badge-response" : "badge-run";
                         <tr>
-                            <td><strong>@item.Code</strong></td>
-                            <td>@item.Name</td>
                             <td style="white-space:nowrap;">@item.Operation</td>
                             <td>@(item.MachineCode ?? "-")</td>
                             <td>@(item.Location ?? "-")</td>

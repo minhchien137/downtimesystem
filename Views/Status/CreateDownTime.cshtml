@@ -1605,6 +1605,11 @@
                     showTechResponseNotif(data);
                 });
 
+                // Nhận thông báo Kỹ thuật đã sửa xong
+                conn.on("ReceiveFixComplete", (data) => {
+                    showFixCompleteNotif(data);
+                });
+
                 try {
                     await conn.start();
                     // Join group riêng theo username của Operator
@@ -1612,8 +1617,12 @@
                     if (myUsername) {
                         await conn.invoke("JoinOperatorGroup", myUsername);
                     }
+                    // Load thông báo chưa đọc từ DB khi trang mở
+                    await loadPendingNotificationsForProd();
                 } catch (err) {
                     console.warn("SignalR CreateDownTime connect failed:", err);
+                    // Vẫn load notifications ngay cả khi SignalR lỗi
+                    await loadPendingNotificationsForProd();
                 }
             };
             document.head.appendChild(signalRScript);
@@ -1621,6 +1630,52 @@
             console.warn("SignalR init error:", e);
         }
     })();
+
+    /* ===== Load thông báo chưa đọc từ DB khi Prod vào/refresh trang ===== */
+    async function loadPendingNotificationsForProd() {
+        try {
+            const res = await fetch(`${pathBase}/Status/GetMyNotifications`);
+            if (!res.ok) return;
+            const json = await res.json();
+            if (!json.success || !json.notifications) return;
+
+            // Chỉ hiển thị thông báo chưa đọc, loại FIX_COMPLETE và TECH_RESPONSE
+            const unread = json.notifications.filter(n =>
+                !n.isRead && (n.notifType === 'FIX_COMPLETE' || n.notifType === 'TECH_RESPONSE')
+            );
+
+            // Hiện từng thông báo với delay nhỏ để không chồng chất
+            unread.forEach((n, i) => {
+                setTimeout(() => {
+                    if (n.notifType === 'FIX_COMPLETE') {
+                        showFixCompleteNotif({
+                            machineCode : n.machineCode,
+                            operation   : n.operation,
+                            techName    : n.techName,
+                            message     : n.body || `✅ Máy ${n.machineCode} (${n.operation}) đã được sửa xong.`,
+                            datetime    : n.createdAt
+                        });
+                    } else if (n.notifType === 'TECH_RESPONSE') {
+                        showTechResponseNotif({
+                            action      : n.techAction,
+                            techName    : n.techName,
+                            machineCode : n.machineCode,
+                            message     : n.body || n.title,
+                            datetime    : n.createdAt
+                        });
+                    }
+                    // Đánh dấu đã đọc
+                    fetch(`${pathBase}/Status/MarkNotificationRead`, {
+                        method  : 'POST',
+                        headers : { 'Content-Type': 'application/json' },
+                        body    : JSON.stringify({ id: n.id })
+                    }).catch(() => {});
+                }, i * 600); // delay 600ms giữa các toast
+            });
+        } catch(e) {
+            console.warn('loadPendingNotificationsForProd error:', e);
+        }
+    }
 
     /* ===== Hiển thị thông báo phản hồi từ Kỹ thuật ===== */
     function showTechResponseNotif(data) {
@@ -1665,6 +1720,59 @@
             toast.style.transition = 'all .25s ease';
             setTimeout(() => toast.remove(), 300);
         }, 8000);
+    }
+
+    /* ===== Hiển thị thông báo Kỹ thuật đã sửa xong ===== */
+    function showFixCompleteNotif(data) {
+        const container = document.querySelector('.toast-container');
+        if (!container) return;
+
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+            min-width: 300px;
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-left: 6px solid #0d6efd;
+            padding: 14px 16px;
+            border-radius: 12px;
+            box-shadow: 0 10px 28px rgba(0,0,0,.12);
+            font-family: "Segoe UI", system-ui, sans-serif;
+            animation: techToastIn .3s ease;
+            position: relative;
+        `;
+        toast.innerHTML = `
+            <div style="font-weight:700;font-size:14px;margin-bottom:6px;color:#1e40af">
+                🔧 Máy đã được sửa xong!
+            </div>
+            <div style="font-size:13px;color:#374151;line-height:1.5;">${data.message || ''}</div>
+            <div style="font-size:11px;color:#9ca3af;margin-top:6px;">🕐 ${data.datetime || ''} · Kỹ thuật: ${data.techName || ''}</div>
+            <button onclick="this.closest('div[style]').remove()"
+                style="position:absolute;top:8px;right:10px;border:0;background:transparent;font-size:17px;cursor:pointer;color:#9ca3af;line-height:1;">×</button>
+        `;
+        container.appendChild(toast);
+
+        // Phát âm thanh xác nhận
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            [0, 0.15, 0.30].forEach((offset, i) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain); gain.connect(ctx.destination);
+                osc.type = 'sine';
+                osc.frequency.value = [523, 659, 784][i];
+                gain.gain.setValueAtTime(0.25, ctx.currentTime + offset);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + offset + 0.35);
+                osc.start(ctx.currentTime + offset);
+                osc.stop(ctx.currentTime + offset + 0.35);
+            });
+        } catch(e) {}
+
+        setTimeout(() => {
+            toast.style.opacity   = '0';
+            toast.style.transform = 'translateY(-8px)';
+            toast.style.transition = 'all .25s ease';
+            setTimeout(() => toast.remove(), 300);
+        }, 10000);
     }
 
     /* ===== Âm thanh khi Tech Accept ===== */
