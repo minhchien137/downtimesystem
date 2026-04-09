@@ -31,7 +31,7 @@ namespace MachineStatusUpdate.Controllers
 
         // ============================================================
         // GET: GetLatestDowntimeForOperation
-        // Trả về bản ghi downtime mới nhất trong ngày theo Operation
+        // 根据工序返回当天最新的停机记录
         // ============================================================
         [HttpGet]
         public async Task<IActionResult> GetLatestDowntimeForOperation(string operation)
@@ -64,8 +64,7 @@ namespace MachineStatusUpdate.Controllers
 
         // ============================================================
         // GET: GetLatestStopByMachine
-        // Trả về bản ghi Stop gần nhất trong ngày theo MachineCode
-        // Dùng để auto-fill form khi chọn Machine lúc nhấn Run
+        // 根据设备号返回当天最新的停机记录，用于按"运行"按钮时自动填充表单
         // ============================================================
         [HttpGet]
         public async Task<IActionResult> GetLatestStopByMachine(string machineNo)
@@ -106,10 +105,10 @@ namespace MachineStatusUpdate.Controllers
         }
 
 
-        /*============================================================ Downtime ========================================================================**/
+        /*============================================================ 停机时间 ========================================================================**/
 
 
-        /* Hàm GET Nhập Downtime */
+        /* GET 录入停机时间 */
         [HttpGet]
         public async Task<IActionResult> CreateDownTime()
         {
@@ -158,18 +157,18 @@ namespace MachineStatusUpdate.Controllers
             return View("CreateDownTime");
         }
 
-        /* Hàm GET Lịch sử Downtime */
+        /* GET 停机历史记录 */
         [HttpGet]
         public async Task<IActionResult> DowntimeList(
             string operation = "",
             string fromDate  = "",
             string toDate    = "",
-            string station   = "",   // ← MỚI
-            string machine   = "",   // ← MỚI
-            string location  = "",   // ← MỚI
-            string employee  = "",   // ← MỚI
-            string reason    = "",   // ← MỚI
-            string effect    = "",   // ← MỚI
+            string station   = "",   // ← 新增
+            string machine   = "",   // ← 新增
+            string location  = "",   // ← 新增
+            string employee  = "",   // ← 新增
+            string reason    = "",   // ← 新增
+            string effect    = "",   // ← 新增
             int page         = 1,
             int pageSize     = 25)
         {
@@ -203,10 +202,10 @@ namespace MachineStatusUpdate.Controllers
                                 Image        = d.Image
                             };
 
-                // ----- Filter cố định: chỉ lấy SM -----
+                // ----- 固定筛选：只取SM -----
                 query = query.Where(x => x.Operation != null && x.Operation.Contains("(SM)"));
 
-                // ----- Filters cũ -----
+                // ----- 原有筛选条件 -----
                 if (!string.IsNullOrWhiteSpace(operation))
                 {
                     var op = operation.Trim();
@@ -219,7 +218,7 @@ namespace MachineStatusUpdate.Controllers
                 if (!string.IsNullOrEmpty(toDate) && DateTime.TryParse(toDate, out var to))
                     query = query.Where(x => x.Datetime.HasValue && x.Datetime.Value.Date <= to.Date);
 
-                // ----- Filters mới -----
+                // ----- 新增筛选条件 -----
                 if (!string.IsNullOrWhiteSpace(station))
                     query = query.Where(x => x.Station != null && x.Station == station.Trim());
 
@@ -238,7 +237,7 @@ namespace MachineStatusUpdate.Controllers
                 if (!string.IsNullOrWhiteSpace(effect))
                     query = query.Where(x => x.Effect != null && x.Effect == effect.Trim());
 
-                // ----- Lấy toàn bộ kết quả đã filter (không paginate) để build dropdown -----
+                // ----- 获取全部筛选结果（不分页）用于构建下拉框 -----
                 var allFilteredData = await query
                     .OrderByDescending(x => x.Datetime)
                     .ThenBy(x => x.Operation)
@@ -247,13 +246,13 @@ namespace MachineStatusUpdate.Controllers
                 var totalRecords = allFilteredData.Count;
                 var totalPages   = (int)Math.Ceiling((double)totalRecords / pageSize);
 
-                // ----- Paginate từ allFilteredData -----
+                // ----- 从全部结果中分页 -----
                 var results = allFilteredData
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
                     .ToList();
 
-                // ----- ViewBag: dropdown options lấy distinct từ toàn bộ kết quả đã filter -----
+                // ----- ViewBag: 下拉选项从全部筛选结果中取唯一值 -----
                 ViewBag.OperationOptions = allFilteredData
                     .Where(x => !string.IsNullOrEmpty(x.Operation))
                     .Select(x => x.Operation!)
@@ -303,7 +302,7 @@ namespace MachineStatusUpdate.Controllers
                     .OrderBy(x => x)
                     .ToList();
 
-                // ----- ViewBag: giá trị filter hiện tại để giữ state -----
+                // ----- ViewBag: 当前筛选值以保持状态 -----
                 ViewBag.Operation       = operation  ?? "";
                 ViewBag.FromDate        = fromDate   ?? "";
                 ViewBag.ToDate          = toDate     ?? "";
@@ -324,7 +323,7 @@ namespace MachineStatusUpdate.Controllers
             }
             catch (Exception ex)
             {
-                ViewBag.ErrorMessage    = $"Lỗi: {ex.Message}";
+                ViewBag.ErrorMessage    = $"错误: {ex.Message}";
                 ViewBag.Operation       = operation  ?? "";
                 ViewBag.FromDate        = fromDate   ?? "";
                 ViewBag.ToDate          = toDate     ?? "";
@@ -340,7 +339,7 @@ namespace MachineStatusUpdate.Controllers
                 ViewBag.TotalRecords    = 0;
                 ViewBag.HasPreviousPage = false;
                 ViewBag.HasNextPage     = false;
-                // Trả về ViewBag options rỗng để tránh lỗi null trong View
+                // 返回空ViewBag选项以避免View中出现空引用错误
                 ViewBag.OperationOptions = new List<string>();
                 ViewBag.StationOptions   = new List<string>();
                 ViewBag.MachineOptions   = new List<string>();
@@ -352,17 +351,17 @@ namespace MachineStatusUpdate.Controllers
             }
         }
 
-        /* Xuất Excel DowntimeList */
+        /* 导出停机列表到Excel */
         public async Task<IActionResult> ExportDowntimeListToExcel(
             string operation = "",
             string fromDate  = "",
             string toDate    = "",
-            string station   = "",   // ← MỚI
-            string machine   = "",   // ← MỚI
-            string location  = "",   // ← MỚI
-            string employee  = "",   // ← MỚI
-            string reason    = "",   // ← MỚI
-            string effect    = "")   // ← MỚI
+            string station   = "",   // ← 新增
+            string machine   = "",   // ← 新增
+            string location  = "",   // ← 新增
+            string employee  = "",   // ← 新增
+            string reason    = "",   // ← 新增
+            string effect    = "")   // ← 新增
         {
             try
             {
@@ -438,10 +437,10 @@ namespace MachineStatusUpdate.Controllers
                     ws.Style.Font.FontName = "Times New Roman";
                     ws.Style.Font.FontSize = 11;
 
-                    // ── Tiêu đề "Downtime History" ──
+                    // ── 标题 "停机历史" ──
                     int totalCols = 18;
                     var titleCell = ws.Cell(1, 1);
-                    titleCell.Value = "Downtime History";
+                    titleCell.Value = "停机历史";
                     titleCell.Style.Font.Bold     = true;
                     titleCell.Style.Font.FontSize = 16;
                     titleCell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
@@ -451,12 +450,12 @@ namespace MachineStatusUpdate.Controllers
 
                     var currentRow = 2;
 
-                    // Header theo thứ tự cột SQL
+                    // 按SQL列顺序的表头
                     string[] headers = {
-                        "#", "Operation", "Machine", "Location",
-                        "Reason", "Error Name", "Effect", "Station", "Estimate Time",
-                        "State", "Action", "Description", "Root Cause", "Spare Parts",
-                        "Employee Code", "Employee Name", "Datetime", "Image"
+                        "#", "工序", "设备号", "位置",
+                        "故障代码", "故障名称", "影响程度", "工位", "预估时间",
+                        "状态", "处理措施", "详细描述", "根本原因", "备件",
+                        "员工编号", "员工姓名", "时间", "图片"
                     };
 
                     for (int i = 0; i < headers.Length; i++)
@@ -519,13 +518,13 @@ namespace MachineStatusUpdate.Controllers
                                 }
                                 else
                                 {
-                                    ws.Cell(currentRow, 18).Value = "No image";
+                                    ws.Cell(currentRow, 18).Value = "无图片";
                                     ws.Cell(currentRow, 18).Style.Font.FontColor = XLColor.Gray;
                                 }
                             }
                             catch (Exception ex)
                             {
-                                ws.Cell(currentRow, 18).Value = $"Error: {ex.Message}";
+                                ws.Cell(currentRow, 18).Value = $"错误: {ex.Message}";
                                 ws.Cell(currentRow, 18).Style.Font.FontColor = XLColor.Red;
                             }
                         }
@@ -538,29 +537,29 @@ namespace MachineStatusUpdate.Controllers
 
                     ws.Columns(1, 18).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
                     ws.Columns(1, 18).Style.Alignment.Vertical   = XLAlignmentVerticalValues.Center;
-                    // Description, Root Cause, Spare Parts căn trái
+                    // 描述、根本原因、备件列左对齐
                     ws.Column(12).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;
                     ws.Column(13).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;
                     ws.Column(14).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;
 
                     ws.Column(1).Width  = 6;   // #
-                    ws.Column(2).Width  = 28;  // Operation
-                    ws.Column(3).Width  = 22;  // Machine
-                    ws.Column(4).Width  = 18;  // Location
-                    ws.Column(5).Width  = 14;  // Reason
-                    ws.Column(6).Width  = 25;  // Error Name
-                    ws.Column(7).Width  = 15;  // Effect
-                    ws.Column(8).Width  = 14;  // Station
-                    ws.Column(9).Width  = 14;  // Estimate Time
-                    ws.Column(10).Width = 12;  // State
-                    ws.Column(11).Width = 28;  // Action
-                    ws.Column(12).Width = 30;  // Description
-                    ws.Column(13).Width = 28;  // Root Cause
-                    ws.Column(14).Width = 22;  // Spare Parts
-                    ws.Column(15).Width = 15;  // Employee Code
-                    ws.Column(16).Width = 18;  // Employee Name
-                    ws.Column(17).Width = 18;  // Datetime
-                    ws.Column(18).Width = 15;  // Image
+                    ws.Column(2).Width  = 28;  // 工序
+                    ws.Column(3).Width  = 22;  // 设备号
+                    ws.Column(4).Width  = 18;  // 位置
+                    ws.Column(5).Width  = 14;  // 故障代码
+                    ws.Column(6).Width  = 25;  // 故障名称
+                    ws.Column(7).Width  = 15;  // 影响程度
+                    ws.Column(8).Width  = 14;  // 工位
+                    ws.Column(9).Width  = 14;  // 预估时间
+                    ws.Column(10).Width = 12;  // 状态
+                    ws.Column(11).Width = 28;  // 处理措施
+                    ws.Column(12).Width = 30;  // 详细描述
+                    ws.Column(13).Width = 28;  // 根本原因
+                    ws.Column(14).Width = 22;  // 备件
+                    ws.Column(15).Width = 15;  // 员工编号
+                    ws.Column(16).Width = 18;  // 员工姓名
+                    ws.Column(17).Width = 18;  // 时间
+                    ws.Column(18).Width = 15;  // 图片
 
                     using (var stream = new MemoryStream())
                     {
@@ -573,17 +572,17 @@ namespace MachineStatusUpdate.Controllers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Lỗi ExportDowntimeListToExcel: {ex.Message}");
-                return Json(new { success = false, message = $"Lỗi xuất Excel: {ex.Message}" });
+                Console.WriteLine($"导出停机列表出错: {ex.Message}");
+                return Json(new { success = false, message = $"导出Excel时出错: {ex.Message}" });
             }
         }
 
-        /* Hàm POST Nhập Downtime */
+        /* POST 录入停机时间 */
         [HttpPost]
         [IgnoreAntiforgeryToken]
         public async Task<IActionResult> CreateDownTime(SVN_Downtime_Info_Devel model, IFormFile? imageFile)
         {
-            // ===== 1) Chuẩn hoá/điền mặc định =====
+            // ===== 1) 标准化/默认值 =====
             if (string.IsNullOrWhiteSpace(model.Code))
                 model.Code = model.EmployeeCode ?? string.Empty;
 
@@ -599,7 +598,7 @@ namespace MachineStatusUpdate.Controllers
             if (string.IsNullOrWhiteSpace(model.Description))
                 model.Description = string.Empty;
 
-            // ===== 2) Xử lý upload ảnh =====
+            // ===== 2) 处理图片上传 =====
             string imagePath = string.Empty;
             if (imageFile != null && imageFile.Length > 0)
             {
@@ -627,7 +626,7 @@ namespace MachineStatusUpdate.Controllers
 
             model.Image = imagePath;
 
-            // ===== 3) Validate ModelState =====
+            // ===== 3) 验证ModelState =====
             ModelState.Remove("Name");
             ModelState.Remove("Code");
             ModelState.Remove("EstimateTime");
@@ -653,18 +652,18 @@ namespace MachineStatusUpdate.Controllers
                 return Json(new { success = false, message = "数据无效: " + string.Join(" | ", errors) });
             }
 
-            // ===== 4) Lưu DB =====
+            // ===== 4) 保存数据库 =====
             try
             {
                 _context.SVN_Downtime_Infos_Devel.Add(model);
                 await _context.SaveChangesAsync();
 
-                // ===== 5) SignalR: Push real-time notification khi State = STOP =====
+                // ===== 5) SignalR: 当状态为STOP时推送实时通知 =====
                 var state = (model.State ?? "").Trim().ToUpper();
 
                 if (state == "STOP")
                 {
-                    // ── Lưu vào bảng TechResponses để Tech thấy khi refresh ──
+                    // ── 保存到TechResponses表，以便技术员刷新时看到 ──
                     var techResp = new MachineStatusUpdate.Models.SVN_Downtime_TechResponse
                     {
                         DowntimeId       = model.Id,
@@ -680,7 +679,7 @@ namespace MachineStatusUpdate.Controllers
                         Description      = model.Description  ?? "",
                         Location         = model.Location     ?? "",
                         StopDatetime     = model.Datetime ?? DateTime.Now,
-                        TechAction       = null   // chưa xử lý
+                        TechAction       = null   // 尚未处理
                     };
                     _context.SVN_Downtime_TechResponses.Add(techResp);
                     await _context.SaveChangesAsync();
@@ -689,27 +688,27 @@ namespace MachineStatusUpdate.Controllers
                         recipientUsername : "ALL_TECH",
                         recipientRole     : "Technical",
                         notifType         : "STOP",
-                        title             : $"🛑 STOP — Máy: {model.MachineCode ?? "-"}",
-                        body              : $"Operation: {model.Operation ?? "-"} | Nhân viên: {model.EmployeeName ?? model.EmployeeCode ?? "-"} | Lý do: {model.Reason ?? "-"}",
+                        title             : $"🛑 停机 — 设备: {model.MachineCode ?? "-"}",
+                        body              : $"工序: {model.Operation ?? "-"} | 员工: {model.EmployeeName ?? model.EmployeeCode ?? "-"} | 原因: {model.Reason ?? "-"}",
                         machineCode       : model.MachineCode,
                         operation         : model.Operation,
                         techResponseId    : techResp.Id
                     );
 
-                    // ── Lưu notification cho Admin ──
+                    // ── 保存通知给管理员 ──
                     await SaveNotificationAsync(
                         recipientUsername: "ALL_ADMIN",
                         recipientRole: "Admin",
                         notifType: "STOP",
-                        title: $"🛑 STOP — Máy: {model.MachineCode ?? "-"}",
-                        body: $"Operation: {model.Operation ?? "-"} | Nhân viên: {model.EmployeeName ?? model.EmployeeCode ?? "-"} | Lý do: {model.Reason ?? "-"}",
+                        title: $"🛑 停机 — 设备: {model.MachineCode ?? "-"}",
+                        body: $"工序: {model.Operation ?? "-"} | 员工: {model.EmployeeName ?? model.EmployeeCode ?? "-"} | 原因: {model.Reason ?? "-"}",
                         machineCode: model.MachineCode,
                         operation: model.Operation,
                         techResponseId: techResp.Id
                     );
     
 
-                    // Gửi thông báo đến tất cả Kỹ thuật trong TechnicianGroup
+                    // 发送通知给技术员组
                     await _hubContext.Clients.Group("TechnicianGroup").SendAsync("ReceiveStopNotification", new
                     {
                         techResponseId   = techResp.Id,
@@ -734,8 +733,8 @@ namespace MachineStatusUpdate.Controllers
                         recipientUsername : "ALL_TECH",
                         recipientRole     : "Technical",
                         notifType         : "RUN",
-                        title             : $"✅ RUN — Máy: {model.MachineCode ?? "-"} đã chạy lại",
-                        body              : $"Operation: {model.Operation ?? "-"}",
+                        title             : $"✅ 运行 — 设备: {model.MachineCode ?? "-"} 已恢复",
+                        body              : $"工序: {model.Operation ?? "-"}",
                         machineCode       : model.MachineCode,
                         operation         : model.Operation
                     );
@@ -744,13 +743,13 @@ namespace MachineStatusUpdate.Controllers
                         recipientUsername: "ALL_ADMIN",
                         recipientRole: "Admin",
                         notifType: "RUN",
-                        title: $"✅ RUN — Máy: {model.MachineCode ?? "-"} đã chạy lại",
-                        body: $"Operation: {model.Operation ?? "-"}",
+                        title: $"✅ 运行 — 设备: {model.MachineCode ?? "-"} 已恢复",
+                        body: $"工序: {model.Operation ?? "-"}",
                         machineCode: model.MachineCode,
                         operation: model.Operation
                     );
     
-                    // Thông báo máy đã chạy lại để Kỹ thuật biết
+                    // 通知技术员设备已恢复
                     await _hubContext.Clients.Group("TechnicianGroup").SendAsync("ReceiveRunNotification", new
                     {
                         operation = model.Operation ?? "",
@@ -768,7 +767,7 @@ namespace MachineStatusUpdate.Controllers
         }
 
 
-        /* Hàm fill danh sách dropdown mã lỗi */
+        /* 填充错误代码下拉列表 */
         private async Task RefillReasonsAsync()
         {
             ViewBag.ReasonOptions = await _context.SVN_Downtime_Reasons
@@ -785,7 +784,7 @@ namespace MachineStatusUpdate.Controllers
             if (role != "Technical" && role != "Admin")
                 return RedirectToAction("Login", "Account");
 
-            // Load tất cả bản ghi STOP hôm nay để hiển thị khi Tech vào/refresh trang
+            // 加载今天所有的停机记录，以便技术员进入/刷新页面时显示
             var today = DateTime.Now.Date;
             var pending = await _context.SVN_Downtime_TechResponses
                 .AsNoTracking()
@@ -797,7 +796,7 @@ namespace MachineStatusUpdate.Controllers
             return View();
         }
 
-        // ── API: Load danh sách thông báo hôm nay khi Tech refresh trang ──
+        // ── API: 技术员刷新页面时加载今天的通知列表 ──
         [HttpGet]
         public async Task<IActionResult> GetPendingNotifications()
         {
@@ -808,7 +807,7 @@ namespace MachineStatusUpdate.Controllers
                 .OrderByDescending(x => x.StopDatetime)
                 .Select(x => new {
                     id               = x.Id,
-                    techResponseId   = x.Id,   // alias rõ ràng để JS dùng card.dataset.techResponseId
+                    techResponseId   = x.Id,   // 别名，方便JS使用card.dataset.techResponseId
                     downtimeId       = x.DowntimeId,
                     machineCode      = x.MachineCode      ?? "",
                     operation        = x.Operation        ?? "",
@@ -828,7 +827,7 @@ namespace MachineStatusUpdate.Controllers
                     respondDatetime  = x.RespondDatetime.HasValue
                                        ? x.RespondDatetime.Value.ToString("dd/MM/yyyy HH:mm") : "",
                     fixComplete      = x.TechAction != null && x.TechAction != "" &&
-                                       // Kiểm tra xem đã có notification FIX_COMPLETE cho downtime này chưa
+                                       // 检查是否已为此停机记录发送过FIX_COMPLETE通知
                                        _context.SVN_Notifications
                                            .Any(n => n.TechResponseId == x.Id && n.NotifType == "FIX_COMPLETE")
                 })
@@ -838,7 +837,7 @@ namespace MachineStatusUpdate.Controllers
         }
 
 
-        /* Hàm fill danh sách Operation đang chạy trong ngày hôm nay */
+        /* 填充今天正在运行的工序列表 */
         private async Task RefillOpsForToday()
         {
             var today = DateTime.Now.ToString("yyyyMMdd");
@@ -852,7 +851,7 @@ namespace MachineStatusUpdate.Controllers
         }
 
 
-        /* Hàm báo cáo downtime */
+        /* 停机报告 */
         [HttpGet]
         public async Task<IActionResult> ReportDowntime(string fromDate = "", string toDate = "", int page = 1, int pageSize = 10)
         {
@@ -892,7 +891,7 @@ namespace MachineStatusUpdate.Controllers
             }
             catch (Exception ex)
             {
-                ViewBag.ErrorMessage    = $"Lỗi: {ex.Message}";
+                ViewBag.ErrorMessage    = $"错误: {ex.Message}";
                 ViewBag.FromDate        = fromDate;
                 ViewBag.ToDate          = toDate;
                 ViewBag.CurrentPage     = 1;
@@ -905,7 +904,7 @@ namespace MachineStatusUpdate.Controllers
             }
         }
 
-        /* Hàm chuẩn bị dữ liệu downtime ngày => Chart */
+        /* 准备每日停机图表数据 */
         private DailyDowntimeChartData PrepareDailyDowntimeChartData(
     List<DowntimeReportByOperation> reportData, string fromDate, string toDate)
         {
@@ -922,7 +921,7 @@ namespace MachineStatusUpdate.Controllers
                             select new
                             {
                                 d.Operation,
-                                d.MachineCode,      // ← THÊM
+                                d.MachineCode,      // ← 新增
                                 d.State,
                                 d.Datetime
                             };
@@ -938,10 +937,10 @@ namespace MachineStatusUpdate.Controllers
                 var allRecords = query.ToList();
                 var downtimeByDate = new Dictionary<DateTime, (double Minutes, int Count)>();
 
-                // ── Group theo MachineCode + Operation ──
+                // ── 按设备号+工序分组 ──
                 var grouped = allRecords
                     .Where(x => !string.IsNullOrEmpty(x.Operation) && !string.IsNullOrEmpty(x.MachineCode))
-                    .GroupBy(x => new { x.MachineCode, x.Operation });   // ← ĐỔI
+                    .GroupBy(x => new { x.MachineCode, x.Operation });   // ← 更改
 
                 foreach (var group in grouped)
                 {
@@ -978,7 +977,7 @@ namespace MachineStatusUpdate.Controllers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Lỗi PrepareDailyDowntimeChartData: {ex.Message}");
+                Console.WriteLine($"准备每日停机图表数据出错: {ex.Message}");
             }
 
             return dailyData;
@@ -986,7 +985,7 @@ namespace MachineStatusUpdate.Controllers
 
 
 
-        /* Hàm lấy dữ liệu downtime STOP -> RUN */
+        /* 获取停机报告数据 (STOP -> RUN) */
         private async Task<List<DowntimeReportByOperation>> GetDowntimeReportData(string fromDate, string toDate)
         {
             var query = from d in _context.SVN_Downtime_Infos_Devel
@@ -996,7 +995,7 @@ namespace MachineStatusUpdate.Controllers
                         select new
                         {
                             d.Operation,
-                            d.MachineCode,          // ← THÊM
+                            d.MachineCode,          // ← 新增
                             d.State,
                             d.Reason,
                             ErrorName = r != null ? r.Reason_Name : "未确定",
@@ -1012,17 +1011,17 @@ namespace MachineStatusUpdate.Controllers
                 query = query.Where(x => x.Datetime.HasValue && x.Datetime.Value.Date <= to.Date);
 
             var allRecords = await query
-                .OrderBy(x => x.MachineCode)    // ← ĐỔI (bỏ EmployeeCode)
+                .OrderBy(x => x.MachineCode)    // ← 更改
                 .ThenBy(x => x.Operation)
                 .ThenBy(x => x.Datetime)
                 .ToListAsync();
 
             var downtimeRecords = new List<DowntimeRecord>();
 
-            // ── Group theo MachineCode + Operation thay vì EmployeeCode + Operation ──
+            // ── 按设备号+工序分组，替代原来的员工编号+工序 ──
             var grouped = allRecords
                 .Where(x => !string.IsNullOrEmpty(x.Operation) && !string.IsNullOrEmpty(x.MachineCode))
-                .GroupBy(x => new { x.MachineCode, x.Operation });   // ← ĐỔI
+                .GroupBy(x => new { x.MachineCode, x.Operation });   // ← 更改
 
             foreach (var group in grouped)
             {
@@ -1082,16 +1081,16 @@ namespace MachineStatusUpdate.Controllers
         }
 
 
-        /* Hàm chuyển đổi phút sang chuỗi thời gian */
+        /* 将分钟转换为时间字符串 */
         private string FormatMinutesToTime(double minutes)
         {
-            if (minutes < 0) return "0h 0m";
+            if (minutes < 0) return "0小时 0分钟";
             int hours = (int)(minutes / 60);
             int mins  = (int)(minutes % 60);
-            return $"{hours}h {mins}m";
+            return $"{hours}小时 {mins}分钟";
         }
 
-        /* Hàm chuẩn bị chart data theo Operation */
+        /* 按工序准备图表数据 */
         private DowntimeChartData PrepareChartData(List<DowntimeReportByOperation> reportData)
         {
             var chartData = new DowntimeChartData
@@ -1114,7 +1113,7 @@ namespace MachineStatusUpdate.Controllers
             return chartData;
         }
 
-        /* Hàm chuẩn bị chart data theo Reason Code */
+        /* 按故障代码准备图表数据 */
         private IssCodeChartData PrepareIssCodeChartData(List<DowntimeReportByOperation> reportData)
         {
             var allErrors = reportData
@@ -1132,13 +1131,13 @@ namespace MachineStatusUpdate.Controllers
 
             return new IssCodeChartData
             {
-                IssCodeLabels = allErrors.Select(e => e.IssCode == "N/A" ? "Không xác định": $"{e.ErrorName} ({e.IssCode})").ToList(),
+                IssCodeLabels = allErrors.Select(e => e.IssCode == "N/A" ? "未确定": $"{e.ErrorName} ({e.IssCode})").ToList(),
                 DowntimeMinutes = allErrors.Select(e => Math.Round(e.TotalMinutes, 2)).ToList(),
                 DowntimeCounts = allErrors.Select(e => e.Count).ToList()
             };
         }
 
-        /* Hàm lấy dữ liệu downtime STOP -> RUN kèm % running time */
+        /* 获取停机报告数据 (含运行时间占比) */
         private async Task<List<DowntimeReportByOperationWithPct>> GetDowntimeReportDataWithPct(string fromDate, string toDate)
         {
             var query = from d in _context.SVN_Downtime_Infos_Devel
@@ -1148,7 +1147,7 @@ namespace MachineStatusUpdate.Controllers
                         select new
                         {
                             d.Operation,
-                            d.MachineCode,          // ← THÊM
+                            d.MachineCode,          // ← 新增
                             d.State,
                             d.Reason,
                             ErrorName = r != null ? r.Reason_Name : "未确定",
@@ -1164,17 +1163,17 @@ namespace MachineStatusUpdate.Controllers
                 query = query.Where(x => x.Datetime.HasValue && x.Datetime.Value.Date <= to.Date);
 
             var allRecords = await query
-                .OrderBy(x => x.MachineCode)    // ← ĐỔI
+                .OrderBy(x => x.MachineCode)    // ← 更改
                 .ThenBy(x => x.Operation)
                 .ThenBy(x => x.Datetime)
                 .ToListAsync();
 
             var downtimeByOp = new Dictionary<string, List<(double Minutes, string Reason, string ErrorName)>>();
 
-            // ── Group theo MachineCode + Operation ──
+            // ── 按设备号+工序分组 ──
             var grouped = allRecords
                 .Where(x => !string.IsNullOrEmpty(x.Operation) && !string.IsNullOrEmpty(x.MachineCode))
-                .GroupBy(x => new { x.MachineCode, x.Operation });   // ← ĐỔI
+                .GroupBy(x => new { x.MachineCode, x.Operation });   // ← 更改
 
             foreach (var group in grouped)
             {
@@ -1198,7 +1197,7 @@ namespace MachineStatusUpdate.Controllers
                 }
             }
 
-            // Running time: từ bản ghi đầu → cuối của mỗi Operation (không đổi logic này)
+            // 运行时间：每个工序从第一条记录到最后一条记录（此逻辑不变）
             var runningByOp = allRecords
                 .Where(x => !string.IsNullOrEmpty(x.Operation) && x.Datetime.HasValue)
                 .GroupBy(x => x.Operation!.Trim())
@@ -1252,7 +1251,7 @@ namespace MachineStatusUpdate.Controllers
 
 
 
-        /* Hàm lấy dữ liệu downtime theo EQ (Machine Code) */
+        /* 按设备(EQ)获取停机数据 */
         private async Task<List<DowntimeReportByMachine>> GetDowntimeReportByMachine(string fromDate, string toDate)
         {
             var query = from d in _context.SVN_Downtime_Infos_Devel
@@ -1285,10 +1284,10 @@ namespace MachineStatusUpdate.Controllers
 
             var machineDowntimes = new Dictionary<string, List<(string Operation, double Minutes, string ReasonCode, string ReasonName)>>();
 
-            // ── Group theo MachineCode + Operation (bỏ EmployeeCode) ──
+            // ── 按设备号+工序分组（去除员工编号） ──
             var grouped = allRecords
                 .Where(x => !string.IsNullOrEmpty(x.MachineCode) && !string.IsNullOrEmpty(x.Operation))
-                .GroupBy(x => new { x.MachineCode, x.Operation });   // ← ĐỔI
+                .GroupBy(x => new { x.MachineCode, x.Operation });   // ← 更改
 
             foreach (var group in grouped)
             {
@@ -1350,7 +1349,7 @@ namespace MachineStatusUpdate.Controllers
 
 
 
-        /* Hàm chuẩn bị chart data theo Machine */
+        /* 按设备准备图表数据 */
         private MachineDowntimeChartData PrepareMachineChartData(List<DowntimeReportByMachine> machineData)
         {
             return new MachineDowntimeChartData
@@ -1362,7 +1361,7 @@ namespace MachineStatusUpdate.Controllers
         }
 
 
-        /* Hàm xuất Excel báo cáo downtime */
+        /* 导出停机报告到Excel */
         [HttpGet]
         public async Task<IActionResult> ExportDowntimeReportToExcel(string fromDate = "", string toDate = "")
         {
@@ -1373,14 +1372,14 @@ namespace MachineStatusUpdate.Controllers
 
                 using (var workbook = new XLWorkbook())
                 {
-                    // ══════════ Sheet 1: By Line ══════════
-                    var ws = workbook.Worksheets.Add("By Line");
+                    // ══════════ Sheet 1: 按工序 ══════════
+                    var ws = workbook.Worksheets.Add("按工序统计");
                     var currentRow = 1;
 
                     ws.Style.Font.FontName = "Times New Roman";
                     ws.Style.Font.FontSize = 11;
 
-                    ws.Cell(currentRow, 1).Value = "按工序停机时间报告 (Downtime Report by Line)";
+                    ws.Cell(currentRow, 1).Value = "按工序停机时间报告";
                     ws.Range(currentRow, 1, currentRow, 8).Merge();
                     ws.Cell(currentRow, 1).Style.Font.Bold = true;
                     ws.Cell(currentRow, 1).Style.Font.FontSize = 14;
@@ -1389,26 +1388,26 @@ namespace MachineStatusUpdate.Controllers
 
                     if (!string.IsNullOrEmpty(fromDate) || !string.IsNullOrEmpty(toDate))
                     {
-                        ws.Cell(currentRow, 1).Value = $"From: {fromDate}   To: {toDate}";
+                        ws.Cell(currentRow, 1).Value = $"从: {fromDate}  到: {toDate}";
                         ws.Range(currentRow, 1, currentRow, 8).Merge();
                         currentRow += 2;
                     }
 
                     foreach (var operation in reportData)
                     {
-                        ws.Cell(currentRow, 1).Value = $"Line: {operation.Operation}";
+                        ws.Cell(currentRow, 1).Value = $"工序: {operation.Operation}";
                         ws.Cell(currentRow, 1).Style.Font.Bold = true;
                         ws.Cell(currentRow, 1).Style.Fill.BackgroundColor = XLColor.LightBlue;
                         ws.Range(currentRow, 1, currentRow, 8).Merge();
                         currentRow++;
 
-                        ws.Cell(currentRow, 1).Value = "Downtime Count:";
+                        ws.Cell(currentRow, 1).Value = "停机次数:";
                         ws.Cell(currentRow, 2).Value = operation.TotalDowntimeCount;
-                        ws.Cell(currentRow, 3).Value = "Total DT:";
+                        ws.Cell(currentRow, 3).Value = "总停机时长:";
                         ws.Cell(currentRow, 4).Value = operation.TotalDowntimeFormatted;
-                        ws.Cell(currentRow, 5).Value = "Running Time:";
+                        ws.Cell(currentRow, 5).Value = "运行时长:";
                         ws.Cell(currentRow, 6).Value = operation.RunningTimeFormatted;
-                        ws.Cell(currentRow, 7).Value = "DT %:";
+                        ws.Cell(currentRow, 7).Value = "停机占比:";
                         ws.Cell(currentRow, 8).Value = $"{operation.DowntimePct}%";
                         ws.Cell(currentRow, 1).Style.Font.Bold = true;
                         ws.Cell(currentRow, 3).Style.Font.Bold = true;
@@ -1417,7 +1416,7 @@ namespace MachineStatusUpdate.Controllers
                         ws.Cell(currentRow, 8).Style.Font.FontColor = operation.DowntimePct >= 10 ? XLColor.Red : XLColor.DarkGreen;
                         currentRow++;
 
-                        string[] headers = { "#", "Reason Code", "Reason Name", "Count", "Total (min)", "Total Time", "%" };
+                        string[] headers = { "#", "故障代码", "故障名称", "次数", "总时长(分钟)", "总时长", "占比%" };
                         for (int i = 0; i < headers.Length; i++)
                         {
                             var cell = ws.Cell(currentRow, i + 1);
@@ -1450,13 +1449,13 @@ namespace MachineStatusUpdate.Controllers
                     ws.Column(4).Width = 10; ws.Column(5).Width = 14; ws.Column(6).Width = 14;
                     ws.Column(7).Width = 10; ws.Column(8).Width = 10;
 
-                    // ══════════ Sheet 2: By EQ (Machine) ══════════
-                    var ws2 = workbook.Worksheets.Add("By EQ");
+                    // ══════════ Sheet 2: 按设备 ══════════
+                    var ws2 = workbook.Worksheets.Add("按设备统计");
                     ws2.Style.Font.FontName = "Times New Roman";
                     ws2.Style.Font.FontSize = 11;
                     int r2 = 1;
 
-                    ws2.Cell(r2, 1).Value = "按设备停机时间报告 (Downtime Report by EQ No.)";
+                    ws2.Cell(r2, 1).Value = "按设备停机时间报告";
                     ws2.Range(r2, 1, r2, 7).Merge();
                     ws2.Cell(r2, 1).Style.Font.Bold = true;
                     ws2.Cell(r2, 1).Style.Font.FontSize = 14;
@@ -1465,13 +1464,13 @@ namespace MachineStatusUpdate.Controllers
 
                     if (!string.IsNullOrEmpty(fromDate) || !string.IsNullOrEmpty(toDate))
                     {
-                        ws2.Cell(r2, 1).Value = $"From: {fromDate}   To: {toDate}";
+                        ws2.Cell(r2, 1).Value = $"从: {fromDate}  到: {toDate}";
                         ws2.Range(r2, 1, r2, 7).Merge();
                         r2 += 2;
                     }
 
-                    // Summary table header
-                    string[] sumHdr = { "#", "EQ No.", "Operation / Line", "DT Count", "Total (min)", "Total Time", "% of Total DT" };
+                    // 汇总表头
+                    string[] sumHdr = { "#", "设备号", "工序/产线", "停机次数", "总时长(分钟)", "总时长", "占总停机比%" };
                     for (int i = 0; i < sumHdr.Length; i++)
                     {
                         var c = ws2.Cell(r2, i + 1);
@@ -1500,16 +1499,16 @@ namespace MachineStatusUpdate.Controllers
 
                     r2 += 2;
 
-                    // Detail by machine
+                    // 按设备明细
                     foreach (var m in machineData)
                     {
-                        ws2.Cell(r2, 1).Value = $"EQ: {m.MachineCode}  |  Line: {m.Operation}  |  Total DT: {m.TotalDowntimeFormatted}  |  Count: {m.DowntimeCount}";
+                        ws2.Cell(r2, 1).Value = $"设备: {m.MachineCode}  |  产线: {m.Operation}  |  总停机: {m.TotalDowntimeFormatted}  |  次数: {m.DowntimeCount}";
                         ws2.Cell(r2, 1).Style.Font.Bold = true;
                         ws2.Cell(r2, 1).Style.Fill.BackgroundColor = XLColor.LightSteelBlue;
                         ws2.Range(r2, 1, r2, 7).Merge();
                         r2++;
 
-                        string[] dHdr = { "#", "Reason Code", "Reason Name", "Count", "Total (min)", "Total Time", "%" };
+                        string[] dHdr = { "#", "故障代码", "故障名称", "次数", "总时长(分钟)", "总时长", "占比%" };
                         for (int i = 0; i < dHdr.Length; i++)
                         {
                             var c = ws2.Cell(r2, i + 1);
@@ -1556,32 +1555,32 @@ namespace MachineStatusUpdate.Controllers
 
         // ══════════════════════════════════════════════════════
         // POST /Status/TechnicianRespond
-        // Tech nhấn Accept hoặc Wait → cập nhật DB + push SignalR về Operator
+        // 技术员点击接受或等待 → 更新数据库 + SignalR推送回操作员
         // ══════════════════════════════════════════════════════
         [HttpPost]
         [IgnoreAntiforgeryToken]
         public async Task<IActionResult> TechnicianRespond([FromBody] TechRespondDto dto)
         {
-            var techUser = HttpContext.Session.GetString("UserName") ?? "Kỹ thuật";
+            var techUser = HttpContext.Session.GetString("UserName") ?? "技术员";
 
-            // Cập nhật trạng thái trong bảng TechResponses
+            // 更新TechResponses表中的状态
             var record = await _context.SVN_Downtime_TechResponses.FindAsync(dto.TechResponseId);
             if (record == null)
-                return Json(new { success = false, message = "Record not found" });
+                return Json(new { success = false, message = "记录未找到" });
 
-            record.TechAction = dto.Action;   // "ACCEPT" hoặc "WAIT"
+            record.TechAction = dto.Action;   // "ACCEPT" 或 "WAIT"
             record.TechUsername = techUser;
             record.RespondDatetime = DateTime.Now;
             await _context.SaveChangesAsync();
 
-            // ── Lưu notification phản hồi của Tech → Prod ──
+            // ── 保存技术员响应通知 → 生产端 ──
             if (!string.IsNullOrWhiteSpace(dto.OperatorUsername))
             {
                 var notifTitle = dto.Action == "ACCEPT"
-                    ? $"✅ Kỹ thuật [{techUser}] đang đến sửa máy {dto.MachineCode ?? "-"}"
-                    : $"⏳ Kỹ thuật [{techUser}] đã xem — vui lòng chờ thêm";
+                    ? $"✅ 技术员 [{techUser}] 正在前往维修设备 {dto.MachineCode ?? "-"}"
+                    : $"⏳ 技术员 [{techUser}] 已查看 — 请稍候";
 
-                // Gửi cho Prod cụ thể
+                // 发送给特定生产端
                 await SaveNotificationAsync(
                     recipientUsername: dto.OperatorUsername,
                     recipientRole: "Production",
@@ -1593,7 +1592,7 @@ namespace MachineStatusUpdate.Controllers
                     techName: techUser
                 );
 
-                // Gửi thêm cho Admin
+                // 同时发送给管理员
                 await SaveNotificationAsync(
                     recipientUsername: "ALL_ADMIN",
                     recipientRole: "Admin",
@@ -1606,7 +1605,7 @@ namespace MachineStatusUpdate.Controllers
                 );
             }
 
-            // Push SignalR ngược về Operator
+            // SignalR推送给操作员
             if (!string.IsNullOrWhiteSpace(dto.OperatorUsername))
             {
                 await _hubContext.Clients
@@ -1617,8 +1616,8 @@ namespace MachineStatusUpdate.Controllers
                         techName = techUser,
                         machineCode = dto.MachineCode ?? "",
                         message = dto.Action == "ACCEPT"
-                            ? $"✅ Kỹ thuật [{techUser}] đã nhận thông tin và đang chuẩn bị đến sửa máy {dto.MachineCode}."
-                            : $"⏳ Kỹ thuật [{techUser}] đã xem thông báo, vui lòng chờ thêm.",
+                            ? $"✅ 技术员 [{techUser}] 已收到信息并正在准备维修设备 {dto.MachineCode}。"
+                            : $"⏳ 技术员 [{techUser}] 已查看通知，请稍候。",
                         datetime = DateTime.Now.ToString("dd/MM/yyyy HH:mm")
                     });
             }
@@ -1627,22 +1626,22 @@ namespace MachineStatusUpdate.Controllers
         }
         // ══════════════════════════════════════════════════════════════════════
         // POST /Status/TechnicianFixComplete
-        // Tech bấm "Đã sửa xong" trong card → tạo RUN record + notify Prod
+        // 技术员点击"已修复完成" → 创建RUN记录 + 通知生产端
         // ══════════════════════════════════════════════════════════════════════
         [HttpPost]
         [IgnoreAntiforgeryToken]
         public async Task<IActionResult> TechnicianFixComplete([FromBody] TechFixCompleteDto dto)
         {
-            var techUser = HttpContext.Session.GetString("UserName") ?? "Kỹ thuật";
+            var techUser = HttpContext.Session.GetString("UserName") ?? "技术员";
 
             var techResp = await _context.SVN_Downtime_TechResponses.FindAsync(dto.TechResponseId);
             if (techResp == null)
-                return Json(new { success = false, message = "Record not found" });
+                return Json(new { success = false, message = "记录未找到" });
 
-            // Lấy STOP record gốc để copy Code / Name
+            // 获取原始STOP记录以复制Code/Name
             var stopRecord = await _context.SVN_Downtime_Infos_Devel.FindAsync(techResp.DowntimeId);
 
-            // Tạo bản ghi RUN mới, copy toàn bộ trường từ STOP
+            // 创建新的RUN记录，从STOP复制所有字段
             var runRecord = new SVN_Downtime_Info_Devel
             {
                 State        = "RUN",
@@ -1663,10 +1662,10 @@ namespace MachineStatusUpdate.Controllers
             _context.SVN_Downtime_Infos_Devel.Add(runRecord);
             await _context.SaveChangesAsync();
 
-            var title = $"✅ Máy {techResp.MachineCode ?? "-"} đã sửa xong!";
-            var body  = $"Kỹ thuật [{techUser}] đã sửa xong. Operation: {techResp.Operation ?? "-"} | Máy đã chạy lại bình thường.";
+            var title = $"✅ 设备 {techResp.MachineCode ?? "-"} 已修复完成！";
+            var body  = $"技术员 [{techUser}] 已完成维修。工序: {techResp.Operation ?? "-"} | 设备已恢复正常运行。";
 
-            // ── Notify Prod ──
+            // ── 通知生产端 ──
             if (!string.IsNullOrWhiteSpace(techResp.OperatorUsername))
             {
                 await SaveNotificationAsync(
@@ -1681,7 +1680,7 @@ namespace MachineStatusUpdate.Controllers
                     techName          : techUser
                 );
 
-                // SignalR → Prod
+                // SignalR → 生产端
                 await _hubContext.Clients
                     .Group($"Operator_{techResp.OperatorUsername}")
                     .SendAsync("ReceiveFixComplete", new
@@ -1689,12 +1688,12 @@ namespace MachineStatusUpdate.Controllers
                         machineCode = techResp.MachineCode ?? "",
                         operation   = techResp.Operation   ?? "",
                         techName    = techUser,
-                        message     = $"✅ Máy {techResp.MachineCode} ({techResp.Operation}) đã được sửa xong và chạy lại bình thường.",
+                        message     = $"✅ 设备 {techResp.MachineCode} ({techResp.Operation}) 已维修完成并恢复正常运行。",
                         datetime    = DateTime.Now.ToString("dd/MM/yyyy HH:mm")
                     });
             }
 
-            // ── Notify Admin ──
+            // ── 通知管理员 ──
             await SaveNotificationAsync(
                 recipientUsername : "ALL_ADMIN",
                 recipientRole     : "Admin",
@@ -1707,7 +1706,7 @@ namespace MachineStatusUpdate.Controllers
                 techName          : techUser
             );
 
-            // ── Push RUN card lên TechnicianGroup (Tech thấy máy đã run) ──
+            // ── 推送RUN卡片给技术员组（技术员看到设备已恢复） ──
             await _hubContext.Clients.Group("TechnicianGroup").SendAsync("ReceiveRunNotification", new
             {
                 machineCode = techResp.MachineCode ?? "",
@@ -1724,155 +1723,155 @@ namespace MachineStatusUpdate.Controllers
         }
 
         // ══════════════════════════════════════════════════════════════════════
-// NOTIFICATION API — thêm vào StatusController.cs
-// ══════════════════════════════════════════════════════════════════════
-// Vị trí: dán vào trong class StatusController, gần khu vực TechnicianRespond
+        // 通知API — 添加到StatusController.cs中
+        // ══════════════════════════════════════════════════════════════════════
+        // 位置：粘贴到StatusController类中，靠近TechnicianRespond区域
 
-// ── Helper: lưu notification vào DB ──────────────────────────────────
-private async Task SaveNotificationAsync(
-    string recipientUsername,
-    string recipientRole,
-    string notifType,
-    string title,
-    string? body        = null,
-    string? machineCode = null,
-    string? operation   = null,
-    int?    techResponseId = null,
-    string? techAction  = null,
-    string? techName    = null)
-{
-    var notif = new SVN_Notification
-    {
-        RecipientUsername = recipientUsername,
-        RecipientRole     = recipientRole,
-        NotifType         = notifType,
-        Title             = title,
-        Body              = body,
-        MachineCode       = machineCode,
-        Operation         = operation,
-        TechResponseId    = techResponseId,
-        CreatedAt         = DateTime.Now,
-        IsRead            = false,
-        TechAction        = techAction,
-        TechName          = techName
-    };
-    _context.SVN_Notifications.Add(notif);
-    await _context.SaveChangesAsync();
-}
-
-
-// ── GET /Status/GetMyNotifications ────────────────────────────────────
-// Trả về notifications cho user hiện tại (dùng khi load trang / refresh)
-[HttpGet]
-public async Task<IActionResult> GetMyNotifications()
-{
-    var username = HttpContext.Session.GetString("UserName") ?? "";
-    var role     = HttpContext.Session.GetString("UserRole") ?? "";
-
-    if (string.IsNullOrEmpty(username))
-        return Json(new { success = false });
-
-    IQueryable<SVN_Notification> query = _context.SVN_Notifications.AsNoTracking();
-
-    if (role == "Technical")
-    {
-        // Tech nhận tất cả thông báo STOP và RUN gửi đến "ALL_TECH"
-        query = query.Where(n => n.RecipientUsername == "ALL_TECH"
-                              || n.RecipientUsername == username);
-    }
-    else if (role == "Admin")
-    {
-        // Admin nhận tất cả
-        query = query.Where(n => n.RecipientUsername == "ALL_TECH"
-                              || n.RecipientUsername == "ALL_ADMIN"
-                              || n.RecipientUsername == username);
-    }
-    else
-    {
-        // Production: chỉ nhận thông báo gửi đến chính username họ
-        query = query.Where(n => n.RecipientUsername == username);
-    }
-
-    var today = DateTime.Now.Date;
-    var list = await query
-        .Where(n => n.CreatedAt.Date == today)          // chỉ lấy hôm nay (tùy chỉnh nếu muốn)
-        .OrderByDescending(n => n.CreatedAt)
-        .Take(50)
-        .Select(n => new {
-            id             = n.Id,
-            notifType      = n.NotifType,
-            title          = n.Title,
-            body           = n.Body ?? "",
-            machineCode    = n.MachineCode ?? "",
-            operation      = n.Operation  ?? "",
-            techResponseId = n.TechResponseId,
-            techAction     = n.TechAction  ?? "",
-            techName       = n.TechName    ?? "",
-            createdAt      = n.CreatedAt.ToString("dd/MM/yyyy HH:mm"),
-            isRead         = n.IsRead,
-            readAt         = n.ReadAt.HasValue ? n.ReadAt.Value.ToString("dd/MM/yyyy HH:mm") : ""
-        })
-        .ToListAsync();
-
-    int unreadCount = await query
-        .Where(n => !n.IsRead && n.CreatedAt.Date == today)
-        .CountAsync();
-
-    return Json(new { success = true, notifications = list, unreadCount });
-}
+        // ── Helper: 保存通知到数据库 ──────────────────────────────────
+        private async Task SaveNotificationAsync(
+            string recipientUsername,
+            string recipientRole,
+            string notifType,
+            string title,
+            string? body        = null,
+            string? machineCode = null,
+            string? operation   = null,
+            int?    techResponseId = null,
+            string? techAction  = null,
+            string? techName    = null)
+        {
+            var notif = new SVN_Notification
+            {
+                RecipientUsername = recipientUsername,
+                RecipientRole     = recipientRole,
+                NotifType         = notifType,
+                Title             = title,
+                Body              = body,
+                MachineCode       = machineCode,
+                Operation         = operation,
+                TechResponseId    = techResponseId,
+                CreatedAt         = DateTime.Now,
+                IsRead            = false,
+                TechAction        = techAction,
+                TechName          = techName
+            };
+            _context.SVN_Notifications.Add(notif);
+            await _context.SaveChangesAsync();
+        }
 
 
-// ── POST /Status/MarkNotificationRead ─────────────────────────────────
-// Đánh dấu 1 notification là đã đọc
-[HttpPost]
-[IgnoreAntiforgeryToken]
-public async Task<IActionResult> MarkNotificationRead([FromBody] MarkReadDto dto)
-{
-    var username = HttpContext.Session.GetString("UserName") ?? "";
-    if (string.IsNullOrEmpty(username)) return Json(new { success = false });
+        // ── GET /Status/GetMyNotifications ────────────────────────────────────
+        // 返回当前用户的通知（用于加载页面/刷新）
+        [HttpGet]
+        public async Task<IActionResult> GetMyNotifications()
+        {
+            var username = HttpContext.Session.GetString("UserName") ?? "";
+            var role     = HttpContext.Session.GetString("UserRole") ?? "";
 
-    var notif = await _context.SVN_Notifications.FindAsync(dto.Id);
-    if (notif == null) return Json(new { success = false, message = "Not found" });
+            if (string.IsNullOrEmpty(username))
+                return Json(new { success = false });
 
-    notif.IsRead = true;
-    notif.ReadAt = DateTime.Now;
-    await _context.SaveChangesAsync();
+            IQueryable<SVN_Notification> query = _context.SVN_Notifications.AsNoTracking();
 
-    return Json(new { success = true });
-}
+            if (role == "Technical")
+            {
+                // 技术员接收所有发送给"ALL_TECH"和自己的通知
+                query = query.Where(n => n.RecipientUsername == "ALL_TECH"
+                                      || n.RecipientUsername == username);
+            }
+            else if (role == "Admin")
+            {
+                // 管理员接收所有
+                query = query.Where(n => n.RecipientUsername == "ALL_TECH"
+                                      || n.RecipientUsername == "ALL_ADMIN"
+                                      || n.RecipientUsername == username);
+            }
+            else
+            {
+                // 生产端：只接收发送给自己用户名的通知
+                query = query.Where(n => n.RecipientUsername == username);
+            }
+
+            var today = DateTime.Now.Date;
+            var list = await query
+                .Where(n => n.CreatedAt.Date == today)          // 只取今天（可根据需要调整）
+                .OrderByDescending(n => n.CreatedAt)
+                .Take(50)
+                .Select(n => new {
+                    id             = n.Id,
+                    notifType      = n.NotifType,
+                    title          = n.Title,
+                    body           = n.Body ?? "",
+                    machineCode    = n.MachineCode ?? "",
+                    operation      = n.Operation  ?? "",
+                    techResponseId = n.TechResponseId,
+                    techAction     = n.TechAction  ?? "",
+                    techName       = n.TechName    ?? "",
+                    createdAt      = n.CreatedAt.ToString("dd/MM/yyyy HH:mm"),
+                    isRead         = n.IsRead,
+                    readAt         = n.ReadAt.HasValue ? n.ReadAt.Value.ToString("dd/MM/yyyy HH:mm") : ""
+                })
+                .ToListAsync();
+
+            int unreadCount = await query
+                .Where(n => !n.IsRead && n.CreatedAt.Date == today)
+                .CountAsync();
+
+            return Json(new { success = true, notifications = list, unreadCount });
+        }
 
 
-// ── POST /Status/MarkAllNotificationsRead ─────────────────────────────
-// Đánh dấu tất cả notifications của user hiện tại là đã đọc
-[HttpPost]
-[IgnoreAntiforgeryToken]
-public async Task<IActionResult> MarkAllNotificationsRead()
-{
-    var username = HttpContext.Session.GetString("UserName") ?? "";
-    var role     = HttpContext.Session.GetString("UserRole") ?? "";
-    if (string.IsNullOrEmpty(username)) return Json(new { success = false });
+        // ── POST /Status/MarkNotificationRead ─────────────────────────────────
+        // 将单条通知标记为已读
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> MarkNotificationRead([FromBody] MarkReadDto dto)
+        {
+            var username = HttpContext.Session.GetString("UserName") ?? "";
+            if (string.IsNullOrEmpty(username)) return Json(new { success = false });
 
-    var today = DateTime.Now.Date;
+            var notif = await _context.SVN_Notifications.FindAsync(dto.Id);
+            if (notif == null) return Json(new { success = false, message = "未找到通知" });
 
-    IQueryable<SVN_Notification> query = _context.SVN_Notifications
-        .Where(n => !n.IsRead && n.CreatedAt.Date == today);
+            notif.IsRead = true;
+            notif.ReadAt = DateTime.Now;
+            await _context.SaveChangesAsync();
 
-    if (role == "Technical")
-        query = query.Where(n => n.RecipientUsername == "ALL_TECH" || n.RecipientUsername == username);
-    else if (role == "Admin")
-        query = query.Where(n => n.RecipientUsername == "ALL_TECH"
-                              || n.RecipientUsername == "ALL_ADMIN"
-                              || n.RecipientUsername == username);
-    else
-        query = query.Where(n => n.RecipientUsername == username);
+            return Json(new { success = true });
+        }
 
-    var items = await query.ToListAsync();
-    var now = DateTime.Now;
-    foreach (var n in items) { n.IsRead = true; n.ReadAt = now; }
-    await _context.SaveChangesAsync();
 
-    return Json(new { success = true, markedCount = items.Count });
-}
+        // ── POST /Status/MarkAllNotificationsRead ─────────────────────────────
+        // 将当前用户的所有通知标记为已读
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> MarkAllNotificationsRead()
+        {
+            var username = HttpContext.Session.GetString("UserName") ?? "";
+            var role     = HttpContext.Session.GetString("UserRole") ?? "";
+            if (string.IsNullOrEmpty(username)) return Json(new { success = false });
+
+            var today = DateTime.Now.Date;
+
+            IQueryable<SVN_Notification> query = _context.SVN_Notifications
+                .Where(n => !n.IsRead && n.CreatedAt.Date == today);
+
+            if (role == "Technical")
+                query = query.Where(n => n.RecipientUsername == "ALL_TECH" || n.RecipientUsername == username);
+            else if (role == "Admin")
+                query = query.Where(n => n.RecipientUsername == "ALL_TECH"
+                                      || n.RecipientUsername == "ALL_ADMIN"
+                                      || n.RecipientUsername == username);
+            else
+                query = query.Where(n => n.RecipientUsername == username);
+
+            var items = await query.ToListAsync();
+            var now = DateTime.Now;
+            foreach (var n in items) { n.IsRead = true; n.ReadAt = now; }
+            await _context.SaveChangesAsync();
+
+            return Json(new { success = true, markedCount = items.Count });
+        }
 
 
         // ── DTO ──
@@ -1885,13 +1884,13 @@ public async Task<IActionResult> MarkAllNotificationsRead()
 
         public class TechRespondDto
         {
-            public int     TechResponseId   { get; set; }   // Id trong SVN_Downtime_TechResponses
+            public int     TechResponseId   { get; set; }   // SVN_Downtime_TechResponses中的Id
             public string  Action           { get; set; } = "";
             public string? OperatorUsername { get; set; }
             public string? MachineCode      { get; set; }
         }
 
-        // ── Admin: Render panel ──
+        // ── 管理员：渲染面板 ──
         [HttpGet]
         public IActionResult AdminPanel()
         {
@@ -1901,7 +1900,7 @@ public async Task<IActionResult> MarkAllNotificationsRead()
         }
 
 
-        // ── Admin: List records (paginated + filtered) ──
+        // ── 管理员：获取记录列表（分页+筛选） ──
         [HttpGet]
         public async Task<IActionResult> AdminGetRecords(
             string operation = "", string state = "",
@@ -1960,7 +1959,7 @@ public async Task<IActionResult> MarkAllNotificationsRead()
         }
 
 
-        // ── Admin: Update record ──
+        // ── 管理员：更新记录 ──
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AdminUpdateRecord([FromBody] AdminRecordDto dto)
@@ -1970,7 +1969,7 @@ public async Task<IActionResult> MarkAllNotificationsRead()
 
             var rec = await _context.SVN_Downtime_Infos_Devel.FindAsync(dto.Id);
             if (rec == null)
-                return Json(new { success = false, message = "Record not found" });
+                return Json(new { success = false, message = "未找到记录" });
 
             rec.EmployeeCode = dto.EmployeeCode;
             rec.EmployeeName = dto.EmployeeName;
@@ -1996,7 +1995,7 @@ public async Task<IActionResult> MarkAllNotificationsRead()
         }
 
 
-        // ── Admin: Delete record ──
+        // ── 管理员：删除记录 ──
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AdminDeleteRecord([FromBody] AdminDeleteDto dto)
@@ -2006,7 +2005,7 @@ public async Task<IActionResult> MarkAllNotificationsRead()
 
             var rec = await _context.SVN_Downtime_Infos_Devel.FindAsync(dto.Id);
             if (rec == null)
-                return Json(new { success = false, message = "Record not found" });
+                return Json(new { success = false, message = "未找到记录" });
 
             _context.SVN_Downtime_Infos_Devel.Remove(rec);
             await _context.SaveChangesAsync();
@@ -2066,4 +2065,4 @@ public async Task<IActionResult> MarkAllNotificationsRead()
             public string Code { get; set; }
         }
     }
-} 
+}

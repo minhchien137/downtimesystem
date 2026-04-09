@@ -1,5 +1,5 @@
 @{
-    ViewData["Title"] = "🔔 Technician Dashboard – Real-time Notifications";
+    ViewData["Title"] = "🔔 技术员看板 – 实时通知";
 }
 
 <style>
@@ -412,12 +412,12 @@
 <!-- Header -->
 <div class="dash-header">
     <div>
-        <h1>🔔 Technician Dashboard</h1>
-        <div class="sub">Real-time downtime notifications / 实时停机通知</div>
+        <h1>🔧 技术员看板</h1>
+        <div class="sub">实时停机通知 / 故障响应</div>
     </div>
     <span class="conn-badge connecting" id="connBadge">
         <span class="conn-dot"></span>
-        <span id="connText">Đang kết nối...</span>
+        <span id="connText">连接中...</span>
     </span>
 </div>
 
@@ -425,8 +425,8 @@
 
     <!-- Audio permission banner -->
     <div class="audio-banner" id="audioBanner">
-        🔇 Trình duyệt chặn âm thanh tự động.
-        <button onclick="unlockAudio()">Bật âm thanh (Enable Sound)</button>
+        🔇 浏览器已阻止自动播放声音。
+        <button onclick="unlockAudio()">开启声音 (Enable Sound)</button>
     </div>
 
     <!-- Summary counters -->
@@ -434,35 +434,35 @@
         <div class="summary-card">
             <div class="summary-icon">🛑</div>
             <div>
-                <div class="summary-label">Đang STOP hôm nay</div>
+                <div class="summary-label">今日停机</div>
                 <div class="summary-value stop" id="cntStop">0</div>
             </div>
         </div>
         <div class="summary-card">
             <div class="summary-icon">▶️</div>
             <div>
-                <div class="summary-label">Đã RUN lại</div>
+                <div class="summary-label">已恢复运行</div>
                 <div class="summary-value run" id="cntRun">0</div>
             </div>
         </div>
         <div class="summary-card">
             <div class="summary-icon">✅</div>
             <div>
-                <div class="summary-label">Đã Accept</div>
+                <div class="summary-label">已接受</div>
                 <div class="summary-value accept" id="cntAccept">0</div>
             </div>
         </div>
         <div class="summary-card">
             <div class="summary-icon">⏳</div>
             <div>
-                <div class="summary-label">Đang Wait</div>
+                <div class="summary-label">等待中</div>
                 <div class="summary-value wait" id="cntWait">0</div>
             </div>
         </div>
         <div class="summary-card">
             <div class="summary-icon">📋</div>
             <div>
-                <div class="summary-label">Tổng thông báo</div>
+                <div class="summary-label">总通知数</div>
                 <div class="summary-value total" id="cntTotal">0</div>
             </div>
         </div>
@@ -470,18 +470,18 @@
 
     <!-- Toolbar -->
     <div class="toolbar">
-        <div class="toolbar-title">📬 Danh sách thông báo</div>
-        <button class="btn-sound" id="btnSound" onclick="toggleSound()">🔔 Sound: BẬT</button>
-        <button class="btn-clear" onclick="clearAll()">🗑 Xóa tất cả</button>
+        <div class="toolbar-title">📬 通知列表</div>
+        <button class="btn-sound" id="btnSound" onclick="toggleSound()">🔔 声音: 开</button>
+        <button class="btn-clear" onclick="clearAll()">🗑 清空已完成</button>
     </div>
 
     <!-- Notification list -->
     <div class="notif-list" id="notifList">
         <div class="notif-empty" id="emptyState">
             <span class="empty-icon">🟢</span>
-            Đang chờ thông báo...<br>
+            等待通知中...<br>
             <small style="font-size:13px;margin-top:6px;display:block;">
-                Khi Operator bấm <strong>Call</strong>, thông báo sẽ hiện ở đây ngay lập tức.
+                当操作员按下 <strong>呼叫技术员</strong> 时，通知会立即显示在此处。
             </small>
         </div>
     </div>
@@ -577,7 +577,7 @@ function unlockAudio() {
 function toggleSound() {
     soundEnabled = !soundEnabled;
     document.getElementById('btnSound').textContent =
-        soundEnabled ? '🔔 Sound: BẬT' : '🔕 Sound: TẮT';
+        soundEnabled ? '🔔 声音: 开' : '🔕 声音: 关';
 }
 
 /* ===== Âm thanh STOP: còi báo động to, 5 tiếng bip nhanh ===== */
@@ -671,7 +671,7 @@ function startTitleFlash(machineName) {
     if (titleFlashInterval) clearInterval(titleFlashInterval);
     let show = true;
     titleFlashInterval = setInterval(() => {
-        document.title = show ? `🛑 STOP: ${machineName}` : originalTitle;
+        document.title = show ? `🛑 停机: ${machineName}` : originalTitle;
         show = !show;
     }, 700);
     // Dừng sau 15 giây
@@ -696,8 +696,8 @@ function updateCounters() {
 function renderStopCard(data, prepend = true) {
     if (emptyState) { emptyState.remove(); emptyState = null; }
 
-    const effLabel = data.effect === '1' ? '影响生产 (Affects production)'
-                   : data.effect === '2' ? '不影响生产 (No effect)'
+    const effLabel = data.effect === '1' ? '影响生产'
+                   : data.effect === '2' ? '不影响生产'
                    : (data.effect || '-');
 
     const card = document.createElement('div');
@@ -710,35 +710,35 @@ function renderStopCard(data, prepend = true) {
     const alreadyResponded = data.techAction && data.techAction !== '';
     const actionsHtml = alreadyResponded
         ? buildRespondedBadge(data.techAction, data.techUsername, data.respondDatetime, !!data.fixComplete)
-        : `<button class="btn-accept" onclick="respondToOperator(this,'ACCEPT')">✅ Accept — Đang đến sửa</button>
-           <button class="btn-wait"   onclick="respondToOperator(this,'WAIT')">⏳ Wait — Vui lòng chờ</button>`;
+        : `<button class="btn-accept" onclick="respondToOperator(this,'ACCEPT')">✅ 接受 — 正在前往维修</button>
+           <button class="btn-wait"   onclick="respondToOperator(this,'WAIT')">⏳ 等待 — 请稍候</button>`;
 
     card.innerHTML = `
         <div class="notif-top">
-            <span class="notif-badge badge-stop">🛑 STOP / CALL</span>
-            <span class="notif-time">${data.datetime || new Date().toLocaleString('vi-VN')}</span>
+            <span class="notif-badge badge-stop">🛑 停机 / 呼叫</span>
+            <span class="notif-time">${data.datetime || new Date().toLocaleString('zh-CN')}</span>
         </div>
-        <div class="notif-machine">${data.machineCode || '(Không có máy)'}</div>
+        <div class="notif-machine">${data.machineCode || '(无设备代码)'}</div>
         <div class="notif-op">📍 ${data.operation || '-'} ${data.location ? '· ' + data.location : ''}</div>
         <div class="notif-grid">
             <div class="notif-field">
-                <div class="notif-field-label">👤 Operator</div>
+                <div class="notif-field-label">👤 操作员</div>
                 <div class="notif-field-value">${data.employeeName || data.employeeCode || '-'} ${data.employeeCode ? '(' + data.employeeCode + ')' : ''}</div>
             </div>
             <div class="notif-field">
-                <div class="notif-field-label">🔴 Reason</div>
+                <div class="notif-field-label">🔴 故障原因</div>
                 <div class="notif-field-value">${data.reason || '-'}</div>
             </div>
             <div class="notif-field">
-                <div class="notif-field-label">⚠ Effect</div>
+                <div class="notif-field-label">⚠ 影响程度</div>
                 <div class="notif-field-value">${effLabel}</div>
             </div>
             <div class="notif-field">
-                <div class="notif-field-label">⏱ Estimate</div>
+                <div class="notif-field-label">⏱ 预估时间</div>
                 <div class="notif-field-value">${data.estimateTime || '-'}</div>
             </div>
-            ${data.station ? `<div class="notif-field"><div class="notif-field-label">🔩 Station</div><div class="notif-field-value">${data.station}</div></div>` : ''}
-            ${data.description ? `<div class="notif-field" style="grid-column:1/-1;"><div class="notif-field-label">📝 Description</div><div class="notif-field-value">${data.description}</div></div>` : ''}
+            ${data.station ? `<div class="notif-field"><div class="notif-field-label">🔩 工位</div><div class="notif-field-value">${data.station}</div></div>` : ''}
+            ${data.description ? `<div class="notif-field" style="grid-column:1/-1;"><div class="notif-field-label">📝 详细描述</div><div class="notif-field-value">${data.description}</div></div>` : ''}
         </div>
         <div class="notif-actions">${actionsHtml}</div>
     `;
@@ -756,12 +756,12 @@ function renderStopCard(data, prepend = true) {
 
 function buildRespondedBadge(action, techUser, respondTime, fixComplete = false) {
     const badge = action === 'ACCEPT'
-        ? `<span class="responded-badge accepted">✅ Đã Accept${techUser ? ' bởi ' + techUser : ''}${respondTime ? ' · ' + respondTime : ''}</span>`
-        : `<span class="responded-badge waited">⏳ Đã Wait${techUser ? ' bởi ' + techUser : ''}${respondTime ? ' · ' + respondTime : ''}</span>`;
+        ? `<span class="responded-badge accepted">✅ 已接受${techUser ? ' 由 ' + techUser : ''}${respondTime ? ' · ' + respondTime : ''}</span>`
+        : `<span class="responded-badge waited">⏳ 已等待${techUser ? ' 由 ' + techUser : ''}${respondTime ? ' · ' + respondTime : ''}</span>`;
 
     const responseBtn = fixComplete
-        ? `<span class="responded-badge fix-done">🔧 Đã gửi thông báo sửa xong</span>`
-        : `<button class="btn-fix-complete" onclick="techFixComplete(this)">🔧 Response — Đã sửa xong</button>`;
+        ? `<span class="responded-badge fix-done">🔧 已发送修复完成通知</span>`
+        : `<button class="btn-fix-complete" onclick="techFixComplete(this)">🔧 响应 — 已修复完成</button>`;
 
     return badge + responseBtn;
 }
@@ -777,7 +777,7 @@ async function respondToOperator(btn, action) {
     const actionsDiv       = card.querySelector('.notif-actions');
 
     card.querySelectorAll('.btn-accept, .btn-wait').forEach(b => b.disabled = true);
-    btn.innerHTML = '⏳ Đang gửi...';
+    btn.innerHTML = '⏳ 发送中...';
 
     try {
         const res = await fetch(`${pathBase}/Status/TechnicianRespond`, {
@@ -797,12 +797,12 @@ async function respondToOperator(btn, action) {
             updateCounters();
         } else {
             card.querySelectorAll('.btn-accept, .btn-wait').forEach(b => b.disabled = false);
-            btn.innerHTML = action === 'ACCEPT' ? '✅ Accept — Đang đến sửa' : '⏳ Wait — Vui lòng chờ';
+            btn.innerHTML = action === 'ACCEPT' ? '✅ 接受 — 正在前往维修' : '⏳ 等待 — 请稍候';
         }
     } catch (err) {
         console.error('respondToOperator error:', err);
         card.querySelectorAll('.btn-accept, .btn-wait').forEach(b => b.disabled = false);
-        btn.innerHTML = action === 'ACCEPT' ? '✅ Accept — Đang đến sửa' : '⏳ Wait — Vui lòng chờ';
+        btn.innerHTML = action === 'ACCEPT' ? '✅ 接受 — 正在前往维修' : '⏳ 等待 — 请稍候';
     }
 }
 
@@ -815,7 +815,7 @@ async function techFixComplete(btn) {
     const actionsDiv       = card.querySelector('.notif-actions');
 
     btn.disabled  = true;
-    btn.innerHTML = '⏳ Đang gửi...';
+    btn.innerHTML = '⏳ 发送中...';
 
     try {
         const res = await fetch(`${pathBase}/Status/TechnicianFixComplete`, {
@@ -830,17 +830,17 @@ async function techFixComplete(btn) {
             btn.replaceWith((() => {
                 const s = document.createElement('span');
                 s.className   = 'responded-badge fix-done';
-                s.textContent = '🔧 Đã gửi thông báo sửa xong';
+                s.textContent = '🔧 已发送修复完成通知';
                 return s;
             })());
         } else {
             btn.disabled  = false;
-            btn.innerHTML = '🔧 Response — Đã sửa xong';
+            btn.innerHTML = '🔧 响应 — 已修复完成';
         }
     } catch (err) {
         console.error('techFixComplete error:', err);
         btn.disabled  = false;
-        btn.innerHTML = '🔧 Response — Đã sửa xong';
+        btn.innerHTML = '🔧 响应 — 已修复完成';
     }
 }
 
@@ -851,14 +851,14 @@ function renderRunCard(data) {
     const card = document.createElement('div');
     card.className = 'notif-card run-card';
     card.innerHTML = `
-        <button class="notif-dismiss" onclick="dismissCard(this)" title="Đóng">×</button>
+        <button class="notif-dismiss" onclick="dismissCard(this)" title="关闭">×</button>
         <div class="notif-top">
-            <span class="notif-badge badge-run">▶ RUN</span>
-            <span class="notif-time">${data.datetime || new Date().toLocaleString('vi-VN')}</span>
+            <span class="notif-badge badge-run">▶ 恢复运行</span>
+            <span class="notif-time">${data.datetime || new Date().toLocaleString('zh-CN')}</span>
         </div>
         <div class="notif-machine">${data.machineCode || '-'}</div>
         <div class="notif-op">📍 ${data.operation || '-'}</div>
-        <div style="font-size:13px;color:#166534;margin-top:6px;">✅ Máy đã chạy lại bình thường.</div>
+        <div style="font-size:13px;color:#166534;margin-top:6px;">✅ 设备已恢复正常运行。</div>
     `;
 
     notifList.insertBefore(card, notifList.firstChild);
@@ -882,7 +882,7 @@ function showEmptyState() {
     const empty = document.createElement('div');
     empty.className = 'notif-empty';
     empty.id = 'emptyState';
-    empty.innerHTML = `<span class="empty-icon">🟢</span>Đang chờ thông báo...<br><small style="font-size:13px;margin-top:6px;display:block;">Khi Operator bấm <strong>Call</strong>, thông báo sẽ hiện ở đây ngay lập tức.</small>`;
+    empty.innerHTML = `<span class="empty-icon">🟢</span>等待通知中...<br><small style="font-size:13px;margin-top:6px;display:block;">当操作员按下 <strong>呼叫技术员</strong> 时，通知会立即显示在此处。</small>`;
     notifList.appendChild(empty);
 }
 
@@ -928,10 +928,10 @@ connection.on("ReceiveStopNotification", (data) => {
     renderStopCard(data, true);  // prepend = true, thêm vào đầu
     playStopSound();
     flashScreen();
-    startTitleFlash(data.machineCode || 'STOP');
+    startTitleFlash(data.machineCode || '停机');
     showBrowserNotif(
-        `🛑 STOP: ${data.machineCode}`,
-        `Operation: ${data.operation}\nOperator: ${data.employeeName || data.employeeCode}\nReason: ${data.reason}`
+        `🛑 停机: ${data.machineCode}`,
+        `工序: ${data.operation}\n操作员: ${data.employeeName || data.employeeCode}\n原因: ${data.reason}`
     );
 });
 
@@ -942,24 +942,24 @@ connection.on("ReceiveRunNotification", (data) => {
     updateCounters();
     renderRunCard(data);
     playRunSound();
-    showBrowserNotif(`▶ RUN: ${data.machineCode}`, `Máy đã chạy lại\n${data.operation}`);
+    showBrowserNotif(`▶ 恢复运行: ${data.machineCode}`, `设备已重新运行\n${data.operation}`);
 });
 
 // Connection state handlers
 connection.onreconnecting(() => {
     if (connBadge) connBadge.className = 'conn-badge connecting';
-    if (connText)  connText.textContent = 'Đang kết nối lại...';
+    if (connText)  connText.textContent = '重连中...';
 });
 
 connection.onreconnected(() => {
     if (connBadge) connBadge.className = 'conn-badge connected';
-    if (connText)  connText.textContent = 'Đã kết nối ✓';
+    if (connText)  connText.textContent = '已连接 ✓';
     connection.invoke("JoinTechnicianGroup").catch(console.error);
 });
 
 connection.onclose(() => {
     if (connBadge) connBadge.className = 'conn-badge disconnected';
-    if (connText)  connText.textContent = 'Mất kết nối ✗';
+    if (connText)  connText.textContent = '连接断开 ✗';
 });
 
 // Khởi động kết nối
@@ -968,10 +968,10 @@ async function startConnection() {
         await connection.start();
         await connection.invoke("JoinTechnicianGroup");
         if (connBadge) connBadge.className = 'conn-badge connected';
-        if (connText)  connText.textContent = 'Đã kết nối ✓';
+        if (connText)  connText.textContent = '已连接 ✓';
     } catch (err) {
         if (connBadge) connBadge.className = 'conn-badge disconnected';
-        if (connText)  connText.textContent = 'Lỗi kết nối ✗';
+        if (connText)  connText.textContent = '连接错误 ✗';
         console.error('SignalR error:', err);
         setTimeout(startConnection, 5000);
     }
@@ -1022,7 +1022,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const banner = document.getElementById('audioBanner');
     banner.style.display = 'flex';
     banner.querySelector('span').textContent =
-        '⚠ Nhấn nút bên phải để bật âm thanh cảnh báo. Chỉ cần làm 1 lần!';
+        '⚠ 请点击右侧按钮以启用报警声音。只需操作一次！';
 
     document.addEventListener('click', () => {
         ensureAudioCtx();

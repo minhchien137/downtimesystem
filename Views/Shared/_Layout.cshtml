@@ -6,7 +6,7 @@
     bool isProduction = userRole == "Production";
 }
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -157,7 +157,7 @@
         <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
             <div class="container-fluid">
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse"
-                    aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                    aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="切换导航">
                     <span class="navbar-toggler-icon"></span>
                 </button>
 
@@ -211,19 +211,19 @@
                     <ul class="navbar-nav align-items-center gap-2">
                         <li class="nav-item">
                             <div class="bell-wrapper" id="bellWrapper">
-                                <button class="bell-btn" id="bellBtn" onclick="toggleBellDropdown(event)" title="Thông báo">
+                                <button class="bell-btn" id="bellBtn" onclick="toggleBellDropdown(event)" title="通知">
                                     🔔
                                     <span class="bell-badge" id="bellBadge">0</span>
                                 </button>
                                 <div class="bell-dropdown" id="bellDropdown">
                                     <div class="bell-drop-header">
-                                        @if (isProduction) { <span>📬 Phản hồi từ Technical team</span> }
-                                        @if (isTechnical)  { <span>🛑 Thông báo từ Production team</span> }
-                                        @if (isAdmin)      { <span>📋 Tất cả thông báo</span> }
-                                        <button class="bell-drop-clear" onclick="clearBellNotifs()">Xóa tất cả</button>
+                                        @if (isProduction) { <span>📬 技术团队响应</span> }
+                                        @if (isTechnical)  { <span>🛑 生产团队通知</span> }
+                                        @if (isAdmin)      { <span>📋 全部通知</span> }
+                                        <button class="bell-drop-clear" onclick="clearBellNotifs()">清空全部</button>
                                     </div>
                                     <div class="bell-drop-list" id="bellList">
-                                        <div class="bell-drop-empty" id="bellEmpty">Chưa có thông báo nào.</div>
+                                        <div class="bell-drop-empty" id="bellEmpty">暂无通知。</div>
                                     </div>
                                 </div>
                             </div>
@@ -231,9 +231,9 @@
                         <li class="nav-item">
                             <span class="nav-link text-muted" style="font-size:13px; cursor:default;">
                                 👤 @userName
-                                @if (isAdmin)      { <span class="role-badge-nav role-admin">ADMIN</span> }
-                                @if (isTechnical)  { <span class="role-badge-nav role-technical">TECH</span> }
-                                @if (isProduction) { <span class="role-badge-nav role-production">PROD</span> }
+                                @if (isAdmin)      { <span class="role-badge-nav role-admin">管理员</span> }
+                                @if (isTechnical)  { <span class="role-badge-nav role-technical">技术员</span> }
+                                @if (isProduction) { <span class="role-badge-nav role-production">生产</span> }
                             </span>
                         </li>
                         <li class="nav-item">
@@ -282,7 +282,7 @@
 
         if (!myUsername) return;
 
-        // ─── Render 1 notification item ──────────────────────────────
+        // ─── 渲染单条通知 ──────────────────────────────
         function renderItem(n) {
             const isRead    = n.isRead;
             const type      = n.notifType;   // 'STOP' | 'TECH_RESPONSE' | 'RUN'
@@ -290,7 +290,7 @@
             const isWait    = n.techAction === 'WAIT';
             const readStyle = isRead ? 'opacity:0.6;' : '';
 
-            let borderColor = '#ef4444'; // STOP = đỏ
+            let borderColor = '#ef4444'; // STOP = 红色
             let icon = '🛑';
             if (type === 'TECH_RESPONSE') { borderColor = isAccept ? '#22c55e' : '#f59e0b'; icon = isAccept ? '✅' : '⏳'; }
             if (type === 'RUN')           { borderColor = '#3b82f6'; icon = '✅'; }
@@ -311,7 +311,7 @@
                 </div>`;
         }
 
-        // ─── Load từ DB ───────────────────────────────────────────────
+        // ─── 从数据库加载通知 ───────────────────────────────
         async function loadNotifications() {
             try {
                 const res  = await fetch(`${pathBase}/Status/GetMyNotifications`);
@@ -321,14 +321,14 @@
                 bellList.innerHTML = '';
 
                 if (!data.notifications || data.notifications.length === 0) {
-                    bellList.innerHTML = '<div class="bell-drop-empty" id="bellEmpty">Chưa có thông báo nào.</div>';
+                    bellList.innerHTML = '<div class="bell-drop-empty" id="bellEmpty">暂无通知。</div>';
                 } else {
                     data.notifications.forEach(n => {
                         bellList.insertAdjacentHTML('beforeend', renderItem(n));
                     });
                 }
 
-                // Cập nhật badge
+                // 更新角标
                 const count = data.unreadCount || 0;
                 if (count > 0) {
                     bellBadge.textContent  = count > 9 ? '9+' : String(count);
@@ -341,22 +341,22 @@
             }
         }
 
-        // ─── Thêm real-time item (SignalR) + reload để đồng bộ ────────
+        // ─── 实时通知 (SignalR) + 重新加载以同步 ────────
         function addRealTimeItem() {
-            // Shake bell
+            // 铃铛抖动
             if (bellBtn) {
                 bellBtn.classList.remove('shake');
                 void bellBtn.offsetWidth;
                 bellBtn.classList.add('shake');
                 setTimeout(() => bellBtn.classList.remove('shake'), 700);
             }
-            // Reload toàn bộ list từ DB để luôn đồng bộ
+            // 重新加载整个列表以保持同步
             loadNotifications();
         }
 
-        // ─── Đánh dấu 1 item đã đọc khi click ────────────────────────
+        // ─── 点击时将单条通知标记为已读 ────────────────────────
         window.markOneRead = async function(id, el) {
-            if (el.style.opacity === '0.6') return; // đã đọc rồi
+            if (el.style.opacity === '0.6') return; // 已读过了
             try {
                 await fetch(`${pathBase}/Status/MarkNotificationRead`, {
                     method : 'POST',
@@ -364,15 +364,15 @@
                     body   : JSON.stringify({ id })
                 });
                 el.style.opacity = '0.6';
-                // Ẩn unread dot
+                // 移除未读红点
                 const dot = el.querySelector('span[style*="border-radius:50%"]');
                 if (dot) dot.remove();
-                // Cập nhật badge
+                // 更新角标
                 loadNotifications();
             } catch(e) {}
         };
 
-        // ─── Toggle dropdown + đánh dấu tất cả đã đọc khi mở ─────────
+        // ─── 切换下拉框 + 打开时标记全部已读 ─────────
         window.toggleBellDropdown = function(e) {
             e.stopPropagation();
             const isOpen = bellDrop.classList.toggle('open');
@@ -384,7 +384,7 @@
         async function markAllRead() {
             try {
                 await fetch(`${pathBase}/Status/MarkAllNotificationsRead`, { method: 'POST' });
-                loadNotifications(); // reload để cập nhật trạng thái
+                loadNotifications(); // 重新加载以更新状态
             } catch(e) {}
         }
 
@@ -393,10 +393,10 @@
             if (wrapper && !wrapper.contains(e.target)) bellDrop.classList.remove('open');
         });
 
-        // ─── Clear all (chỉ ẩn khỏi UI, không xóa DB) ────────────────
+        // ─── 清空全部 (仅从UI移除，不删除数据库) ────────────────
         window.clearBellNotifs = function(e) {
             if (e) e.stopPropagation();
-            bellList.innerHTML = '<div class="bell-drop-empty" id="bellEmpty">Chưa có thông báo nào.</div>';
+            bellList.innerHTML = '<div class="bell-drop-empty" id="bellEmpty">暂无通知。</div>';
             bellBadge.style.display = 'none';
             markAllRead();
         };
@@ -408,11 +408,11 @@
             .configureLogging(signalR.LogLevel.Warning)
             .build();
 
-        // Prod & Admin: nhận phản hồi từ Tech
+        // 生产端 & 管理员：接收技术员响应
         if (myRole === 'Production' || myRole === 'Admin') {
             conn.on("ReceiveTechResponse", () => addRealTimeItem());
         }
-        // Tech & Admin: nhận STOP từ Prod
+        // 技术员 & 管理员：接收生产端停机通知
         if (myRole === 'Technical' || myRole === 'Admin') {
             conn.on("ReceiveStopNotification", () => addRealTimeItem());
             conn.on("ReceiveRunNotification",  () => addRealTimeItem());
@@ -430,7 +430,7 @@
             }
         }
 
-        // Load notifications ngay khi trang mở
+        // 页面打开时立即加载通知
         loadNotifications();
         startConn();
 

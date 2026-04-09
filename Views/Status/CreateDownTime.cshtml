@@ -1699,7 +1699,7 @@
 
         toast.innerHTML = `
             <div style="font-weight:700;font-size:14px;margin-bottom:6px;color:${isAccept ? '#166534' : '#92400e'}">
-                ${isAccept ? '✅ Kỹ thuật đã nhận!' : '⏳ Kỹ thuật đã xem'}
+                ${isAccept ? '✅ Technical has accepted!' : '⏳ Technical has viewed'}
             </div>
             <div style="font-size:13px;color:#374151;line-height:1.5;">${data.message || ''}</div>
             <div style="font-size:11px;color:#9ca3af;margin-top:6px;">🕐 ${data.datetime || ''}</div>
@@ -1742,10 +1742,10 @@
         `;
         toast.innerHTML = `
             <div style="font-weight:700;font-size:14px;margin-bottom:6px;color:#1e40af">
-                🔧 Máy đã được sửa xong!
+                🔧 Machine Fixed!
             </div>
             <div style="font-size:13px;color:#374151;line-height:1.5;">${data.message || ''}</div>
-            <div style="font-size:11px;color:#9ca3af;margin-top:6px;">🕐 ${data.datetime || ''} · Kỹ thuật: ${data.techName || ''}</div>
+            <div style="font-size:11px;color:#9ca3af;margin-top:6px;">🕐 ${data.datetime || ''} · Technical: ${data.techName || ''}</div>
             <button onclick="this.closest('div[style]').remove()"
                 style="position:absolute;top:8px;right:10px;border:0;background:transparent;font-size:17px;cursor:pointer;color:#9ca3af;line-height:1;">×</button>
         `;

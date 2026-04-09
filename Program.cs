@@ -1,5 +1,6 @@
 ﻿using MachineStatusUpdate.Models;
 using MachineStatusUpdate.Services;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using MachineStatusUpdate.Hubs;
 
@@ -29,7 +30,34 @@ builder.Services.AddSession(options =>
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+// ── Trust nginx reverse proxy ──────────────────────────────────────────
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders =
+        ForwardedHeaders.XForwardedFor |
+        ForwardedHeaders.XForwardedProto;
+
+    // Trust tất cả proxy nội bộ (nginx cùng máy)
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 var app = builder.Build();
+
+// ── QUAN TRỌNG: Thứ tự middleware không được đảo ──────────────────────
+
+// 1) Đọc X-Forwarded-For / X-Forwarded-Proto từ nginx TRƯỚC TIÊN
+app.UseForwardedHeaders();
+
+// 2) Set PathBase để tag helpers sinh URL đúng với /downtime prefix
+app.UsePathBase("/downtime");
+
+// 3) Middleware phụ đảm bảo PathBase luôn được set (giữ nguyên như cũ)
+app.Use((context, next) =>
+{
+    context.Request.PathBase = "/downtime";
+    return next();
+});
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
@@ -38,16 +66,7 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-// app.UsePathBase("/downtime");
-
-// // Force PathBase cho tất cả request - giúp tag helper generate link đúng
-// app.Use((context, next) =>
-// {
-//     context.Request.PathBase = "/downtime";
-//     return next();
-// });
-
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseSession();       // ← Phải đặt TRƯỚC UseRouting
