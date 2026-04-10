@@ -14,7 +14,7 @@
     // Admin sees all 3; Technical sees Response+Run; Production sees Call+Run
     bool _showCall     = _isAdmin || _isProduction;
     bool _showResponse = _isAdmin || _isTechnical;
-    bool _showRun      = true; // all roles
+    bool _showRun      = _isAdmin || _isTechnical; // Production chỉ thấy Call
 }
 
 <style>

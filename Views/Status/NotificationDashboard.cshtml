@@ -410,6 +410,293 @@
 </style>
 
 <!-- Header -->
+<style>
+    /* ── Tab navigation ── */
+    .tech-tabs {
+        display: flex;
+        gap: 0;
+        background: #1a1a2e;
+        padding: 0 24px;
+        border-bottom: 2px solid #2d2d44;
+    }
+    .tech-tab-btn {
+        background: none;
+        border: none;
+        color: #9ca3af;
+        padding: 12px 22px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        border-bottom: 3px solid transparent;
+        margin-bottom: -2px;
+        transition: all .18s;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+    }
+    .tech-tab-btn:hover { color: #fff; }
+    .tech-tab-btn.active { color: #fff; border-bottom-color: #ef4444; }
+
+    /* ── Tech edit table ── */
+    .te-wrap {
+        display: none;
+        padding: 20px 0;
+    }
+    .te-wrap.active { display: block; }
+
+    .te-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 14px;
+        flex-wrap: wrap;
+    }
+    .te-search {
+        border: 1.5px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 7px 12px;
+        font-size: 13px;
+        outline: none;
+        width: 220px;
+    }
+    .te-search:focus { border-color: #ef4444; }
+
+    .te-filter-select {
+        border: 1.5px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 7px 10px;
+        font-size: 13px;
+        outline: none;
+        cursor: pointer;
+    }
+
+    .btn-te-refresh {
+        background: #f1f5f9;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 7px 14px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all .15s;
+    }
+    .btn-te-refresh:hover { background: #e5e7eb; }
+
+    .te-table-wrap {
+        overflow-x: auto;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.04);
+    }
+    .te-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+    .te-table th {
+        background: #111;
+        color: #fff;
+        padding: 11px 14px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        white-space: nowrap;
+    }
+    .te-table td {
+        padding: 10px 14px;
+        border-bottom: 1px solid #f1f5f9;
+        color: #374151;
+        vertical-align: middle;
+    }
+    .te-table tr:last-child td { border-bottom: none; }
+    .te-table tr:hover td { background: #f8fafc; }
+
+    .te-state-badge {
+        display: inline-block;
+        padding: 2px 10px;
+        border-radius: 99px;
+        font-size: 11px;
+        font-weight: 700;
+    }
+    .state-STOP     { background: #fee2e2; color: #991b1b; }
+    .state-RUN      { background: #dcfce7; color: #166534; }
+    .state-RESPONSE { background: #fef3c7; color: #92400e; }
+
+    .btn-te-edit {
+        background: #eff6ff;
+        border: 1.5px solid #bfdbfe;
+        border-radius: 7px;
+        padding: 5px 12px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #1d4ed8;
+        cursor: pointer;
+        transition: all .15s;
+        white-space: nowrap;
+    }
+    .btn-te-edit:hover { background: #dbeafe; border-color: #93c5fd; }
+
+    .te-empty {
+        text-align: center;
+        padding: 40px;
+        color: #9ca3af;
+        font-size: 14px;
+    }
+
+    /* ── Edit Modal ── */
+    .te-modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,.35);
+        z-index: 9998;
+        align-items: center;
+        justify-content: center;
+    }
+    .te-modal-overlay.open { display: flex; }
+    .te-modal {
+        background: #fff;
+        width: min(540px, 94vw);
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(0,0,0,.2);
+        overflow: hidden;
+        animation: teModalIn .2s ease;
+    }
+    @@keyframes teModalIn {
+        from { opacity: 0; transform: translateY(-16px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    .te-modal-header {
+        background: #111;
+        border-top: 4px solid #ef4444;
+        padding: 16px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .te-modal-header h3 { margin: 0; color: #fff; font-size: 16px; font-weight: 700; }
+    .te-modal-header .te-modal-sub { color: #9ca3af; font-size: 12px; margin-top: 3px; }
+    .te-modal-close {
+        background: none;
+        border: none;
+        color: #9ca3af;
+        font-size: 22px;
+        cursor: pointer;
+        line-height: 1;
+        padding: 0;
+    }
+    .te-modal-close:hover { color: #fff; }
+    .te-modal-body { padding: 20px; }
+    .te-modal-info {
+        background: #f8fafc;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 12px 14px;
+        margin-bottom: 18px;
+        font-size: 13px;
+        color: #374151;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px 16px;
+    }
+    .te-modal-info .info-label { color: #6b7280; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+    .te-modal-info .info-val   { font-weight: 600; color: #111827; }
+
+    .te-form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+    }
+    .te-form-group { display: flex; flex-direction: column; gap: 5px; }
+    .te-form-group label { font-size: 12px; font-weight: 700; color: #374151; text-transform: uppercase; letter-spacing: .04em; }
+    .te-form-group input, .te-form-group textarea {
+        border: 1.5px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 9px 12px;
+        font-size: 13px;
+        outline: none;
+        transition: border .15s;
+        resize: vertical;
+    }
+    .te-form-group input:focus, .te-form-group textarea:focus { border-color: #ef4444; box-shadow: 0 0 0 3px rgba(239,68,68,.1); }
+
+    .te-modal-footer {
+        padding: 14px 20px;
+        border-top: 1px solid #f1f5f9;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+    .btn-te-save {
+        background: linear-gradient(135deg, #dc2626, #ef4444);
+        color: #fff;
+        border: none;
+        border-radius: 9px;
+        padding: 10px 24px;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all .15s;
+        box-shadow: 0 3px 10px rgba(239,68,68,.3);
+    }
+    .btn-te-save:hover { filter: brightness(1.08); }
+    .btn-te-save:disabled { opacity: .6; cursor: not-allowed; }
+    .btn-te-cancel {
+        background: #f1f5f9;
+        color: #374151;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 9px;
+        padding: 10px 18px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    .btn-te-cancel:hover { background: #e5e7eb; }
+
+    /* Pagination */
+    .te-pagination {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 14px;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .te-page-info { font-size: 13px; color: #6b7280; }
+    .te-page-btns { display: flex; gap: 4px; }
+    .te-page-btn {
+        min-width: 34px; height: 34px;
+        border-radius: 8px; border: 1.5px solid #e5e7eb;
+        background: #fff; font-size: 13px; font-weight: 600;
+        cursor: pointer; transition: all .15s;
+        display: inline-flex; align-items: center; justify-content: center;
+    }
+    .te-page-btn:hover:not(:disabled) { border-color: #ef4444; color: #ef4444; }
+    .te-page-btn.active { background: #ef4444; color: #fff; border-color: #ef4444; }
+    .te-page-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* Toast nhỏ */
+    .te-toast {
+        position: fixed;
+        bottom: 24px; right: 24px;
+        background: #111;
+        color: #fff;
+        padding: 12px 20px;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 600;
+        z-index: 99999;
+        display: none;
+        box-shadow: 0 8px 24px rgba(0,0,0,.2);
+        border-left: 4px solid #22c55e;
+    }
+    .te-toast.error { border-left-color: #ef4444; }
+    .te-toast.show  { display: block; animation: teToastIn .2s ease; }
+    @@keyframes teToastIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+</style>
+
 <div class="dash-header">
     <div>
         <h1>🔧 技术员看板</h1>
@@ -419,6 +706,17 @@
         <span class="conn-dot"></span>
         <span id="connText">连接中...</span>
     </span>
+</div>
+
+<!-- ── Tab navigation ── -->
+<div class="tech-tabs">
+    <button class="tech-tab-btn active" onclick="switchTab('notif', this)">
+        🔔 通知列表
+        <span id="tabNotifBadge" style="display:none;background:#ef4444;color:#fff;font-size:10px;font-weight:700;border-radius:99px;padding:1px 7px;"></span>
+    </button>
+    <button class="tech-tab-btn" onclick="switchTab('edit', this)">
+        📝 填写记录 / Edit Records
+    </button>
 </div>
 
 <div class="dash-body">
@@ -468,25 +766,115 @@
         </div>
     </div>
 
-    <!-- Toolbar -->
-    <div class="toolbar">
-        <div class="toolbar-title">📬 通知列表</div>
-        <button class="btn-sound" id="btnSound" onclick="toggleSound()">🔔 声音: 开</button>
-        <button class="btn-clear" onclick="clearAll()">🗑 清空已完成</button>
-    </div>
+    <!-- ══ TAB: Notification list ══ -->
+    <div class="te-wrap active" id="tabNotif">
+        <!-- Toolbar -->
+        <div class="toolbar">
+            <div class="toolbar-title">📬 通知列表</div>
+            <button class="btn-sound" id="btnSound" onclick="toggleSound()">🔔 声音: 开</button>
+            <button class="btn-clear" onclick="clearAll()">🗑 清空已完成</button>
+        </div>
 
-    <!-- Notification list -->
-    <div class="notif-list" id="notifList">
-        <div class="notif-empty" id="emptyState">
-            <span class="empty-icon">🟢</span>
-            等待通知中...<br>
-            <small style="font-size:13px;margin-top:6px;display:block;">
-                当操作员按下 <strong>呼叫技术员</strong> 时，通知会立即显示在此处。
-            </small>
+        <!-- Notification list -->
+        <div class="notif-list" id="notifList">
+            <div class="notif-empty" id="emptyState">
+                <span class="empty-icon">🟢</span>
+                等待通知中...<br>
+                <small style="font-size:13px;margin-top:6px;display:block;">
+                    当操作员按下 <strong>呼叫技术员</strong> 时，通知会立即显示在此处。
+                </small>
+            </div>
         </div>
     </div>
 
+    <!-- ══ TAB: Edit Records ══ -->
+    <div class="te-wrap" id="tabEdit">
+        <div class="te-toolbar">
+            <input type="text" class="te-search" id="teSearch" placeholder="🔍 Tìm máy, công đoạn..." oninput="teFilterTable()">
+            <select class="te-filter-select" id="teStateFilter" onchange="teLoadRecords(1)">
+                <option value="">Tất cả trạng thái</option>
+                <option value="STOP">STOP</option>
+                <option value="RUN">RUN</option>
+                <option value="RESPONSE">RESPONSE</option>
+            </select>
+            <button class="btn-te-refresh" onclick="teLoadRecords(1)">🔄 Làm mới</button>
+            <span style="font-size:12px;color:#6b7280;margin-left:auto;" id="teRecordCount"></span>
+        </div>
+
+        <div class="te-table-wrap">
+            <table class="te-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Trạng thái</th>
+                        <th>Công đoạn</th>
+                        <th>Máy</th>
+                        <th>Nhân viên</th>
+                        <th>Station</th>
+                        <th>Action</th>
+                        <th>Root Cause</th>
+                        <th>Spare Parts</th>
+                        <th>Thời gian</th>
+                        <th>Sửa</th>
+                    </tr>
+                </thead>
+                <tbody id="teTableBody">
+                    <tr><td colspan="11" class="te-empty">⏳ Đang tải...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="te-pagination" id="tePagination" style="display:none;">
+            <div class="te-page-info" id="tePageInfo"></div>
+            <div class="te-page-btns" id="tePageBtns"></div>
+        </div>
+    </div>
+
+</div><!-- /dash-body -->
+
+<!-- ══ Edit Modal ══ -->
+<div class="te-modal-overlay" id="teModalOverlay">
+    <div class="te-modal">
+        <div class="te-modal-header">
+            <div>
+                <h3>📝 Cập nhật kỹ thuật</h3>
+                <div class="te-modal-sub" id="teModalSub">Chỉ chỉnh sửa trường kỹ thuật viên</div>
+            </div>
+            <button class="te-modal-close" onclick="closeTeModal()">×</button>
+        </div>
+        <div class="te-modal-body">
+            <!-- Thông tin record (read-only) -->
+            <div class="te-modal-info" id="teModalInfo"></div>
+
+            <!-- 4 trường Tech được phép sửa -->
+            <div class="te-form-grid">
+                <div class="te-form-group">
+                    <label>🔩 工位 / Station</label>
+                    <input type="text" id="teFieldStation" placeholder="Nhập station...">
+                </div>
+                <div class="te-form-group">
+                    <label>⚙️ 维修动作 / Action</label>
+                    <input type="text" id="teFieldAction" placeholder="Nhập action taken...">
+                </div>
+                <div class="te-form-group">
+                    <label>🔍 根本原因 / Root Cause</label>
+                    <input type="text" id="teFieldRootCause" placeholder="Nhập root cause...">
+                </div>
+                <div class="te-form-group">
+                    <label>🔧 更换配件 / Spare Parts</label>
+                    <input type="text" id="teFieldSpareParts" placeholder="Nhập spare parts...">
+                </div>
+            </div>
+        </div>
+        <div class="te-modal-footer">
+            <button class="btn-te-cancel" onclick="closeTeModal()">Hủy</button>
+            <button class="btn-te-save" id="teSaveBtn" onclick="teSaveRecord()">💾 Lưu</button>
+        </div>
+    </div>
 </div>
+
+<!-- Toast -->
+<div class="te-toast" id="teToast"></div>
 
 <!-- Flash overlay toàn màn hình khi có STOP -->
 <div id="flashOverlay" style="
@@ -1029,4 +1417,214 @@ document.addEventListener('DOMContentLoaded', () => {
         if (audioUnlocked) banner.style.display = 'none';
     }, { passive: true });
 });
+
+/* ══════════════════════════════════════════════════════════
+   TAB SWITCHING
+══════════════════════════════════════════════════════════ */
+function switchTab(tab, btn) {
+    // Toggle tab panels
+    document.getElementById('tabNotif').classList.toggle('active', tab === 'notif');
+    document.getElementById('tabEdit').classList.toggle('active',  tab === 'edit');
+
+    // Toggle tab buttons
+    document.querySelectorAll('.tech-tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    // Load data khi mở tab edit
+    if (tab === 'edit') teLoadRecords(1);
+}
+
+/* ══════════════════════════════════════════════════════════
+   TECH EDIT RECORDS
+══════════════════════════════════════════════════════════ */
+let tePage     = 1;
+let tePageSize = 15;
+let teTotalPages = 1;
+let teEditingId  = null;
+let teAllRows    = []; // cache để filter client-side
+
+async function teLoadRecords(page) {
+    tePage = page || 1;
+    const state = document.getElementById('teStateFilter').value;
+
+    const today = new Date();
+    const yyyy  = today.getFullYear();
+    const mm    = String(today.getMonth() + 1).padStart(2, '0');
+    const dd    = String(today.getDate()).padStart(2, '0');
+    const fromDate = `${yyyy}-${mm}-${dd}`;
+
+    const url = `${pathBase}/Status/TechGetRecords?page=${tePage}&pageSize=${tePageSize}&state=${encodeURIComponent(state)}&fromDate=${fromDate}`;
+
+    document.getElementById('teTableBody').innerHTML =
+        '<tr><td colspan="11" class="te-empty">⏳ Đang tải...</td></tr>';
+
+    try {
+        const res  = await fetch(url);
+        const data = await res.json();
+
+        teAllRows    = data.records || [];
+        teTotalPages = data.totalPages || 1;
+
+        teRenderTable(teAllRows);
+        teRenderPagination(data.totalCount);
+
+        document.getElementById('teRecordCount').textContent =
+            `Tổng: ${data.totalCount || 0} records`;
+
+    } catch (e) {
+        document.getElementById('teTableBody').innerHTML =
+            '<tr><td colspan="11" class="te-empty" style="color:#ef4444;">❌ Lỗi tải dữ liệu</td></tr>';
+    }
+}
+
+function teRenderTable(rows) {
+    const tbody = document.getElementById('teTableBody');
+    if (!rows || rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="11" class="te-empty">📭 Không có dữ liệu</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = rows.map(r => {
+        const stateClass = r.state === 'STOP' ? 'state-STOP'
+                         : r.state === 'RUN'  ? 'state-RUN'
+                         : 'state-RESPONSE';
+        const dt = r.datetime ? new Date(r.datetime).toLocaleString('vi-VN', { hour12: false }) : '-';
+        const truncate = (s, n) => s && s.length > n ? s.substring(0, n) + '…' : (s || '-');
+
+        return `<tr>
+            <td style="font-weight:700;color:#6366f1;">#${r.id}</td>
+            <td><span class="te-state-badge ${stateClass}">${r.state || '-'}</span></td>
+            <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.operation || ''}">${truncate(r.operation, 20)}</td>
+            <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.machineCode || ''}">${truncate(r.machineCode, 18)}</td>
+            <td>${r.employeeName || r.employeeCode || '-'}</td>
+            <td style="color:${r.station ? '#0369a1' : '#9ca3af'};">${r.station || '-'}</td>
+            <td style="color:${r.action ? '#0369a1' : '#9ca3af'};">${truncate(r.action, 15)}</td>
+            <td style="color:${r.rootCause ? '#0369a1' : '#9ca3af'};">${truncate(r.rootCause, 15)}</td>
+            <td style="color:${r.spareParts ? '#0369a1' : '#9ca3af'};">${truncate(r.spareParts, 15)}</td>
+            <td style="font-size:12px;color:#6b7280;">${dt}</td>
+            <td>
+                <button class="btn-te-edit" onclick='teOpenModal(${JSON.stringify(r)})'>✏️ Sửa</button>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+function teFilterTable() {
+    const q = document.getElementById('teSearch').value.toLowerCase().trim();
+    if (!q) { teRenderTable(teAllRows); return; }
+    const filtered = teAllRows.filter(r =>
+        (r.machineCode  || '').toLowerCase().includes(q) ||
+        (r.operation    || '').toLowerCase().includes(q) ||
+        (r.employeeName || '').toLowerCase().includes(q) ||
+        (r.employeeCode || '').toLowerCase().includes(q) ||
+        (r.station      || '').toLowerCase().includes(q)
+    );
+    teRenderTable(filtered);
+}
+
+function teRenderPagination(totalCount) {
+    const wrap = document.getElementById('tePagination');
+    if (teTotalPages <= 1) { wrap.style.display = 'none'; return; }
+    wrap.style.display = 'flex';
+
+    document.getElementById('tePageInfo').textContent =
+        `Trang ${tePage} / ${teTotalPages} (${totalCount} records)`;
+
+    const btns = document.getElementById('tePageBtns');
+    btns.innerHTML = '';
+
+    function mkBtn(label, p, active, disabled) {
+        const b = document.createElement('button');
+        b.className = 'te-page-btn' + (active ? ' active' : '');
+        b.textContent = label;
+        b.disabled = disabled;
+        if (!disabled && !active) b.onclick = () => teLoadRecords(p);
+        btns.appendChild(b);
+    }
+
+    mkBtn('‹', tePage - 1, false, tePage === 1);
+    for (let p = Math.max(1, tePage - 2); p <= Math.min(teTotalPages, tePage + 2); p++) {
+        mkBtn(p, p, p === tePage, false);
+    }
+    mkBtn('›', tePage + 1, false, tePage === teTotalPages);
+}
+
+/* ── Modal ── */
+function teOpenModal(record) {
+    teEditingId = record.id;
+
+    // Thông tin read-only
+    document.getElementById('teModalInfo').innerHTML = `
+        <div><div class="info-label">ID</div><div class="info-val">#${record.id}</div></div>
+        <div><div class="info-label">Trạng thái</div><div class="info-val">${record.state || '-'}</div></div>
+        <div><div class="info-label">Máy</div><div class="info-val">${record.machineCode || '-'}</div></div>
+        <div><div class="info-label">Nhân viên</div><div class="info-val">${record.employeeName || record.employeeCode || '-'}</div></div>
+        <div style="grid-column:1/-1;"><div class="info-label">Công đoạn</div><div class="info-val">${record.operation || '-'}</div></div>
+    `;
+    document.getElementById('teModalSub').textContent =
+        `Máy: ${record.machineCode || '-'} · ${record.state || ''} · #${record.id}`;
+
+    // Fill 4 trường
+    document.getElementById('teFieldStation').value   = record.station   || '';
+    document.getElementById('teFieldAction').value    = record.action    || '';
+    document.getElementById('teFieldRootCause').value = record.rootCause || '';
+    document.getElementById('teFieldSpareParts').value= record.spareParts|| '';
+
+    document.getElementById('teModalOverlay').classList.add('open');
+    document.getElementById('teFieldStation').focus();
+}
+
+function closeTeModal() {
+    document.getElementById('teModalOverlay').classList.remove('open');
+    teEditingId = null;
+}
+
+async function teSaveRecord() {
+    if (!teEditingId) return;
+
+    const btn = document.getElementById('teSaveBtn');
+    btn.disabled  = true;
+    btn.textContent = '⏳ Đang lưu...';
+
+    try {
+        const res = await fetch(`${pathBase}/Status/TechUpdateRecord`, {
+            method : 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body   : JSON.stringify({
+                id        : teEditingId,
+                station   : document.getElementById('teFieldStation').value.trim(),
+                action    : document.getElementById('teFieldAction').value.trim(),
+                rootCause : document.getElementById('teFieldRootCause').value.trim(),
+                spareParts: document.getElementById('teFieldSpareParts').value.trim()
+            })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            closeTeModal();
+            teShowToast('✅ Lưu thành công!');
+            teLoadRecords(tePage); // Reload bảng
+        } else {
+            teShowToast('❌ ' + (data.message || 'Lỗi lưu'), true);
+        }
+    } catch (e) {
+        teShowToast('❌ Lỗi kết nối', true);
+    } finally {
+        btn.disabled    = false;
+        btn.textContent = '💾 Lưu';
+    }
+}
+
+// Đóng modal khi click overlay
+document.getElementById('teModalOverlay').addEventListener('click', function(e) {
+    if (e.target === this) closeTeModal();
+});
+
+// Toast nhỏ
+function teShowToast(msg, isError = false) {
+    const t = document.getElementById('teToast');
+    t.textContent = msg;
+    t.className   = 'te-toast show' + (isError ? ' error' : '');
+    setTimeout(() => t.classList.remove('show'), 3000);
+}
 </script>

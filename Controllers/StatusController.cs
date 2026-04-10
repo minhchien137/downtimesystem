@@ -2273,6 +2273,108 @@ namespace MachineStatusUpdate.Controllers
             return Json(new { success = true });
         }
 
+        // DÁN VÀO StatusController.cs
+        // Vị trí: ngay bên dưới action AdminNotifications (hoặc bất kỳ chỗ nào
+        //         trong class StatusController, trước dấu } cuối cùng)
+        // ══════════════════════════════════════════════════════════════════════
+
+        // ── GET /Status/TechGetRecords ──
+        // Tech lấy danh sách records để xem và sửa 4 trường kỹ thuật
+        [HttpGet]
+        public async Task<IActionResult> TechGetRecords(
+            string state    = "",
+            string fromDate = "",
+            string toDate   = "",
+            int page        = 1,
+            int pageSize    = 15)
+        {
+            var role = HttpContext.Session.GetString("UserRole");
+            if (role != "Technical" && role != "Admin")
+                return Unauthorized();
+
+            var q = _context.SVN_Downtime_Infos_Devel
+                        .Where(x => x.Operation != null && x.Operation.Contains("(SM)"))
+                        .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(state))
+                q = q.Where(x => x.State != null && x.State.Trim().ToUpper() == state.ToUpper());
+
+            if (DateTime.TryParse(fromDate, out var fd))
+                q = q.Where(x => x.Datetime.HasValue && x.Datetime.Value.Date >= fd.Date);
+
+            if (DateTime.TryParse(toDate, out var td))
+                q = q.Where(x => x.Datetime.HasValue && x.Datetime.Value.Date <= td.Date);
+
+            var total = await q.CountAsync();
+
+            var records = await q
+                .OrderByDescending(x => x.Datetime)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(x => new
+                {
+                    x.Id,
+                    x.State,
+                    x.Operation,
+                    x.MachineCode,
+                    x.Location,
+                    x.EmployeeCode,
+                    x.EmployeeName,
+                    x.Reason,
+                    x.Effect,
+                    x.Station,
+                    x.Action,
+                    x.RootCause,
+                    x.SpareParts,
+                    x.Description,
+                    x.Datetime
+                })
+                .ToListAsync();
+
+            return Json(new
+            {
+                records,
+                totalPages = (int)Math.Ceiling((double)total / pageSize),
+                totalCount = total
+            });
+        }
+
+
+        // ── POST /Status/TechUpdateRecord ──
+        // Tech chỉ được cập nhật 4 trường: Station, Action, RootCause, SpareParts
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> TechUpdateRecord([FromBody] TechUpdateDto dto)
+        {
+            var role = HttpContext.Session.GetString("UserRole");
+            if (role != "Technical" && role != "Admin")
+                return Unauthorized();
+
+            var rec = await _context.SVN_Downtime_Infos_Devel.FindAsync(dto.Id);
+            if (rec == null)
+                return Json(new { success = false, message = "Không tìm thấy record" });
+
+            // CHỈ cho phép sửa 4 trường kỹ thuật
+            rec.Station    = dto.Station    ?? rec.Station;
+            rec.Action     = dto.Action     ?? rec.Action;
+            rec.RootCause  = dto.RootCause  ?? rec.RootCause;
+            rec.SpareParts = dto.SpareParts ?? rec.SpareParts;
+
+            await _context.SaveChangesAsync();
+            return Json(new { success = true });
+        }
+
+        // ── DTO ──
+        public class TechUpdateDto
+        {
+            public int Id { get; set; }
+            public string? Station { get; set; }
+            public string? Action { get; set; }
+            public string? RootCause { get; set; }
+            public string? SpareParts { get; set; }
+        }
+
+
 
         public class ResetPasswordDto
         {
