@@ -790,14 +790,14 @@
     <!-- ══ TAB: Edit Records ══ -->
     <div class="te-wrap" id="tabEdit">
         <div class="te-toolbar">
-            <input type="text" class="te-search" id="teSearch" placeholder="🔍 Tìm máy, công đoạn..." oninput="teFilterTable()">
+            <input type="text" class="te-search" id="teSearch" placeholder="🔍 查找机器、工序…" oninput="teFilterTable()">
             <select class="te-filter-select" id="teStateFilter" onchange="teLoadRecords(1)">
-                <option value="">Tất cả trạng thái</option>
+                <option value="">所有状态</option>
                 <option value="STOP">STOP</option>
                 <option value="RUN">RUN</option>
                 <option value="RESPONSE">RESPONSE</option>
             </select>
-            <button class="btn-te-refresh" onclick="teLoadRecords(1)">🔄 Làm mới</button>
+            <button class="btn-te-refresh" onclick="teLoadRecords(1)">🔄 刷新</button>
             <span style="font-size:12px;color:#6b7280;margin-left:auto;" id="teRecordCount"></span>
         </div>
 
@@ -806,20 +806,20 @@
                 <thead>
                     <tr>
                         <th>ID</th>
-                        <th>Trạng thái</th>
-                        <th>Công đoạn</th>
-                        <th>Máy</th>
-                        <th>Nhân viên</th>
-                        <th>Station</th>
-                        <th>Action</th>
-                        <th>Root Cause</th>
-                        <th>Spare Parts</th>
-                        <th>Thời gian</th>
-                        <th>Sửa</th>
+                        <th>状态</th>
+                        <th>工序</th>
+                        <th>机器</th>
+                        <th>员工</th>
+                        <th>工站</th>
+                        <th>操作</th>
+                        <th>根本原因</th>
+                        <th>备件</th>
+                        <th>时间</th>
+                        <th>编辑</th>
                     </tr>
                 </thead>
                 <tbody id="teTableBody">
-                    <tr><td colspan="11" class="te-empty">⏳ Đang tải...</td></tr>
+                    <tr><td colspan="11" class="te-empty">⏳ 正在加载...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -837,8 +837,8 @@
     <div class="te-modal">
         <div class="te-modal-header">
             <div>
-                <h3>📝 Cập nhật kỹ thuật</h3>
-                <div class="te-modal-sub" id="teModalSub">Chỉ chỉnh sửa trường kỹ thuật viên</div>
+                <h3>📝 技术更新</h3>
+                <div class="te-modal-sub" id="teModalSub">仅可修改技术员相关字段</div>
             </div>
             <button class="te-modal-close" onclick="closeTeModal()">×</button>
         </div>
