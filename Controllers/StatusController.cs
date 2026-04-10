@@ -784,6 +784,10 @@ namespace MachineStatusUpdate.Controllers
             if (role != "Technical" && role != "Admin")
                 return RedirectToAction("Login", "Account");
 
+            // Admin đi sang trang riêng xem tất cả thông báo
+            if (role == "Admin")
+                return RedirectToAction("AdminNotifications");
+
             // 加载今天所有的停机记录，以便技术员进入/刷新页面时显示
             var today = DateTime.Now.Date;
             var pending = await _context.SVN_Downtime_TechResponses
@@ -795,6 +799,28 @@ namespace MachineStatusUpdate.Controllers
             ViewBag.PendingNotifications = pending;
             return View();
         }
+
+        // Trang thông báo riêng cho Admin — xem TẤT CẢ thông báo Prod & Tech
+        [HttpGet]
+        public async Task<IActionResult> AdminNotifications()
+        {
+            var role = HttpContext.Session.GetString("UserRole");
+            if (role != "Admin")
+                return RedirectToAction("Login", "Account");
+
+            var today = DateTime.Now.Date;
+
+            // Lấy TẤT CẢ thông báo trong ngày, không lọc theo recipient
+            var notifications = await _context.SVN_Notifications
+                .AsNoTracking()
+                .Where(n => n.CreatedAt.Date == today)
+                .OrderByDescending(n => n.CreatedAt)
+                .Take(500)
+                .ToListAsync();
+
+            return View("AdminNotifications", notifications);
+        }
+
 
         // ── API: 技术员刷新页面时加载今天的通知列表 ──
         [HttpGet]
@@ -1890,6 +1916,39 @@ namespace MachineStatusUpdate.Controllers
             public string? MachineCode      { get; set; }
         }
 
+        // ── GET /Status/ProductionNotifications ──
+        // Trang thông báo riêng cho Production role
+        [HttpGet]
+        public async Task<IActionResult> ProductionNotifications()
+        {
+            var role = HttpContext.Session.GetString("UserRole");
+            if (string.IsNullOrEmpty(role))
+                return RedirectToAction("Login", "Account");
+
+            var username = HttpContext.Session.GetString("UserName") ?? "";
+            var today    = DateTime.Now.Date;
+
+            var notifications = await _context.SVN_Notifications
+                .AsNoTracking()
+                .Where(n => n.RecipientUsername == username && n.CreatedAt.Date == today)
+                .OrderByDescending(n => n.CreatedAt)
+                .Take(100)
+                .ToListAsync();
+
+            // Đánh dấu tất cả là đã đọc
+            var unread = await _context.SVN_Notifications
+                .Where(n => n.RecipientUsername == username && !n.IsRead && n.CreatedAt.Date == today)
+                .ToListAsync();
+            if (unread.Any())
+            {
+                var now = DateTime.Now;
+                foreach (var n in unread) { n.IsRead = true; n.ReadAt = now; }
+                await _context.SaveChangesAsync();
+            }
+
+            return View("ProductionNotifications", notifications);
+        }
+
         // ── 管理员：渲染面板 ──
         [HttpGet]
         public IActionResult AdminPanel()
@@ -2011,6 +2070,237 @@ namespace MachineStatusUpdate.Controllers
             await _context.SaveChangesAsync();
             return Json(new { success = true });
         }
+
+        // ────────────────────────────────────────────────────────────────
+        // EMPLOYEE MANAGEMENT  (bảng SM_EmployInfo)
+        // ────────────────────────────────────────────────────────────────
+
+        /// <summary>GET tất cả nhân viên</summary>
+        [HttpGet]
+        public async Task<IActionResult> AdminGetEmployees()
+        {
+            if (HttpContext.Session.GetString("UserRole") != "Admin")
+                return Unauthorized();
+
+            var list = await _context.SM_EmployInfos
+                .AsNoTracking()
+                .OrderBy(e => e.EnglishName)
+                .Select(e => new
+                {
+                    e.Id,
+                    EmployeeID  = e.EmployeeID  ?? "",
+                    ChineseName = e.ChineseName ?? "",
+                    EnglishName = e.EnglishName ?? "",
+                })
+                .ToListAsync();
+
+            return Json(new { employees = list });
+        }
+
+        /// <summary>POST thêm mới hoặc cập nhật nhân viên (id == 0 → insert)</summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AdminSaveEmployee([FromBody] EmployeeDto dto)
+        {
+            if (HttpContext.Session.GetString("UserRole") != "Admin")
+                return Unauthorized();
+
+            if (string.IsNullOrWhiteSpace(dto.EmployeeID))
+                return Json(new { success = false, message = "工号不能为空 / EmployeeID is required" });
+
+            if (dto.Id == 0)
+            {
+                // INSERT
+                _context.SM_EmployInfos.Add(new SM_EmployInfo
+                {
+                    EmployeeID  = dto.EmployeeID.Trim(),
+                    ChineseName = dto.ChineseName?.Trim() ?? "",
+                    EnglishName = dto.EnglishName?.Trim() ?? "",
+                });
+            }
+            else
+            {
+                // UPDATE
+                var rec = await _context.SM_EmployInfos.FindAsync(dto.Id);
+                if (rec == null)
+                    return Json(new { success = false, message = "未找到记录 / Record not found" });
+
+                rec.EmployeeID  = dto.EmployeeID.Trim();
+                rec.ChineseName = dto.ChineseName?.Trim() ?? "";
+                rec.EnglishName = dto.EnglishName?.Trim() ?? "";
+            }
+
+            await _context.SaveChangesAsync();
+            return Json(new { success = true });
+        }
+
+        /// <summary>POST xóa nhân viên</summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AdminDeleteEmployee([FromBody] AdminDeleteDto dto)
+        {
+            if (HttpContext.Session.GetString("UserRole") != "Admin")
+                return Unauthorized();
+
+            var rec = await _context.SM_EmployInfos.FindAsync(dto.Id);
+            if (rec == null)
+                return Json(new { success = false, message = "未找到记录 / Record not found" });
+
+            _context.SM_EmployInfos.Remove(rec);
+            await _context.SaveChangesAsync();
+            return Json(new { success = true });
+        }
+
+        // ────────────────────────────────────────────────────────────────
+        // ACCOUNT MANAGEMENT  (bảng SVN_Downtime_Account)
+        // ────────────────────────────────────────────────────────────────
+
+        /// <summary>GET tất cả tài khoản</summary>
+        [HttpGet]
+        public async Task<IActionResult> AdminGetAccounts()
+        {
+            if (HttpContext.Session.GetString("UserRole") != "Admin")
+                return Unauthorized();
+
+            var list = await _context.SVN_Downtime_Accounts
+                .AsNoTracking()
+                .OrderBy(a => a.Username)
+                .Select(a => new
+                {
+                    a.Id,
+                    a.Username,
+                    a.Password,
+                    a.Role,
+                })
+                .ToListAsync();
+
+            return Json(new { accounts = list });
+        }
+
+        /// <summary>POST thêm mới hoặc cập nhật tài khoản (id == 0 → insert)</summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AdminSaveAccount([FromBody] AccountDto dto)
+        {
+            if (HttpContext.Session.GetString("UserRole") != "Admin")
+                return Unauthorized();
+
+            if (string.IsNullOrWhiteSpace(dto.Username) || string.IsNullOrWhiteSpace(dto.Password))
+                return Json(new { success = false, message = "用户名和密码不能为空 / Username & Password are required" });
+
+            if (dto.Id == 0)
+            {
+                // Kiểm tra username đã tồn tại chưa
+                var exists = await _context.SVN_Downtime_Accounts
+                    .AnyAsync(a => a.Username.ToLower() == dto.Username.Trim().ToLower());
+                if (exists)
+                    return Json(new { success = false, message = "用户名已存在 / Username already exists" });
+
+                _context.SVN_Downtime_Accounts.Add(new SVN_Downtime_Account
+                {
+                    Username = dto.Username.Trim(),
+                    Password = dto.Password.Trim(),
+                    Role     = dto.Role ?? "Production",
+                });
+            }
+            else
+            {
+                var rec = await _context.SVN_Downtime_Accounts.FindAsync(dto.Id);
+                if (rec == null)
+                    return Json(new { success = false, message = "未找到记录 / Record not found" });
+
+                // Nếu đổi username thì kiểm tra trùng
+                if (!rec.Username.Equals(dto.Username.Trim(), StringComparison.OrdinalIgnoreCase))
+                {
+                    var dup = await _context.SVN_Downtime_Accounts
+                        .AnyAsync(a => a.Id != dto.Id && a.Username.ToLower() == dto.Username.Trim().ToLower());
+                    if (dup)
+                        return Json(new { success = false, message = "用户名已存在 / Username already exists" });
+                }
+
+                rec.Username = dto.Username.Trim();
+                rec.Password = dto.Password.Trim();
+                rec.Role     = dto.Role ?? rec.Role;
+            }
+
+            await _context.SaveChangesAsync();
+            return Json(new { success = true });
+        }
+
+        /// <summary>POST xóa tài khoản</summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AdminDeleteAccount([FromBody] AdminDeleteDto dto)
+        {
+            if (HttpContext.Session.GetString("UserRole") != "Admin")
+                return Unauthorized();
+
+            // Không cho xóa tài khoản đang đăng nhập
+            var currentUser = HttpContext.Session.GetString("UserName") ?? "";
+            var rec = await _context.SVN_Downtime_Accounts.FindAsync(dto.Id);
+            if (rec == null)
+                return Json(new { success = false, message = "未找到记录 / Record not found" });
+
+            if (rec.Username.Equals(currentUser, StringComparison.OrdinalIgnoreCase))
+                return Json(new { success = false, message = "不能删除当前登录账号 / Cannot delete the currently logged-in account" });
+
+            _context.SVN_Downtime_Accounts.Remove(rec);
+            await _context.SaveChangesAsync();
+            return Json(new { success = true });
+        }
+
+        // ────────────────────────────────────────────────────────────────
+        // RESET PASSWORD
+        // ────────────────────────────────────────────────────────────────
+
+        /// <summary>POST reset mật khẩu tài khoản</summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AdminResetPassword([FromBody] ResetPasswordDto dto)
+        {
+            if (HttpContext.Session.GetString("UserRole") != "Admin")
+                return Unauthorized();
+
+            if (string.IsNullOrWhiteSpace(dto.NewPassword))
+                return Json(new { success = false, message = "新密码不能为空 / New password is required" });
+
+            var rec = await _context.SVN_Downtime_Accounts.FindAsync(dto.Id);
+            if (rec == null)
+                return Json(new { success = false, message = "未找到记录 / Record not found" });
+
+            rec.Password = dto.NewPassword.Trim();
+            await _context.SaveChangesAsync();
+            return Json(new { success = true });
+        }
+
+
+        public class ResetPasswordDto
+        {
+            public int Id { get; set; }
+            public string? NewPassword { get; set; }
+        }
+
+
+// ────────────────────────────────────────────────────────────────
+// DTOs mới — thêm vào ngay dưới AdminDeleteDto
+// ────────────────────────────────────────────────────────────────
+
+public class EmployeeDto
+{
+    public int     Id          { get; set; }
+    public string? EmployeeID  { get; set; }
+    public string? ChineseName { get; set; }
+    public string? EnglishName { get; set; }
+}
+
+        public class AccountDto
+        {
+            public int Id { get; set; }
+            public string? Username { get; set; }
+            public string? Password { get; set; }
+            public string? Role { get; set; }
+        }
+
 
 
         // ── DTOs ──

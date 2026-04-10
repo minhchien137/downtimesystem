@@ -1,0 +1,596 @@
+@model List<MachineStatusUpdate.Models.SVN_Notification>
+@{
+    ViewData["Title"] = "📊 所有通知 / 全部通知";
+    var adminName = Context.Session.GetString("UserName") ?? "Admin";
+
+    // Thống kê
+    var total       = Model.Count;
+    var stopCount   = Model.Count(n => n.NotifType == "STOP");
+    var runCount    = Model.Count(n => n.NotifType == "RUN");
+    var techRespCount = Model.Count(n => n.NotifType == "TECH_RESPONSE");
+    var fixCount    = Model.Count(n => n.NotifType == "FIX_COMPLETE");
+    var unreadCount = Model.Count(n => !n.IsRead);
+}
+
+<style>
+    :root {
+        --border:  #e5e7eb;
+        --text:    #111827;
+        --muted:   #6b7280;
+        --bg:      #f3f4f6;
+        --card-bg: #ffffff;
+    }
+
+    /* ── Header ── */
+    .an-header {
+        background: linear-gradient(135deg, #1e1e2e 0%, #2d1b69 100%);
+        border-top: 4px solid #7c3aed;
+        padding: 18px 28px;
+        border-radius: 12px;
+        margin-bottom: 22px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+        box-shadow: 0 4px 20px rgba(124,58,237,.2);
+    }
+    .an-header h1 { margin: 0; color: #fff; font-size: 22px; font-weight: 800; }
+    .an-header .sub { color: #a78bfa; font-size: 13px; margin-top: 4px; }
+    .an-admin-badge {
+        background: #7c3aed;
+        color: #fff;
+        padding: 6px 16px;
+        border-radius: 99px;
+        font-size: 13px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    /* ── Summary cards ── */
+    .an-summary {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+    .an-sum-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 14px 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.04);
+    }
+    .an-sum-icon { font-size: 24px; }
+    .an-sum-label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; }
+    .an-sum-val { font-size: 24px; font-weight: 800; line-height: 1.1; }
+    .val-total  { color: #7c3aed; }
+    .val-stop   { color: #ef4444; }
+    .val-run    { color: #22c55e; }
+    .val-tech   { color: #f59e0b; }
+    .val-fix    { color: #0d6efd; }
+
+    /* ── Toolbar ── */
+    .an-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 14px;
+    }
+    .an-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+    .an-tab {
+        padding: 6px 14px;
+        border-radius: 99px;
+        border: 1.5px solid var(--border);
+        background: #fff;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all .15s;
+        color: var(--muted);
+    }
+    .an-tab:hover { border-color: #7c3aed; color: #7c3aed; }
+    .an-tab.active { background: #7c3aed; color: #fff; border-color: #7c3aed; }
+
+    .an-search {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .an-search input {
+        border: 1.5px solid var(--border);
+        border-radius: 8px;
+        padding: 6px 12px;
+        font-size: 13px;
+        outline: none;
+        width: 200px;
+        transition: border .15s;
+    }
+    .an-search input:focus { border-color: #7c3aed; }
+
+    /* ── Notification list ── */
+    .an-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .an-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 14px 18px;
+        border-left: 5px solid #e5e7eb;
+        position: relative;
+        transition: box-shadow .15s;
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+    }
+    .an-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.08); }
+    .an-card.unread { box-shadow: 0 0 0 2px rgba(124,58,237,.12), 0 2px 8px rgba(0,0,0,.04); }
+
+    /* border màu theo loại */
+    .an-card.type-STOP         { border-left-color: #ef4444; }
+    .an-card.type-RUN          { border-left-color: #22c55e; }
+    .an-card.type-TECH_RESPONSE{ border-left-color: #f59e0b; }
+    .an-card.type-FIX_COMPLETE { border-left-color: #0d6efd; }
+
+    /* Icon cột trái */
+    .an-card-icon {
+        font-size: 26px;
+        flex-shrink: 0;
+        width: 40px;
+        text-align: center;
+        margin-top: 2px;
+    }
+
+    .an-card-body { flex: 1; min-width: 0; }
+
+    .an-card-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 6px;
+    }
+
+    .an-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 10px;
+        border-radius: 99px;
+        font-size: 11px;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+    .badge-STOP          { background: #fee2e2; color: #991b1b; }
+    .badge-RUN           { background: #dcfce7; color: #166534; }
+    .badge-TECH_RESPONSE { background: #fef3c7; color: #92400e; }
+    .badge-FIX_COMPLETE  { background: #dbeafe; color: #1e40af; }
+
+    /* Source badge: Prod / Tech */
+    .an-source {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 8px;
+        border-radius: 99px;
+        font-size: 10px;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+    .source-prod { background: #f3e8ff; color: #7c3aed; }
+    .source-tech { background: #e0f2fe; color: #0369a1; }
+    .source-sys  { background: #f1f5f9; color: #64748b; }
+
+    .an-card-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 4px;
+    }
+    .an-card-body-text {
+        font-size: 13px;
+        color: #374151;
+        line-height: 1.5;
+        margin-bottom: 6px;
+    }
+    .an-card-meta {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        font-size: 11px;
+        color: var(--muted);
+        align-items: center;
+    }
+    .an-card-meta strong { color: #374151; }
+
+    .an-time { font-size: 12px; color: var(--muted); white-space: nowrap; }
+    .an-unread-dot {
+        display: inline-block;
+        width: 8px; height: 8px;
+        background: #7c3aed;
+        border-radius: 50%;
+        flex-shrink: 0;
+        margin-top: 4px;
+    }
+
+    /* ── Empty state ── */
+    .an-empty {
+        text-align: center;
+        padding: 60px 20px;
+        color: var(--muted);
+        font-size: 15px;
+    }
+    .an-empty .empty-icon { font-size: 48px; display: block; margin-bottom: 12px; }
+
+    /* ── Pagination ── */
+    .an-pagination-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 20px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border);
+    }
+    .an-page-info { font-size: 13px; color: var(--muted); }
+    .an-page-info strong { color: var(--text); }
+    .an-page-btns { display: flex; align-items: center; gap: 4px; }
+    .an-page-btn {
+        min-width: 34px; height: 34px; padding: 0 10px;
+        border-radius: 8px; border: 1.5px solid var(--border);
+        background: #fff; font-size: 13px; font-weight: 600;
+        cursor: pointer; color: var(--text); transition: all .15s;
+        display: inline-flex; align-items: center; justify-content: center;
+    }
+    .an-page-btn:hover:not(:disabled) { border-color: #7c3aed; color: #7c3aed; background: #f5f3ff; }
+    .an-page-btn.active { background: #7c3aed; color: #fff; border-color: #7c3aed; }
+    .an-page-btn:disabled { opacity: .4; cursor: not-allowed; }
+    .an-page-dots { min-width: 34px; text-align: center; font-size: 13px; color: var(--muted); letter-spacing: 2px; }
+
+    .an-pagesize { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+    .an-pagesize select {
+        border: 1.5px solid var(--border); border-radius: 6px;
+        padding: 4px 8px; font-size: 13px; color: var(--text); cursor: pointer; outline: none;
+    }
+    .an-pagesize select:focus { border-color: #7c3aed; }
+
+    /* ── Mark all read button ── */
+    .btn-mark-all {
+        padding: 6px 14px; border-radius: 8px;
+        border: 1.5px solid #7c3aed; background: #fff;
+        color: #7c3aed; font-size: 12px; font-weight: 600;
+        cursor: pointer; transition: all .15s;
+    }
+    .btn-mark-all:hover { background: #7c3aed; color: #fff; }
+
+    @@media (max-width: 768px) {
+        .an-summary { grid-template-columns: 1fr 1fr; }
+        .an-pagination-wrap { flex-direction: column; align-items: flex-start; }
+    }
+    @@media (max-width: 480px) {
+        .an-summary { grid-template-columns: 1fr; }
+    }
+</style>
+
+<!-- ── Header ── -->
+<div class="an-header">
+    <div>
+        <h1>📊 全部通知 / All Notifications</h1>
+        <div class="sub">今日所有生产 & 技术通知一览 · All Production & Technical activity today</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+        @if (unreadCount > 0)
+        {
+            <button class="btn-mark-all" onclick="markAllRead()">✓ 全标已读 (@unreadCount)</button>
+        }
+        <div class="an-admin-badge">🛡 @adminName</div>
+    </div>
+</div>
+
+<!-- ── Summary cards ── -->
+<div class="an-summary">
+    <div class="an-sum-card">
+        <div class="an-sum-icon">📋</div>
+        <div>
+            <div class="an-sum-label">总计 Total</div>
+            <div class="an-sum-val val-total">@total</div>
+        </div>
+    </div>
+    <div class="an-sum-card">
+        <div class="an-sum-icon">🛑</div>
+        <div>
+            <div class="an-sum-label">停机 STOP</div>
+            <div class="an-sum-val val-stop">@stopCount</div>
+        </div>
+    </div>
+    <div class="an-sum-card">
+        <div class="an-sum-icon">⚙️</div>
+        <div>
+            <div class="an-sum-label">技术响应 Tech</div>
+            <div class="an-sum-val val-tech">@techRespCount</div>
+        </div>
+    </div>
+    <div class="an-sum-card">
+        <div class="an-sum-icon">🔧</div>
+        <div>
+            <div class="an-sum-label">已修复 Fixed</div>
+            <div class="an-sum-val val-fix">@fixCount</div>
+        </div>
+    </div>
+    <div class="an-sum-card">
+        <div class="an-sum-icon">▶️</div>
+        <div>
+            <div class="an-sum-label">恢复运行 RUN</div>
+            <div class="an-sum-val val-run">@runCount</div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Toolbar ── -->
+<div class="an-toolbar">
+    <div class="an-tabs">
+        <button class="an-tab active" onclick="setFilter('ALL',this)">全部 All (@total)</button>
+        <button class="an-tab" onclick="setFilter('STOP',this)">🛑 停机 (@stopCount)</button>
+        <button class="an-tab" onclick="setFilter('TECH_RESPONSE',this)">⚙️ 技术响应 (@techRespCount)</button>
+        <button class="an-tab" onclick="setFilter('FIX_COMPLETE',this)">🔧 已修复 (@fixCount)</button>
+        <button class="an-tab" onclick="setFilter('RUN',this)">▶️ 运行 (@runCount)</button>
+    </div>
+    <div class="an-search">
+        <input type="text" id="searchInput" placeholder="🔍 查找机器、工序..." oninput="onSearch()">
+    </div>
+</div>
+
+<!-- ── Notification list ── -->
+<div class="an-list" id="anList">
+    @if (!Model.Any())
+    {
+        <div class="an-empty">
+            <span class="empty-icon">📭</span>
+            今日暂无通知。<br>
+            <small style="display:block;margin-top:6px;font-size:13px;">
+                Chưa có thông báo nào hôm nay.
+            </small>
+        </div>
+    }
+    else
+    {
+        foreach (var n in Model)
+        {
+            // ── Xác định nguồn (ai gửi) ──
+            bool isFromProd = n.NotifType == "STOP" || n.NotifType == "RUN";
+            bool isFromTech = n.NotifType == "TECH_RESPONSE" || n.NotifType == "FIX_COMPLETE";
+
+            string sourceClass = isFromProd ? "source-prod" : isFromTech ? "source-tech" : "source-sys";
+            string sourceLabel = isFromProd ? "🏭 Production" : isFromTech ? "🔧 Technical" : "⚙ System";
+
+            // ── Icon theo loại ──
+            string icon = n.NotifType switch
+            {
+                "STOP"          => "🛑",
+                "RUN"           => "▶️",
+                "TECH_RESPONSE" => n.TechAction == "ACCEPT" ? "✅" : "⏳",
+                "FIX_COMPLETE"  => "🔧",
+                _               => "🔔"
+            };
+
+            // ── Label badge ──
+            string badgeLabel = n.NotifType switch
+            {
+                "STOP"          => "停机 STOP",
+                "RUN"           => "运行 RUN",
+                "TECH_RESPONSE" => n.TechAction == "ACCEPT" ? "已接受 ACCEPT" : "等待中 WAIT",
+                "FIX_COMPLETE"  => "已修复 FIXED",
+                _               => n.NotifType
+            };
+
+            // ── Recipient display ──
+            string recipientDisplay = n.RecipientUsername switch
+            {
+                "ALL_TECH"  => "→ All Technical",
+                "ALL_ADMIN" => "→ Admin",
+                _           => $"→ {n.RecipientUsername}"
+            };
+
+            <div class="an-card type-@n.NotifType @(!n.IsRead ? "unread" : "")"
+                 data-filter="@n.NotifType"
+                 data-search="@((n.MachineCode ?? "") + " " + (n.Operation ?? "") + " " + (n.TechName ?? "") + " " + (n.Title ?? ""))">
+
+                <div class="an-card-icon">@icon</div>
+
+                <div class="an-card-body">
+                    <div class="an-card-top">
+                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                            <span class="an-badge badge-@n.NotifType">@badgeLabel</span>
+                            <span class="an-source @sourceClass">@sourceLabel</span>
+                            <span style="font-size:11px;color:var(--muted);">@recipientDisplay</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            @if (!n.IsRead)
+                            {
+                                <span class="an-unread-dot" title="Chưa đọc"></span>
+                            }
+                            <span class="an-time">🕐 @n.CreatedAt.ToString("HH:mm:ss")</span>
+                        </div>
+                    </div>
+
+                    <div class="an-card-title">@n.Title</div>
+
+                    @if (!string.IsNullOrEmpty(n.Body))
+                    {
+                        <div class="an-card-body-text">@n.Body</div>
+                    }
+
+                    <div class="an-card-meta">
+                        @if (!string.IsNullOrEmpty(n.MachineCode))
+                        {
+                            <span>🔩 机器: <strong>@n.MachineCode</strong></span>
+                        }
+                        @if (!string.IsNullOrEmpty(n.Operation))
+                        {
+                            <span>📍 工序: <strong>@n.Operation</strong></span>
+                        }
+                        @if (!string.IsNullOrEmpty(n.TechName))
+                        {
+                            <span>👨‍🔧 技术 : <strong>@n.TechName</strong></span>
+                        }
+                        @if (n.TechResponseId.HasValue)
+                        {
+                            <span style="color:#c4b5fd;">🔗 Ref #@n.TechResponseId</span>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+<!-- ── Pagination ── -->
+<div class="an-pagination-wrap" id="paginationWrap" style="display:none;">
+    <div class="an-page-info" id="pageInfo"></div>
+    <div class="an-page-btns" id="pageBtns"></div>
+    <div class="an-pagesize">
+        每页 / Page:
+        <select id="pageSizeSelect" onchange="changePageSize(this.value)">
+            <option value="5" selected>5</option>
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+        </select>
+    </div>
+</div>
+
+<script>
+(function () {
+    const pathBase = '@Context.Request.PathBase'.replace(/\/$/, '');
+
+    let currentFilter = 'ALL';
+    let currentPage   = 1;
+    let pageSize      = 5;
+    let searchTerm    = '';
+
+    function getAllCards() {
+        return Array.from(document.querySelectorAll('#anList .an-card'));
+    }
+
+    function getVisibleCards() {
+        return getAllCards().filter(c => {
+            const filterOk = currentFilter === 'ALL' || c.dataset.filter === currentFilter;
+            const searchOk = !searchTerm || (c.dataset.search || '').toLowerCase().includes(searchTerm);
+            return filterOk && searchOk;
+        });
+    }
+
+    function render() {
+        const cards = getVisibleCards();
+        const total = cards.length;
+        const pages = Math.max(1, Math.ceil(total / pageSize));
+        if (currentPage > pages) currentPage = pages;
+
+        const start = (currentPage - 1) * pageSize;
+        const end   = start + pageSize;
+
+        getAllCards().forEach(c => c.style.display = 'none');
+        cards.forEach((c, i) => {
+            c.style.display = (i >= start && i < end) ? '' : 'none';
+        });
+
+        const wrap = document.getElementById('paginationWrap');
+        if (total === 0) { wrap.style.display = 'none'; return; }
+        wrap.style.display = total <= pageSize ? 'none' : 'flex';
+
+        const showing = Math.min(end, total);
+        document.getElementById('pageInfo').innerHTML =
+            `显示 <strong>${start + 1}–${showing}</strong> / 共 <strong>${total}</strong> 条`;
+
+        renderPageBtns(pages);
+    }
+
+    function renderPageBtns(pages) {
+        const container = document.getElementById('pageBtns');
+        container.innerHTML = '';
+
+        function btn(label, page, active, disabled) {
+            const b = document.createElement('button');
+            b.className = 'an-page-btn' + (active ? ' active' : '');
+            b.textContent = label;
+            b.disabled = disabled;
+            if (!disabled && !active) b.onclick = () => goToPage(page);
+            container.appendChild(b);
+        }
+        function dots() {
+            const d = document.createElement('span');
+            d.className = 'an-page-dots';
+            d.textContent = '…';
+            container.appendChild(d);
+        }
+
+        btn('‹', currentPage - 1, false, currentPage === 1);
+        const delta = 1;
+        const range = [];
+        for (let p = 1; p <= pages; p++) {
+            if (p === 1 || p === pages || (p >= currentPage - delta && p <= currentPage + delta))
+                range.push(p);
+        }
+        let prev = 0;
+        range.forEach(p => {
+            if (p - prev > 1) dots();
+            btn(p, p, p === currentPage, false);
+            prev = p;
+        });
+        btn('›', currentPage + 1, false, currentPage === pages);
+    }
+
+    function goToPage(p) {
+        currentPage = p;
+        render();
+        document.getElementById('anList').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // ── Public API ──
+    window.setFilter = function (type, tabEl) {
+        currentFilter = type;
+        currentPage   = 1;
+        document.querySelectorAll('.an-tab').forEach(t => t.classList.remove('active'));
+        tabEl.classList.add('active');
+        render();
+    };
+
+    window.changePageSize = function (val) {
+        pageSize    = parseInt(val, 10);
+        currentPage = 1;
+        render();
+    };
+
+    window.onSearch = function () {
+        searchTerm  = document.getElementById('searchInput').value.toLowerCase().trim();
+        currentPage = 1;
+        render();
+    };
+
+    window.markAllRead = async function () {
+        try {
+            await fetch(`${pathBase}/Status/MarkAllNotificationsRead`, { method: 'POST' });
+            // Xóa tất cả dấu chấm unread + class unread
+            document.querySelectorAll('.an-card.unread').forEach(c => c.classList.remove('unread'));
+            document.querySelectorAll('.an-unread-dot').forEach(d => d.remove());
+            // Ẩn nút
+            const btn = document.querySelector('.btn-mark-all');
+            if (btn) btn.style.display = 'none';
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    // ── Init ──
+    render();
+})();
+</script>

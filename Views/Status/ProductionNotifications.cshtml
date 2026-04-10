@@ -1,0 +1,512 @@
+@model List<MachineStatusUpdate.Models.SVN_Notification>
+@{
+    ViewData["Title"] = "📬 我的通知";
+    var username = Context.Session.GetString("UserName") ?? "";
+}
+
+<style>
+    :root {
+        --border:   #e5e7eb;
+        --text:     #111827;
+        --muted:    #6b7280;
+        --bg:       #f9fafb;
+        --card-bg:  #ffffff;
+    }
+
+    .pn-header {
+        background: #111;
+        border-top: 4px solid #0d6efd;
+        padding: 16px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+    }
+    .pn-header h1 { margin: 0; color: #fff; font-size: 20px; font-weight: 700; }
+    .pn-header .sub { color: #999; font-size: 13px; margin-top: 3px; }
+
+    .pn-body { max-width: 900px; margin: 0 auto; }
+
+    /* Summary */
+    .pn-summary {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+    .pn-sum-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 14px 18px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.04);
+    }
+    .pn-sum-icon { font-size: 26px; }
+    .pn-sum-label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; }
+    .pn-sum-val { font-size: 26px; font-weight: 800; line-height: 1.1; }
+    .val-total    { color: #6366f1; }
+    .val-accept   { color: #16a34a; }
+    .val-wait     { color: #d97706; }
+    .val-fix      { color: #0d6efd; }
+
+    /* Filter tabs */
+    .pn-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+    }
+    .pn-tab {
+        padding: 7px 16px;
+        border-radius: 99px;
+        border: 1.5px solid var(--border);
+        background: #fff;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all .15s;
+        color: var(--muted);
+    }
+    .pn-tab:hover { border-color: #0d6efd; color: #0d6efd; }
+    .pn-tab.active { background: #0d6efd; color: #fff; border-color: #0d6efd; }
+
+    /* Notification list */
+    .pn-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .pn-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px 18px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.04);
+        border-left: 5px solid #e5e7eb;
+        position: relative;
+        transition: box-shadow .2s;
+    }
+    .pn-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.08); }
+    .pn-card.unread { box-shadow: 0 0 0 2px rgba(13,110,253,.15), 0 2px 8px rgba(0,0,0,.04); }
+
+    .pn-card.type-accept   { border-left-color: #22c55e; }
+    .pn-card.type-wait     { border-left-color: #f59e0b; }
+    .pn-card.type-fix      { border-left-color: #0d6efd; }
+    .pn-card.type-stop     { border-left-color: #ef4444; }
+    .pn-card.type-run      { border-left-color: #22c55e; }
+
+    .pn-card-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 8px;
+    }
+    .pn-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 3px 10px;
+        border-radius: 99px;
+        font-size: 11px;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+    .badge-accept { background: #dcfce7; color: #166534; }
+    .badge-wait   { background: #fef3c7; color: #92400e; }
+    .badge-fix    { background: #dbeafe; color: #1e40af; }
+    .badge-stop   { background: #fee2e2; color: #991b1b; }
+    .badge-run    { background: #dcfce7; color: #166534; }
+
+    .pn-time { font-size: 12px; color: var(--muted); }
+
+    .pn-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 4px;
+    }
+    .pn-body-text {
+        font-size: 13px;
+        color: #374151;
+        line-height: 1.5;
+        margin-bottom: 6px;
+    }
+    .pn-meta {
+        font-size: 11px;
+        color: var(--muted);
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    .pn-unread-dot {
+        display: inline-block;
+        width: 8px; height: 8px;
+        background: #ef4444;
+        border-radius: 50%;
+        margin-left: 6px;
+        vertical-align: middle;
+        flex-shrink: 0;
+    }
+
+    .pn-empty {
+        text-align: center;
+        padding: 60px 20px;
+        color: var(--muted);
+        font-size: 15px;
+    }
+    .pn-empty .empty-icon { font-size: 48px; display: block; margin-bottom: 12px; }
+
+    /* ── Pagination ── */
+    .pn-pagination-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 20px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border);
+    }
+    .pn-page-info {
+        font-size: 13px;
+        color: var(--muted);
+    }
+    .pn-page-info strong { color: var(--text); }
+    .pn-page-btns {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .pn-page-btn {
+        min-width: 34px;
+        height: 34px;
+        padding: 0 10px;
+        border-radius: 8px;
+        border: 1.5px solid var(--border);
+        background: #fff;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        color: var(--text);
+        transition: all .15s;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .pn-page-btn:hover:not(:disabled) { border-color: #0d6efd; color: #0d6efd; background: #eff6ff; }
+    .pn-page-btn.active { background: #0d6efd; color: #fff; border-color: #0d6efd; }
+    .pn-page-btn:disabled { opacity: .4; cursor: not-allowed; }
+    .pn-page-dots {
+        min-width: 34px;
+        text-align: center;
+        font-size: 13px;
+        color: var(--muted);
+        letter-spacing: 2px;
+    }
+
+    /* Page size selector */
+    .pn-pagesize {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: var(--muted);
+    }
+    .pn-pagesize select {
+        border: 1.5px solid var(--border);
+        border-radius: 6px;
+        padding: 4px 8px;
+        font-size: 13px;
+        color: var(--text);
+        cursor: pointer;
+        outline: none;
+    }
+    .pn-pagesize select:focus { border-color: #0d6efd; }
+
+    @@media (max-width: 600px) {
+        .pn-summary { grid-template-columns: 1fr 1fr; }
+        .pn-pagination-wrap { flex-direction: column; align-items: flex-start; }
+    }
+</style>
+
+<div class="pn-header">
+    <div>
+        <h1>📬 我的通知 / My Notifications</h1>
+        <div class="sub">今日收到的技术员响应通知 · Technician responses received today</div>
+    </div>
+    <span style="background:#1e40af;color:#fff;padding:6px 14px;border-radius:99px;font-size:13px;font-weight:600;">
+        👤 @username
+    </span>
+</div>
+
+<div class="pn-body">
+
+    @{
+        var total   = Model.Count;
+        var accepts = Model.Count(n => n.TechAction == "ACCEPT");
+        var waits   = Model.Count(n => n.TechAction == "WAIT");
+        var fixes   = Model.Count(n => n.NotifType == "FIX_COMPLETE");
+    }
+
+    <!-- Summary -->
+    <div class="pn-summary">
+        <div class="pn-sum-card">
+            <div class="pn-sum-icon">📋</div>
+            <div>
+                <div class="pn-sum-label">总通知</div>
+                <div class="pn-sum-val val-total">@total</div>
+            </div>
+        </div>
+        <div class="pn-sum-card">
+            <div class="pn-sum-icon">✅</div>
+            <div>
+                <div class="pn-sum-label">已接受</div>
+                <div class="pn-sum-val val-accept">@accepts</div>
+            </div>
+        </div>
+        <div class="pn-sum-card">
+            <div class="pn-sum-icon">⏳</div>
+            <div>
+                <div class="pn-sum-label">等待中</div>
+                <div class="pn-sum-val val-wait">@waits</div>
+            </div>
+        </div>
+        <div class="pn-sum-card">
+            <div class="pn-sum-icon">🔧</div>
+            <div>
+                <div class="pn-sum-label">已修复</div>
+                <div class="pn-sum-val val-fix">@fixes</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter tabs -->
+    <div class="pn-tabs">
+        <button class="pn-tab active" onclick="setFilter('ALL', this)">全部 All (@total)</button>
+        <button class="pn-tab" onclick="setFilter('ACCEPT', this)">✅ 已接受 (@accepts)</button>
+        <button class="pn-tab" onclick="setFilter('WAIT', this)">⏳ 等待中 (@waits)</button>
+        <button class="pn-tab" onclick="setFilter('FIX_COMPLETE', this)">🔧 已修复 (@fixes)</button>
+    </div>
+
+    <!-- Notification cards -->
+    <div class="pn-list" id="pnList">
+        @if (!Model.Any())
+        {
+            <div class="pn-empty">
+                <span class="empty-icon">📭</span>
+                今日暂无通知。<br>
+                <small style="font-size:13px;margin-top:6px;display:block;">
+                    当技术员响应您的停机呼叫时，通知将显示在此处。
+                </small>
+            </div>
+        }
+        else
+        {
+            foreach (var n in Model)
+            {
+                var isAccept = n.TechAction == "ACCEPT";
+                var isWait   = n.TechAction == "WAIT";
+                var isFix    = n.NotifType == "FIX_COMPLETE";
+                var isRun    = n.NotifType == "RUN";
+
+                string typeClass = isFix    ? "type-fix"
+                                 : isAccept ? "type-accept"
+                                 : isWait   ? "type-wait"
+                                 : isRun    ? "type-run"
+                                 : "type-stop";
+
+                string badgeClass = isFix    ? "badge-fix"
+                                  : isAccept ? "badge-accept"
+                                  : isWait   ? "badge-wait"
+                                  : isRun    ? "badge-run"
+                                  : "badge-stop";
+
+                string icon = isFix    ? "🔧 已修复完成"
+                            : isAccept ? "✅ 技术员已接受"
+                            : isWait   ? "⏳ 技术员等待中"
+                            : isRun    ? "▶ 设备已运行"
+                            : "🛑 停机通知";
+
+                string dataFilter = isFix    ? "FIX_COMPLETE"
+                                  : isAccept ? "ACCEPT"
+                                  : isWait   ? "WAIT"
+                                  : "OTHER";
+
+                <div class="pn-card @typeClass @(!n.IsRead ? "unread" : "")" data-filter="@dataFilter">
+                    <div class="pn-card-top">
+                        <span class="pn-badge @badgeClass">@icon</span>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            @if (!n.IsRead)
+                            {
+                                <span class="pn-unread-dot" title="未读"></span>
+                            }
+                            <span class="pn-time">🕐 @n.CreatedAt.ToString("HH:mm")</span>
+                        </div>
+                    </div>
+                    <div class="pn-title">@n.Title</div>
+                    @if (!string.IsNullOrEmpty(n.Body))
+                    {
+                        <div class="pn-body-text">@n.Body</div>
+                    }
+                    <div class="pn-meta">
+                        @if (!string.IsNullOrEmpty(n.MachineCode))
+                        {
+                            <span>🔩 设备: <strong>@n.MachineCode</strong></span>
+                        }
+                        @if (!string.IsNullOrEmpty(n.Operation))
+                        {
+                            <span>📍 产线: <strong>@n.Operation</strong></span>
+                        }
+                        @if (!string.IsNullOrEmpty(n.TechName))
+                        {
+                            <span>👨‍🔧 技术员: <strong>@n.TechName</strong></span>
+                        }
+                    </div>
+                </div>
+            }
+        }
+    </div>
+
+    <!-- Pagination controls -->
+    <div class="pn-pagination-wrap" id="paginationWrap" style="display:none;">
+        <div class="pn-page-info" id="pageInfo"></div>
+        <div class="pn-page-btns" id="pageBtns"></div>
+        <div class="pn-pagesize">
+            每页 / Page:
+            <select id="pageSizeSelect" onchange="changePageSize(this.value)">
+                <option value="5">5</option>
+                <option value="10" selected>10</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
+            </select>
+        </div>
+    </div>
+
+</div>
+
+<script>
+(function () {
+    // ── State ──
+    let currentFilter = 'ALL';
+    let currentPage   = 1;
+    let pageSize      = 10;
+
+    // ── Helpers ──
+    function getAllCards() {
+        return Array.from(document.querySelectorAll('#pnList .pn-card'));
+    }
+
+    function getVisibleCards() {
+        return getAllCards().filter(c =>
+            currentFilter === 'ALL' || c.dataset.filter === currentFilter
+        );
+    }
+
+    // ── Render ──
+    function render() {
+        const cards   = getVisibleCards();
+        const total   = cards.length;
+        const pages   = Math.max(1, Math.ceil(total / pageSize));
+        if (currentPage > pages) currentPage = pages;
+
+        const start = (currentPage - 1) * pageSize;
+        const end   = start + pageSize;
+
+        // Show / hide all cards
+        getAllCards().forEach(c => c.style.display = 'none');
+        cards.forEach((c, i) => {
+            c.style.display = (i >= start && i < end) ? '' : 'none';
+        });
+
+        // Empty state already handled server-side; nothing extra needed
+
+        // Pagination controls
+        const wrap = document.getElementById('paginationWrap');
+        if (total === 0) { wrap.style.display = 'none'; return; }
+        wrap.style.display = total <= pageSize ? 'none' : 'flex';
+
+        // Info text
+        const showing = Math.min(end, total);
+        document.getElementById('pageInfo').innerHTML =
+            `显示 <strong>${start + 1}–${showing}</strong> / 共 <strong>${total}</strong> 条`;
+
+        // Page buttons
+        renderPageBtns(pages);
+    }
+
+    function renderPageBtns(pages) {
+        const container = document.getElementById('pageBtns');
+        container.innerHTML = '';
+
+        function btn(label, page, active, disabled) {
+            const b = document.createElement('button');
+            b.className = 'pn-page-btn' + (active ? ' active' : '');
+            b.textContent = label;
+            b.disabled = disabled;
+            if (!disabled && !active) b.onclick = () => goToPage(page);
+            container.appendChild(b);
+        }
+
+        function dots() {
+            const d = document.createElement('span');
+            d.className = 'pn-page-dots';
+            d.textContent = '…';
+            container.appendChild(d);
+        }
+
+        // Prev
+        btn('‹', currentPage - 1, false, currentPage === 1);
+
+        // Page numbers with smart ellipsis
+        const delta = 1; // pages around current
+        const range = [];
+        for (let p = 1; p <= pages; p++) {
+            if (p === 1 || p === pages ||
+                (p >= currentPage - delta && p <= currentPage + delta)) {
+                range.push(p);
+            }
+        }
+
+        let prev = 0;
+        range.forEach(p => {
+            if (p - prev > 1) dots();
+            btn(p, p, p === currentPage, false);
+            prev = p;
+        });
+
+        // Next
+        btn('›', currentPage + 1, false, currentPage === pages);
+    }
+
+    // ── Public API ──
+    window.setFilter = function (type, tabEl) {
+        currentFilter = type;
+        currentPage   = 1;
+
+        document.querySelectorAll('.pn-tab').forEach(t => t.classList.remove('active'));
+        tabEl.classList.add('active');
+
+        render();
+    };
+
+    window.changePageSize = function (val) {
+        pageSize    = parseInt(val, 10);
+        currentPage = 1;
+        render();
+    };
+
+    function goToPage(p) {
+        currentPage = p;
+        render();
+        // Scroll to top of list smoothly
+        document.getElementById('pnList').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // ── Init ──
+    render();
+})();
+</script>

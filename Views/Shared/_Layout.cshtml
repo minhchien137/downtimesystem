@@ -164,29 +164,37 @@
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
 
-                        
+                        @if (!isAdmin)
+                        {
                         <li class="nav-item">
                             <a class="nav-link text-dark custom-highlight" asp-controller="Status" asp-action="CreateDownTime">
                                 📝 录入停机时间
                             </a>
                         </li>
+                        }
 
-                        
                         <li class="nav-item">
                             <a class="nav-link text-dark custom-highlight" asp-controller="Status" asp-action="DowntimeList">
                                 📈 停机时间历史
                             </a>
                         </li>
 
-                        
                         <li class="nav-item">
                             <a class="nav-link text-dark custom-highlight" asp-controller="Status" asp-action="ReportDowntime">
                                 📊 停机时间报告
                             </a>
                         </li>
 
-                        
-                        @if (isAdmin || isTechnical)
+                        @if (isAdmin)
+                        {
+                        <li class="nav-item">
+                            <a class="nav-link text-dark custom-highlight" asp-controller="Status" asp-action="AdminNotifications">
+                                🔔 通知仪表板
+                                <span id="navAdminBadge" style="display:none;background:#7c3aed;color:#fff;font-size:10px;font-weight:700;border-radius:99px;padding:1px 6px;margin-left:4px;vertical-align:middle;"></span>
+                            </a>
+                        </li>
+                        }
+                        else if (isTechnical)
                         {
                         <li class="nav-item">
                             <a class="nav-link text-dark custom-highlight" asp-controller="Status" asp-action="NotificationDashboard">
@@ -195,7 +203,16 @@
                         </li>
                         }
 
-                        
+                        @if (isProduction)
+                        {
+                        <li class="nav-item">
+                            <a class="nav-link text-dark custom-highlight" asp-controller="Status" asp-action="ProductionNotifications">
+                                📬 我的通知
+                                <span id="navProdBadge" style="display:none;background:#ef4444;color:#fff;font-size:10px;font-weight:700;border-radius:99px;padding:1px 6px;margin-left:4px;vertical-align:middle;"></span>
+                            </a>
+                        </li>
+                        }
+
                         @if (isAdmin)
                         {
                         <li class="nav-item">
@@ -207,7 +224,6 @@
 
                     </ul>
 
-                    
                     <ul class="navbar-nav align-items-center gap-2">
                         <li class="nav-item">
                             <div class="bell-wrapper" id="bellWrapper">
@@ -243,10 +259,6 @@
                         </li>
                     </ul>
                 </div>
-
-                @* <div style="position:absolute; right:200px; top:50%; transform:translateY(-50%);">
-                    <img src="~/images/logo.png" alt="Logo" style="height:40px; width:auto;" />
-                </div> *@
             </div>
         </nav>
     </header>
@@ -285,15 +297,25 @@
         // ─── 渲染单条通知 ──────────────────────────────
         function renderItem(n) {
             const isRead    = n.isRead;
-            const type      = n.notifType;   // 'STOP' | 'TECH_RESPONSE' | 'RUN'
+            const type      = n.notifType;
             const isAccept  = n.techAction === 'ACCEPT';
             const isWait    = n.techAction === 'WAIT';
             const readStyle = isRead ? 'opacity:0.6;' : '';
 
-            let borderColor = '#ef4444'; // STOP = 红色
+            let borderColor = '#ef4444';
             let icon = '🛑';
             if (type === 'TECH_RESPONSE') { borderColor = isAccept ? '#22c55e' : '#f59e0b'; icon = isAccept ? '✅' : '⏳'; }
             if (type === 'RUN')           { borderColor = '#3b82f6'; icon = '✅'; }
+            if (type === 'FIX_COMPLETE')  { borderColor = '#0d6efd'; icon = '🔧'; }
+
+            // Badge nguồn (chỉ hiển thị với Admin)
+            const sourceBadge = myRole === 'Admin'
+                ? `<span style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:99px;margin-left:6px;
+                    background:${(type==='STOP'||type==='RUN') ? '#f3e8ff' : '#e0f2fe'};
+                    color:${(type==='STOP'||type==='RUN') ? '#7c3aed' : '#0369a1'};">
+                    ${(type==='STOP'||type==='RUN') ? '🏭 Prod' : '🔧 Tech'}
+                   </span>`
+                : '';
 
             const unreadDot = !isRead
                 ? `<span style="display:inline-block;width:8px;height:8px;background:#ef4444;border-radius:50%;margin-left:6px;vertical-align:middle;"></span>`
@@ -304,7 +326,7 @@
                      style="border-left:4px solid ${borderColor}; ${readStyle} cursor:pointer;"
                      onclick="markOneRead(${n.id}, this)">
                     <div class="bell-notif-title" style="color:#1e293b;">
-                        ${icon} ${n.title} ${unreadDot}
+                        ${icon} ${n.title} ${sourceBadge} ${unreadDot}
                     </div>
                     ${n.body ? `<div class="bell-notif-body">${n.body}</div>` : ''}
                     <div class="bell-notif-time">🕐 ${n.createdAt}${n.techName ? ` &nbsp;·&nbsp; 👤 ${n.techName}` : ''}</div>
@@ -328,35 +350,45 @@
                     });
                 }
 
-                // 更新角标
                 const count = data.unreadCount || 0;
                 if (count > 0) {
-                    bellBadge.textContent  = count > 9 ? '9+' : String(count);
+                    bellBadge.textContent   = count > 9 ? '9+' : String(count);
                     bellBadge.style.display = 'block';
                 } else {
                     bellBadge.style.display = 'none';
                 }
+
+                // Badge trên nav "我的通知" (Production)
+                const navProdBadge = document.getElementById('navProdBadge');
+                if (navProdBadge) {
+                    navProdBadge.textContent   = count > 9 ? '9+' : String(count);
+                    navProdBadge.style.display = count > 0 ? 'inline' : 'none';
+                }
+
+                // Badge trên nav "通知仪表板" (Admin)
+                const navAdminBadge = document.getElementById('navAdminBadge');
+                if (navAdminBadge) {
+                    navAdminBadge.textContent   = count > 9 ? '9+' : String(count);
+                    navAdminBadge.style.display = count > 0 ? 'inline' : 'none';
+                }
+
             } catch(e) {
                 console.warn('loadNotifications error:', e);
             }
         }
 
-        // ─── 实时通知 (SignalR) + 重新加载以同步 ────────
         function addRealTimeItem() {
-            // 铃铛抖动
             if (bellBtn) {
                 bellBtn.classList.remove('shake');
                 void bellBtn.offsetWidth;
                 bellBtn.classList.add('shake');
                 setTimeout(() => bellBtn.classList.remove('shake'), 700);
             }
-            // 重新加载整个列表以保持同步
             loadNotifications();
         }
 
-        // ─── 点击时将单条通知标记为已读 ────────────────────────
         window.markOneRead = async function(id, el) {
-            if (el.style.opacity === '0.6') return; // 已读过了
+            if (el.style.opacity === '0.6') return;
             try {
                 await fetch(`${pathBase}/Status/MarkNotificationRead`, {
                     method : 'POST',
@@ -364,27 +396,22 @@
                     body   : JSON.stringify({ id })
                 });
                 el.style.opacity = '0.6';
-                // 移除未读红点
                 const dot = el.querySelector('span[style*="border-radius:50%"]');
                 if (dot) dot.remove();
-                // 更新角标
                 loadNotifications();
             } catch(e) {}
         };
 
-        // ─── 切换下拉框 + 打开时标记全部已读 ─────────
         window.toggleBellDropdown = function(e) {
             e.stopPropagation();
             const isOpen = bellDrop.classList.toggle('open');
-            if (isOpen) {
-                markAllRead();
-            }
+            if (isOpen) markAllRead();
         };
 
         async function markAllRead() {
             try {
                 await fetch(`${pathBase}/Status/MarkAllNotificationsRead`, { method: 'POST' });
-                loadNotifications(); // 重新加载以更新状态
+                loadNotifications();
             } catch(e) {}
         }
 
@@ -393,7 +420,6 @@
             if (wrapper && !wrapper.contains(e.target)) bellDrop.classList.remove('open');
         });
 
-        // ─── 清空全部 (仅从UI移除，不删除数据库) ────────────────
         window.clearBellNotifs = function(e) {
             if (e) e.stopPropagation();
             bellList.innerHTML = '<div class="bell-drop-empty" id="bellEmpty">暂无通知。</div>';
@@ -408,11 +434,10 @@
             .configureLogging(signalR.LogLevel.Warning)
             .build();
 
-        // 生产端 & 管理员：接收技术员响应
         if (myRole === 'Production' || myRole === 'Admin') {
             conn.on("ReceiveTechResponse", () => addRealTimeItem());
+            conn.on("ReceiveFixComplete",  () => addRealTimeItem());
         }
-        // 技术员 & 管理员：接收生产端停机通知
         if (myRole === 'Technical' || myRole === 'Admin') {
             conn.on("ReceiveStopNotification", () => addRealTimeItem());
             conn.on("ReceiveRunNotification",  () => addRealTimeItem());
@@ -430,7 +455,6 @@
             }
         }
 
-        // 页面打开时立即加载通知
         loadNotifications();
         startConn();
 
