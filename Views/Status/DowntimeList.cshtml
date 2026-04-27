@@ -3,12 +3,10 @@
     ViewData["Title"] = "停机时间列表 (Downtime List)";
     var ops = (IEnumerable<string>)ViewBag.OperationOptions ?? Enumerable.Empty<string>();
 
-    // Existing filters
     string qOp       = ViewBag.Operation   as string ?? "";
     string qFrom     = ViewBag.FromDate    as string ?? "";
     string qTo       = ViewBag.ToDate      as string ?? "";
 
-    // New dropdown filters — controller must pass these as IEnumerable<string> in ViewBag
     var stationOpts  = (ViewBag.StationOptions  as IEnumerable<string>) ?? Enumerable.Empty<string>();
     var machineOpts  = (ViewBag.MachineOptions  as IEnumerable<string>) ?? Enumerable.Empty<string>();
     var locationOpts = (ViewBag.LocationOptions as IEnumerable<string>) ?? Enumerable.Empty<string>();
@@ -42,71 +40,78 @@
         margin: 0 auto;
     }
 
-    h2 { font-size: 22px; margin-bottom: 16px; font-weight: 700; }
+    h2 { font-size: 22px; margin-bottom: 10px; font-weight: 700; }
 
     /* ===== Filter card ===== */
     .filter-card {
         background: #fff;
         border: 1px solid #e5e7eb;
         border-radius: 12px;
-        padding: 18px;
-        margin-bottom: 18px;
+        padding: 12px 14px;
+        margin-bottom: 14px;
         box-shadow: 0 2px 10px rgba(0,0,0,.05);
     }
 
     .filter-card-title {
-        font-size: 13px;
+        font-size: 11px;
         font-weight: 700;
         color: #6b7280;
         text-transform: uppercase;
         letter-spacing: .05em;
-        margin-bottom: 14px;
+        margin-bottom: 8px;
     }
 
-    /* Date row */
     .filter-row {
         display: grid;
-        gap: 12px;
-        margin-bottom: 12px;
+        gap: 8px;
+        margin-bottom: 8px;
+        align-items: end;
     }
 
-    .filter-row-dates    { grid-template-columns: 1fr 1fr; }
-    .filter-row-dropdowns { grid-template-columns: repeat(4, 1fr); }
-    .filter-row-dropdowns2 { grid-template-columns: repeat(3, 1fr); }
+    /* Desktop: Hàng 1 — date(160px) date(160px) op loc machine station */
+    .filter-row-1 { grid-template-columns: 160px 160px 1fr 1fr 1fr 1fr; }
+
+    /* Desktop: Hàng 2 — employee reason effect | buttons */
+    .filter-row-2 { grid-template-columns: 1fr 1fr 1fr auto; }
 
     .filter-group {
         display: flex;
         flex-direction: column;
+        min-width: 0;
     }
 
     .filter-group label {
-        font-size: 13px;
+        font-size: 11px;
         font-weight: 600;
-        margin-bottom: 5px;
+        margin-bottom: 3px;
         color: #374151;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .filter-group .form-control,
     .filter-group select {
-        height: 38px;
+        height: 32px;
         border: 1px solid #d1d5db;
-        border-radius: 8px;
-        padding: 0 10px;
-        font-size: 13.5px;
+        border-radius: 7px;
+        padding: 0 24px 0 8px;
+        font-size: 12px;
         background: #fff;
         appearance: none;
         -webkit-appearance: none;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
         background-repeat: no-repeat;
-        background-position: right 10px center;
-        padding-right: 30px;
+        background-position: right 7px center;
         transition: border-color .2s, box-shadow .2s;
         cursor: pointer;
+        width: 100%;
+        min-width: 0;
     }
 
     .filter-group input.form-control {
         background-image: none;
-        padding-right: 10px;
+        padding-right: 8px;
         cursor: text;
     }
 
@@ -117,7 +122,6 @@
         box-shadow: 0 0 0 3px rgba(130,215,255,.25);
     }
 
-    /* active filter highlight */
     .filter-group select.active-filter,
     .filter-group input.active-filter {
         border-color: #0d6efd;
@@ -126,40 +130,42 @@
         color: #1d4ed8;
     }
 
-    .filter-actions {
+    /* Buttons desktop — nằm trong grid hàng 2 */
+    .filter-actions-desktop {
         display: flex;
         gap: 8px;
         align-items: center;
         flex-wrap: wrap;
-        margin-top: 4px;
     }
 
-    /* Buttons */
+    /* Buttons mobile — nằm ngoài grid, ẩn trên desktop */
+    .filter-actions-mobile { display: none; }
+
+    /* ===== Buttons ===== */
     .btn {
         border: 0;
-        border-radius: 9px;
-        padding: 9px 16px;
+        border-radius: 8px;
+        padding: 7px 14px;
         font-weight: 600;
         cursor: pointer;
-        font-size: 13.5px;
+        font-size: 13px;
         white-space: nowrap;
         transition: all .2s;
         text-decoration: none;
         display: inline-flex;
         align-items: center;
         gap: 5px;
-        text-align: center;
+        height: 32px;
     }
 
-    .btn-primary   { background: #0d6efd; color: #fff; }
-    .btn-primary:hover { background: #0b5ed7; }
-    .btn-secondary { background: #e5e7eb; color: #111827; }
+    .btn-primary         { background: #0d6efd; color: #fff; }
+    .btn-primary:hover   { background: #0b5ed7; }
+    .btn-secondary       { background: #e5e7eb; color: #111827; }
     .btn-secondary:hover { background: #d1d5db; }
-    .btn-success   { background: #22c55e; color: #fff; }
-    .btn-success:hover { background: #16a34a; }
-    .btn-sm { padding: 6px 12px; font-size: 12.5px; }
+    .btn-success         { background: #22c55e; color: #fff; }
+    .btn-success:hover   { background: #16a34a; }
+    .btn-sm { padding: 5px 11px; font-size: 12px; height: auto; }
 
-    /* active filter count badge */
     .active-count {
         display: inline-block;
         background: #ef4444;
@@ -214,8 +220,8 @@
         font-weight: 700;
     }
 
-    .badge-stop { background: #fee2e2; color: #dc2626; }
-    .badge-run  { background: #dcfce7; color: #16a34a; }
+    .badge-stop     { background: #fee2e2; color: #dc2626; }
+    .badge-run      { background: #dcfce7; color: #16a34a; }
     .badge-response { background: #fef3c7; color: #d97706; }
 
     .no-data {
@@ -232,8 +238,8 @@
         background: #fff;
         border: 1px solid #e5e7eb;
         border-radius: 12px;
-        padding: 16px;
-        margin-bottom: 12px;
+        padding: 14px;
+        margin-bottom: 10px;
         box-shadow: 0 2px 8px rgba(0,0,0,.04);
     }
 
@@ -241,30 +247,30 @@
         display: flex;
         justify-content: space-between;
         align-items: start;
-        margin-bottom: 12px;
-        padding-bottom: 12px;
+        margin-bottom: 10px;
+        padding-bottom: 10px;
         border-bottom: 1px solid #f1f5f9;
     }
 
-    .card-title { font-weight: 700; font-size: 15px; color: #111827; }
+    .card-title    { font-weight: 700; font-size: 15px; color: #111827; }
     .card-subtitle { font-size: 12px; color: #6b7280; margin-top: 2px; }
 
     .card-section-title {
-        font-size: 10.5px;
+        font-size: 10px;
         font-weight: 700;
         color: #9ca3af;
         text-transform: uppercase;
         letter-spacing: .05em;
-        margin: 12px 0 5px;
-        padding-bottom: 4px;
+        margin: 10px 0 4px;
+        padding-bottom: 3px;
         border-bottom: 1px solid #f1f5f9;
     }
 
     .card-row {
         display: flex;
         justify-content: space-between;
-        padding: 5px 0;
-        font-size: 13px;
+        padding: 4px 0;
+        font-size: 12.5px;
         gap: 8px;
     }
 
@@ -284,17 +290,38 @@
     .page-info { font-size: 14px; color: #6b7280; font-weight: 600; }
 
     /* ===== Responsive ===== */
-    @@media (max-width: 1024px) {
-        .filter-row-dropdowns  { grid-template-columns: repeat(2, 1fr); }
-        .filter-row-dropdowns2 { grid-template-columns: repeat(2, 1fr); }
+    @@media (max-width: 1200px) {
+        .filter-row-1 { grid-template-columns: 150px 150px 1fr 1fr; }
+        .filter-row-2 { grid-template-columns: 1fr 1fr 1fr auto; }
     }
 
     @@media (max-width: 768px) {
-        .container { padding: 0 12px; }
-        h2 { font-size: 18px; }
-        .filter-row-dates,
-        .filter-row-dropdowns,
-        .filter-row-dropdowns2 { grid-template-columns: 1fr; }
+        .container { padding: 0 10px; }
+        h2 { font-size: 17px; margin-bottom: 10px; }
+        .filter-card { padding: 10px 12px; }
+
+        /* Mobile: 2 cột */
+        .filter-row-1 { grid-template-columns: 1fr 1fr !important; }
+        /* Hàng 2 chỉ còn 3 dropdowns, bỏ cột buttons */
+        .filter-row-2 { grid-template-columns: 1fr 1fr !important; }
+
+        .filter-row { gap: 6px; margin-bottom: 6px; }
+        .filter-group label { font-size: 10.5px; }
+
+        .filter-group .form-control,
+        .filter-group select { height: 30px; font-size: 11.5px; }
+
+        /* Ẩn buttons desktop, hiện buttons mobile */
+        .filter-actions-desktop { display: none !important; }
+        .filter-actions-mobile {
+            display: flex !important;
+            gap: 8px;
+            margin-top: 6px;
+            flex-wrap: wrap;
+        }
+
+        .btn { height: auto; padding: 7px 12px; font-size: 12.5px; }
+
         .table-wrap { display: none; }
         .card-view  { display: block; }
         .pager      { gap: 8px; }
@@ -310,8 +337,8 @@
         <div class="filter-card-title">🔍 筛选条件 (Filter)</div>
         <form method="get" asp-action="DowntimeList">
 
-            <!-- Row 1: Date range -->
-            <div class="filter-row filter-row-dates">
+            <!-- Hàng 1: From | To | Operation | Location | Machine | Station -->
+            <div class="filter-row filter-row-1">
                 <div class="filter-group">
                     <label>从 (From date)</label>
                     <input type="date" name="fromDate" value="@qFrom"
@@ -322,14 +349,10 @@
                     <input type="date" name="toDate" value="@qTo"
                            class="form-control @(!string.IsNullOrEmpty(qTo) ? "active-filter" : "")" />
                 </div>
-            </div>
-
-            <!-- Row 2: 4 dropdowns -->
-            <div class="filter-row filter-row-dropdowns">
                 <div class="filter-group">
                     <label>生产线 (Operation)</label>
                     <select name="operation" class="@(!string.IsNullOrEmpty(qOp) ? "active-filter" : "")">
-                        <option value="">-- 全部 (All) --</option>
+                        <option value="">-- 全部 --</option>
                         @foreach (var op in ops)
                         {
                             <option value="@op" selected="@(op == qOp ? "selected" : null)">@op</option>
@@ -339,7 +362,7 @@
                 <div class="filter-group">
                     <label>位置 (Location)</label>
                     <select name="location" class="@(!string.IsNullOrEmpty(qLocation) ? "active-filter" : "")">
-                        <option value="">-- 全部 (All) --</option>
+                        <option value="">-- 全部 --</option>
                         @foreach (var loc in locationOpts)
                         {
                             <option value="@loc" selected="@(loc == qLocation ? "selected" : null)">@loc</option>
@@ -349,7 +372,7 @@
                 <div class="filter-group">
                     <label>设备 (Machine)</label>
                     <select name="machine" class="@(!string.IsNullOrEmpty(qMachine) ? "active-filter" : "")">
-                        <option value="">-- 全部 (All) --</option>
+                        <option value="">-- 全部 --</option>
                         @foreach (var m in machineOpts)
                         {
                             <option value="@m" selected="@(m == qMachine ? "selected" : null)">@m</option>
@@ -359,7 +382,7 @@
                 <div class="filter-group">
                     <label>工位 (Station)</label>
                     <select name="station" class="@(!string.IsNullOrEmpty(qStation) ? "active-filter" : "")">
-                        <option value="">-- 全部 (All) --</option>
+                        <option value="">-- 全部 --</option>
                         @foreach (var st in stationOpts)
                         {
                             <option value="@st" selected="@(st == qStation ? "selected" : null)">@st</option>
@@ -368,12 +391,12 @@
                 </div>
             </div>
 
-            <!-- Row 3: 3 dropdowns + actions -->
-            <div class="filter-row filter-row-dropdowns2">
+            <!-- Hàng 2: Employee | Reason | Effect | Buttons (desktop) -->
+            <div class="filter-row filter-row-2">
                 <div class="filter-group">
                     <label>员工 (Employee)</label>
                     <select name="employee" class="@(!string.IsNullOrEmpty(qEmployee) ? "active-filter" : "")">
-                        <option value="">-- 全部 (All) --</option>
+                        <option value="">-- 全部 --</option>
                         @foreach (var emp in employeeOpts)
                         {
                             <option value="@emp" selected="@(emp == qEmployee ? "selected" : null)">@emp</option>
@@ -383,7 +406,7 @@
                 <div class="filter-group">
                     <label>原因 (Reason)</label>
                     <select name="reason" class="@(!string.IsNullOrEmpty(qReason) ? "active-filter" : "")">
-                        <option value="">-- 全部 (All) --</option>
+                        <option value="">-- 全部 --</option>
                         @foreach (var r in reasonOpts)
                         {
                             <option value="@r" selected="@(r == qReason ? "selected" : null)">@r</option>
@@ -393,37 +416,57 @@
                 <div class="filter-group">
                     <label>影响 (Effect)</label>
                     <select name="effect" class="@(!string.IsNullOrEmpty(qEffect) ? "active-filter" : "")">
-                        <option value="">-- 全部 (All) --</option>
+                        <option value="">-- 全部 --</option>
                         @foreach (var ef in effectOpts)
                         {
                             <option value="@ef" selected="@(ef == qEffect ? "selected" : null)">@ef</option>
                         }
                     </select>
                 </div>
+
+                <!-- Buttons: chỉ hiện trên desktop -->
+                <div class="filter-actions-desktop">
+                    <button type="submit" class="btn btn-primary">
+                        🔍 筛选
+                        @{
+                            int activeCount = new[] { qOp, qFrom, qTo, qStation, qMachine, qLocation, qEmployee, qReason, qEffect }
+                                .Count(x => !string.IsNullOrEmpty(x));
+                            if (activeCount > 0)
+                            {
+                                <span class="active-count">@activeCount</span>
+                            }
+                        }
+                    </button>
+                    <a class="btn btn-secondary" href="@Url.Action("DowntimeList", "Status")">🔄 清除</a>
+                    <a class="btn btn-success"
+                       href="@Url.Action("ExportDowntimeListToExcel", "Status", new {
+                           operation = qOp, fromDate = qFrom, toDate = qTo,
+                           station = qStation, machine = qMachine, location = qLocation,
+                           employee = qEmployee, reason = qReason, effect = qEffect
+                       })">📥 Excel</a>
+                </div>
             </div>
 
-            <!-- Action buttons -->
-            <div class="filter-actions">
+            <!-- Buttons: chỉ hiện trên mobile, nằm ngoài grid -->
+            <div class="filter-actions-mobile">
                 <button type="submit" class="btn btn-primary">
-                    🔍 筛选 (Filter)
+                    🔍 筛选
                     @{
-                        int activeCount = new[] { qOp, qFrom, qTo, qStation, qMachine, qLocation, qEmployee, qReason, qEffect }
+                        int activeCountMobile = new[] { qOp, qFrom, qTo, qStation, qMachine, qLocation, qEmployee, qReason, qEffect }
                             .Count(x => !string.IsNullOrEmpty(x));
-                        if (activeCount > 0)
+                        if (activeCountMobile > 0)
                         {
-                            <span class="active-count">@activeCount</span>
+                            <span class="active-count">@activeCountMobile</span>
                         }
                     }
                 </button>
-                <a class="btn btn-secondary" href="@Url.Action("DowntimeList", "Status")">🔄 清除 (Clear)</a>
+                <a class="btn btn-secondary" href="@Url.Action("DowntimeList", "Status")">🔄 清除</a>
                 <a class="btn btn-success"
                    href="@Url.Action("ExportDowntimeListToExcel", "Status", new {
                        operation = qOp, fromDate = qFrom, toDate = qTo,
                        station = qStation, machine = qMachine, location = qLocation,
                        employee = qEmployee, reason = qReason, effect = qEffect
-                   })">
-                    📥 Excel
-                </a>
+                   })">📥 Excel</a>
             </div>
 
         </form>
@@ -434,7 +477,6 @@
         <table>
             <thead>
                 <tr>
-                    <!--  Column order matches SQL table column order -->
                     <th>生产线 (Operation)</th>
                     <th>设备 (Machine)</th>
                     <th>位置 (Location)</th>
@@ -482,9 +524,7 @@
                             </td>
                             <td>@(item.Station ?? "-")</td>
                             <td>@(string.IsNullOrEmpty(item.EstimateTime) ? "-" : item.EstimateTime)</td>
-                            <td>
-                                <span class="badge @badgeCss">@item.State</span>
-                            </td>
+                            <td><span class="badge @badgeCss">@item.State</span></td>
                             <td>@(item.Action ?? "-")</td>
                             <td>
                                 @if (!string.IsNullOrEmpty(item.Image))
@@ -531,7 +571,6 @@
                         <span class="badge @badgeCss">@item.State</span>
                     </div>
 
-                    <!-- Basic -->
                     <div class="card-section-title">基本信息 (Basic Info)</div>
                     <div class="card-row">
                         <span class="card-label">生产线 (Operation):</span>
@@ -550,7 +589,6 @@
                         <span class="card-value">@(item.Station ?? "-")</span>
                     </div>
 
-                    <!-- Problem -->
                     <div class="card-section-title">问题 (Problem)</div>
                     <div class="card-row">
                         <span class="card-label">原因 (Reason):</span>
@@ -572,7 +610,6 @@
                         </div>
                     }
 
-                    <!-- Resolution -->
                     <div class="card-section-title">处理 (Resolution)</div>
                     <div class="card-row">
                         <span class="card-label">动作 (Action):</span>
@@ -587,7 +624,6 @@
                         <span class="card-value">@(item.SpareParts ?? "-")</span>
                     </div>
 
-                    <!-- Employee -->
                     <div class="card-section-title">员工 (Employee)</div>
                     <div class="card-row">
                         <span class="card-label">工号 (Code):</span>
@@ -598,7 +634,6 @@
                         <span class="card-value">@(item.EmployeeName ?? "-")</span>
                     </div>
 
-                    <!-- Time -->
                     <div class="card-section-title">时间 (Time)</div>
                     <div class="card-row">
                         <span class="card-label">时间 (Datetime):</span>

@@ -127,7 +127,6 @@
     .summary-value.run   { color: var(--run-color); }
     .summary-value.total { color: #6366f1; }
     .summary-value.accept { color: #16a34a; }
-    .summary-value.wait   { color: #d97706; }
 
     /* ===== Accept / Wait buttons ===== */
     .notif-actions {
@@ -159,25 +158,6 @@
     .btn-accept:active { transform: translateY(1px); }
     .btn-accept:disabled { opacity: .55; cursor: not-allowed; transform: none; }
 
-    .btn-wait {
-        background: linear-gradient(135deg, #d97706, #f59e0b);
-        color: #fff;
-        border: none;
-        border-radius: 8px;
-        padding: 9px 20px;
-        font-size: 13px;
-        font-weight: 700;
-        cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        box-shadow: 0 3px 10px rgba(245,158,11,.35);
-        transition: all .18s;
-    }
-    .btn-wait:hover  { filter: brightness(1.08); transform: translateY(-1px); }
-    .btn-wait:active { transform: translateY(1px); }
-    .btn-wait:disabled { opacity: .55; cursor: not-allowed; transform: none; }
-
     /* ===== Response — Đã sửa xong button ===== */
     .btn-fix-complete {
         background: linear-gradient(135deg, #0d6efd, #3b82f6);
@@ -200,6 +180,32 @@
     .btn-fix-complete:disabled { opacity: .55; cursor: not-allowed; transform: none; }
 
     .responded-badge.fix-done { background: #dbeafe; color: #1e40af; }
+
+    .response-time-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 5px 12px;
+        border-radius: 8px;
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        font-size: 12px;
+        font-weight: 600;
+        color: #15803d;
+    }
+
+    .downtime-time-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 5px 12px;
+        border-radius: 8px;
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        font-size: 12px;
+        font-weight: 600;
+        color: #b91c1c;
+    }
 
     .responded-badge {
         display: inline-flex;
@@ -751,13 +757,6 @@
             </div>
         </div>
         <div class="summary-card">
-            <div class="summary-icon">⏳</div>
-            <div>
-                <div class="summary-label">等待中</div>
-                <div class="summary-value wait" id="cntWait">0</div>
-            </div>
-        </div>
-        <div class="summary-card">
             <div class="summary-icon">📋</div>
             <div>
                 <div class="summary-label">总通知数</div>
@@ -930,7 +929,6 @@ let cntStop  = 0;
 let cntRun   = 0;
 let cntTotal = 0;
 let cntAccept = 0;
-let cntWait   = 0;
 let audioCtx = null;
 let audioUnlocked = false;
 
@@ -1077,7 +1075,31 @@ function updateCounters() {
     document.getElementById('cntRun').textContent    = cntRun;
     document.getElementById('cntTotal').textContent  = cntTotal;
     document.getElementById('cntAccept').textContent = cntAccept;
-    document.getElementById('cntWait').textContent   = cntWait;
+}
+
+/* ===== Helper: parse "dd/MM/yyyy HH:mm" → Date ===== */
+function parseDT(s) {
+    if (!s) return null;
+    try {
+        const [datePart, timePart] = s.trim().split(' ');
+        const [d, m, y] = datePart.split('/');
+        const [h, min]  = (timePart || '00:00').split(':');
+        return new Date(+y, +m - 1, +d, +h, +min);
+    } catch { return null; }
+}
+
+function minutesBetween(start, end) {
+    if (!start || !end) return null;
+    return Math.round((end - start) / 60000);
+}
+
+function formatMinutes(mins) {
+    if (mins === null || mins === undefined || isNaN(mins)) return '-';
+    if (mins < 1) return '< 1 分钟';
+    if (mins < 60) return `${mins} 分钟`;
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
 /* ===== Render STOP card ===== */
@@ -1093,13 +1115,22 @@ function renderStopCard(data, prepend = true) {
     card.dataset.techResponseId   = data.techResponseId   || data.id || '';
     card.dataset.operatorUsername = data.operatorUsername || '';
     card.dataset.machineCode      = data.machineCode      || '';
+    card.dataset.stopDatetime     = data.datetime         || '';  // "dd/MM/yyyy HH:mm"
+
+    // Tính response time nếu đã có respondDatetime (load từ DB)
+    let responseTimeStr = null;
+    if (data.respondDatetime && data.datetime) {
+        const stopDt    = parseDT(data.datetime);
+        const respondDt = parseDT(data.respondDatetime);
+        const mins = minutesBetween(stopDt, respondDt);
+        if (mins !== null) responseTimeStr = formatMinutes(mins);
+    }
 
     // Nếu đã có techAction (load từ DB), render ngay trạng thái đã respond
     const alreadyResponded = data.techAction && data.techAction !== '';
     const actionsHtml = alreadyResponded
-        ? buildRespondedBadge(data.techAction, data.techUsername, data.respondDatetime, !!data.fixComplete)
-        : `<button class="btn-accept" onclick="respondToOperator(this,'ACCEPT')">✅ 接受 — 正在前往维修</button>
-           <button class="btn-wait"   onclick="respondToOperator(this,'WAIT')">⏳ 等待 — 请稍候</button>`;
+        ? buildRespondedBadge(data.techAction, data.techUsername, data.respondDatetime, !!data.fixComplete, responseTimeStr)
+        : `<button class="btn-accept" onclick="respondToOperator(this,'ACCEPT')">✅ 接受 — 正在前往维修</button>`;
 
     card.innerHTML = `
         <div class="notif-top">
@@ -1142,16 +1173,18 @@ function renderStopCard(data, prepend = true) {
     else card.classList.remove('new-card');
 }
 
-function buildRespondedBadge(action, techUser, respondTime, fixComplete = false) {
-    const badge = action === 'ACCEPT'
-        ? `<span class="responded-badge accepted">✅ 已接受${techUser ? ' 由 ' + techUser : ''}${respondTime ? ' · ' + respondTime : ''}</span>`
-        : `<span class="responded-badge waited">⏳ 已等待${techUser ? ' 由 ' + techUser : ''}${respondTime ? ' · ' + respondTime : ''}</span>`;
+function buildRespondedBadge(action, techUser, respondTime, fixComplete = false, responseTimeStr = null) {
+    const badge = `<span class="responded-badge accepted">✅ 已接受${techUser ? ' 由 ' + techUser : ''}${respondTime ? ' · ' + respondTime : ''}</span>`;
+
+    const respTimeBadge = responseTimeStr
+        ? `<span class="response-time-badge">⚡ 响应时间: ${responseTimeStr}</span>`
+        : '';
 
     const responseBtn = fixComplete
         ? `<span class="responded-badge fix-done">🔧 已发送修复完成通知</span>`
         : `<button class="btn-fix-complete" onclick="techFixComplete(this)">🔧 响应 — 已修复完成</button>`;
 
-    return badge + responseBtn;
+    return `<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">${badge}${respTimeBadge}${responseBtn}</div>`;
 }
 
 /* ===== Tech respond: gửi Accept hoặc Wait ngược về Operator ===== */
@@ -1163,6 +1196,12 @@ async function respondToOperator(btn, action) {
     const operatorUsername = card.dataset.operatorUsername || '';
     const machineCode      = card.dataset.machineCode      || '';
     const actionsDiv       = card.querySelector('.notif-actions');
+
+    // Tính response time real-time
+    const stopDt = parseDT(card.dataset.stopDatetime);
+    const nowDt  = new Date();
+    const mins   = minutesBetween(stopDt, nowDt);
+    const responseTimeStr = mins !== null ? formatMinutes(mins) : null;
 
     card.querySelectorAll('.btn-accept, .btn-wait').forEach(b => b.disabled = true);
     btn.innerHTML = '⏳ 发送中...';
@@ -1177,20 +1216,18 @@ async function respondToOperator(btn, action) {
 
         if (data.success) {
             if (actionsDiv) {
-                actionsDiv.innerHTML = buildRespondedBadge(action, null, null);
+                actionsDiv.innerHTML = buildRespondedBadge(action, null, null, false, responseTimeStr);
             }
-            // Cập nhật counter
             if (action === 'ACCEPT') { cntAccept++; }
-            else                     { cntWait++;   }
             updateCounters();
         } else {
             card.querySelectorAll('.btn-accept, .btn-wait').forEach(b => b.disabled = false);
-            btn.innerHTML = action === 'ACCEPT' ? '✅ 接受 — 正在前往维修' : '⏳ 等待 — 请稍候';
+            btn.innerHTML = '✅ 接受 — 正在前往维修';
         }
     } catch (err) {
         console.error('respondToOperator error:', err);
         card.querySelectorAll('.btn-accept, .btn-wait').forEach(b => b.disabled = false);
-        btn.innerHTML = action === 'ACCEPT' ? '✅ 接受 — 正在前往维修' : '⏳ 等待 — 请稍候';
+        btn.innerHTML = '✅ 接受 — 正在前往维修';
     }
 }
 
@@ -1283,7 +1320,7 @@ function clearAll() {
     if (notifList.querySelectorAll('.notif-card').length === 0) {
         notifList.innerHTML = '';
         showEmptyState();
-        cntStop = cntRun = cntTotal = cntAccept = cntWait = 0;
+        cntStop = cntRun = cntTotal = cntAccept = 0;
         updateCounters();
     }
 }
@@ -1386,8 +1423,6 @@ async function loadPendingFromDB() {
                 cntStop++;
             } else if (item.techAction === 'ACCEPT') {
                 cntAccept++;
-            } else if (item.techAction === 'WAIT') {
-                cntWait++;
             }
         });
 

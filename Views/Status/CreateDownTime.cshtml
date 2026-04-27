@@ -745,7 +745,7 @@
                                 <line x1="21" y1="21" x2="16.65" y2="16.65"/>
                             </svg>
                             <input type="text" id="opSearchInput"
-                                placeholder="搜索工序... (Search operation...)"
+                                placeholder="搜索工序... (Search location...)"
                                 oninput="filterOpOptions(this.value)"
                                 onkeydown="handleOpSearchKey(event)"
                                 autocomplete="off" />
@@ -795,10 +795,10 @@
 
             <!-- ISS code / Reason -->
             <div class="form-group">
-                <label class="form-label" for="IssCode">原因 (Reason)</label>
+                <label class="form-label" for="IssCode">功能 (Function)</label>
                 <div class="select-arrow-wrapper">
                     <select id="IssCode" name="Reason" class="form-control" required>
-                        <option value="">-- 选择原因 (Select reason) --</option>
+                        <option value="">-- 选择功能 (Select function) --</option>
                         @foreach (var r in (IEnumerable<dynamic>)ViewBag.ReasonOptions)
                         {
                             <option value="@r.Reason_Name">@r.Reason_Name (@r.Reason_Code)</option>
@@ -811,7 +811,7 @@
             <div class="form-group">
                 <label class="form-label">影响 / Effect</label>
                 <div class="select-arrow-wrapper">
-                    <select id="Effect" name="Effect" class="form-control" required>
+                    <select id="Effect" name="Effect" class="form-control">
                         <option value="" selected>-- 有没有影响 / Is there any effect? --</option>
                         <option value="1">影响生产</option>
                         <option value="2">不影响生产</option>
@@ -1490,13 +1490,6 @@
         if (!issCode) {
             showToast('请选择原因！ (Please select a reason!)', 'error', 2400);
             IssCodeEl?.focus();
-            return false;
-        }
-
-        const effect = (effectEl?.value || '').trim();
-        if (!effect) {
-            showToast('请选择影响！ (Please select effect!)', 'error', 2400);
-            effectEl?.focus();
             return false;
         }
 

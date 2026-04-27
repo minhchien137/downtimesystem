@@ -1594,10 +1594,36 @@ namespace MachineStatusUpdate.Controllers
             if (record == null)
                 return Json(new { success = false, message = "记录未找到" });
 
-            record.TechAction = dto.Action;   // "ACCEPT" 或 "WAIT"
+            record.TechAction = dto.Action;   // "ACCEPT"
             record.TechUsername = techUser;
             record.RespondDatetime = DateTime.Now;
             await _context.SaveChangesAsync();
+
+            // ── Nếu ACCEPT → tạo record RESPONSE vào SVN_Downtime_Info_Devel ──
+            if (dto.Action == "ACCEPT")
+            {
+                var stopRecord = await _context.SVN_Downtime_Infos_Devel.FindAsync(record.DowntimeId);
+
+                var responseRecord = new SVN_Downtime_Info_Devel
+                {
+                    State        = "RESPONSE",
+                    Operation    = record.Operation,
+                    MachineCode  = record.MachineCode,
+                    Location     = record.Location,
+                    EmployeeCode = record.EmployeeCode,
+                    EmployeeName = record.EmployeeName,
+                    Reason       = record.Reason,
+                    Effect       = record.Effect,
+                    Station      = record.Station,
+                    Description  = record.Description,
+                    EstimateTime = record.EstimateTime,
+                    Code         = stopRecord?.Code,
+                    Name         = stopRecord?.Name,
+                    Datetime     = DateTime.Now
+                };
+                _context.SVN_Downtime_Infos_Devel.Add(responseRecord);
+                await _context.SaveChangesAsync();
+            }
 
             // ── 保存技术员响应通知 → 生产端 ──
             if (!string.IsNullOrWhiteSpace(dto.OperatorUsername))
