@@ -1,4 +1,4 @@
-using MachineStatusUpdate.Models;
+﻿using MachineStatusUpdate.Models;
 using MachineStatusUpdate.Services;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,6 +14,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllersWithViews();
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<IStatusUpdateService, StatusUpdateService>();
+builder.Services.AddHostedService<MachineStatusUpdate.Services.DowntimeAutoRunService>();
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
