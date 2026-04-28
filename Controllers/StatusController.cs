@@ -931,7 +931,12 @@ namespace MachineStatusUpdate.Controllers
             var today = DateTime.Now.ToString("yyyyMMdd");
             var ops = await _context.SVN_targets
                 .AsNoTracking()
-                .Where(x => x.Date_time == today && x.Operation != null && x.Operation != "")
+                .Where(x => x.Date_time == today 
+                && x.Operation != null 
+                && x.Operation != ""
+                && !x.Operation.StartsWith("Sakura")
+                
+                )
                 .Select(x => x.Operation)
                 .Distinct()
                 .OrderBy(x => x)
