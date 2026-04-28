@@ -219,37 +219,149 @@
 
         <div class="filter-card">
             <form method="get" asp-action="ReportDowntime" id="filterForm">
-                <div class="row align-items-end">
-                    <div class="col-md-3">
-                        <label class="form-label fw-bold">
-                            <i class="fas fa-calendar-alt"></i> 从日期 (From date)
+                <div class="row g-2 align-items-end">
+                    <!-- Row 1: Dates + pageSize -->
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold mb-1">
+                            <i class="fas fa-calendar-alt text-primary"></i> 从日期
                         </label>
-                        <input type="date" class="form-control form-control-sm" name="fromDate"
-                            value="@ViewBag.FromDate" />
+                        <input type="date" class="form-control form-control-sm" name="fromDate" value="@ViewBag.FromDate" />
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label fw-bold">
-                            <i class="fas fa-calendar-alt"></i> 到日期 (To date)
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold mb-1">
+                            <i class="fas fa-calendar-alt text-primary"></i> 到日期
                         </label>
                         <input type="date" class="form-control form-control-sm" name="toDate" value="@ViewBag.ToDate" />
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label fw-bold">
-                            <i class="fas fa-list"></i> 每页记录数 (Records per page)
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold mb-1">
+                            <i class="fas fa-industry text-success"></i> 产线 (Line)
                         </label>
-                        <select class="form-control form-control-sm" name="pageSize" id="pageSize">
+                        <select class="form-select form-select-sm" name="operation">
+                            <option value="">-- 全部产线 --</option>
+                            @if (ViewBag.OperationOptions != null)
+                            {
+                                foreach (var op in (IEnumerable<string>)ViewBag.OperationOptions)
+                                {
+                                    <option value="@op" selected="@(ViewBag.Operation == op ? "selected" : null)">@op</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold mb-1">
+                            <i class="fas fa-microchip text-info"></i> 设备号
+                        </label>
+                        <select class="form-select form-select-sm" name="machine">
+                            <option value="">-- 全部设备 --</option>
+                            @if (ViewBag.MachineOptions != null)
+                            {
+                                foreach (var mc in (IEnumerable<string>)ViewBag.MachineOptions)
+                                {
+                                    <option value="@mc" selected="@(ViewBag.Machine == mc ? "selected" : null)">@mc</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold mb-1">
+                            <i class="fas fa-map-marker-alt text-warning"></i> 位置 (Location)
+                        </label>
+                        <select class="form-select form-select-sm" name="location">
+                            <option value="">-- 全部位置 --</option>
+                            @if (ViewBag.LocationOptions != null)
+                            {
+                                foreach (var loc in (IEnumerable<string>)ViewBag.LocationOptions)
+                                {
+                                    <option value="@loc" selected="@(ViewBag.Location == loc ? "selected" : null)">@loc</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold mb-1">
+                            <i class="fas fa-exclamation-triangle text-danger"></i> 故障代码
+                        </label>
+                        <select class="form-select form-select-sm" name="reason">
+                            <option value="">-- 全部故障 --</option>
+                            @if (ViewBag.ReasonOptions != null)
+                            {
+                                foreach (var r in ViewBag.ReasonOptions)
+                                {
+                                    <option value="@r.Reason_Code" selected="@(ViewBag.Reason == r.Reason_Code ? "selected" : null)">
+                                        @r.Reason_Name
+                                    </option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold mb-1">
+                            <i class="fas fa-tools text-secondary"></i> 影响程度 (Effect)
+                        </label>
+                        <select class="form-select form-select-sm" name="effect">
+                            <option value="">-- 全部 --</option>
+                            <option value="1" selected="@(ViewBag.Effect == "1" ? "selected" : null)">影响生产</option>
+                            <option value="2" selected="@(ViewBag.Effect == "2" ? "selected" : null)">不影响生产</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold mb-1">
+                            <i class="fas fa-sitemap text-purple"></i> 工位 (Station)
+                        </label>
+                        <select class="form-select form-select-sm" name="station">
+                            <option value="">-- 全部工位 --</option>
+                            @if (ViewBag.StationOptions != null)
+                            {
+                                foreach (var st in (IEnumerable<string>)ViewBag.StationOptions)
+                                {
+                                    <option value="@st" selected="@(ViewBag.Station == st ? "selected" : null)">@st</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold mb-1">
+                            <i class="fas fa-list"></i> 每页记录数
+                        </label>
+                        <select class="form-select form-select-sm" name="pageSize">
                             <option value="5"  selected="@(pageSize == 5)">5 条记录</option>
                             <option value="10" selected="@(pageSize == 10)">10 条记录</option>
                             <option value="25" selected="@(pageSize == 25)">25 条记录</option>
                             <option value="50" selected="@(pageSize == 50)">50 条记录</option>
                         </select>
                     </div>
-                    <div class="col-md-3">
-                        <button type="submit" class="btn btn-primary btn-sm w-100 mt-md-0 mt-2">
-                            <i class="fas fa-search"></i> 筛选数据 (Filter)
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary btn-sm w-100">
+                            <i class="fas fa-search"></i> 筛选 (Filter)
                         </button>
                     </div>
+                    <div class="col-md-2">
+                        <a href="@Url.Action("ReportDowntime")" class="btn btn-outline-secondary btn-sm w-100">
+                            <i class="fas fa-times"></i> 重置 (Reset)
+                        </a>
+                    </div>
                 </div>
+
+                @{
+                    var activeFilters = new List<(string Label, string Value, string Color)>();
+                    if (!string.IsNullOrEmpty(ViewBag.Operation as string))  activeFilters.Add(("产线", ViewBag.Operation, "primary"));
+                    if (!string.IsNullOrEmpty(ViewBag.Machine  as string))   activeFilters.Add(("设备", ViewBag.Machine, "info"));
+                    if (!string.IsNullOrEmpty(ViewBag.Location as string))   activeFilters.Add(("位置", ViewBag.Location, "warning"));
+                    if (!string.IsNullOrEmpty(ViewBag.Reason   as string))   activeFilters.Add(("故障", ViewBag.Reason, "danger"));
+                    if (!string.IsNullOrEmpty(ViewBag.Effect   as string))   activeFilters.Add(("影响", ViewBag.Effect == "1" ? "影响生产" : "不影响生产", "secondary"));
+                    if (!string.IsNullOrEmpty(ViewBag.Station  as string))   activeFilters.Add(("工位", ViewBag.Station, "dark"));
+                }
+                @if (activeFilters.Any())
+                {
+                    <div class="mt-2 pt-2 border-top d-flex gap-2 flex-wrap align-items-center">
+                        <small class="text-muted fw-bold"><i class="fas fa-filter"></i> 当前筛选:</small>
+                        @foreach (var f in activeFilters)
+                        {
+                            <span class="badge bg-@f.Color">@f.Label: @f.Value</span>
+                        }
+                    </div>
+                }
             </form>
         </div>
 
@@ -295,7 +407,7 @@
             </div>
 
             <div class="mb-3 text-end">
-                <a href="@Url.Action("ExportDowntimeReportToExcel", new { fromDate = ViewBag.FromDate, toDate = ViewBag.ToDate })"
+                <a href="@Url.Action("ExportDowntimeReportToExcel", new { fromDate = ViewBag.FromDate, toDate = ViewBag.ToDate, operation = ViewBag.Operation, reason = ViewBag.Reason, location = ViewBag.Location, machine = ViewBag.Machine, effect = ViewBag.Effect, station = ViewBag.Station })"
                     class="btn-export">
                     <i class="fas fa-file-excel"></i> 导出 Excel (2 个工作表)
                 </a>
@@ -558,19 +670,19 @@
                                         <ul class="pagination justify-content-center">
                                             <li class="page-item @(!hasPreviousPage ? "disabled" : "")">
                                                 @if (hasPreviousPage)
-                                                { <a class="page-link" href="@Url.Action("ReportDowntime", new { fromDate=ViewBag.FromDate,toDate=ViewBag.ToDate,page=currentPage-1,pageSize })"><i class="fas fa-chevron-left"></i> 上一页</a> }
+                                                { <a class="page-link" href="@Url.Action("ReportDowntime", new { fromDate=ViewBag.FromDate,toDate=ViewBag.ToDate,operation=ViewBag.Operation,reason=ViewBag.Reason,location=ViewBag.Location,machine=ViewBag.Machine,effect=ViewBag.Effect,station=ViewBag.Station,page=currentPage-1,pageSize })"><i class="fas fa-chevron-left"></i> 上一页</a> }
                                                 else { <span class="page-link"><i class="fas fa-chevron-left"></i> 上一页</span> }
                                             </li>
                                             @for (int i = 1; i <= totalPages; i++)
                                             {
                                                 if (i==1||i==totalPages||(i>=currentPage-2&&i<=currentPage+2))
-                                                { <li class="page-item @(i==currentPage?"active":"")"><a class="page-link" href="@Url.Action("ReportDowntime", new{fromDate=ViewBag.FromDate,toDate=ViewBag.ToDate,page=i,pageSize})">@i</a></li> }
+                                                { <li class="page-item @(i==currentPage?"active":"")"><a class="page-link" href="@Url.Action("ReportDowntime", new{fromDate=ViewBag.FromDate,toDate=ViewBag.ToDate,operation=ViewBag.Operation,reason=ViewBag.Reason,location=ViewBag.Location,machine=ViewBag.Machine,effect=ViewBag.Effect,station=ViewBag.Station,page=i,pageSize})">@i</a></li> }
                                                 else if (i==currentPage-3||i==currentPage+3)
                                                 { <li class="page-item disabled"><span class="page-link">...</span></li> }
                                             }
                                             <li class="page-item @(!hasNextPage ? "disabled" : "")">
                                                 @if (hasNextPage)
-                                                { <a class="page-link" href="@Url.Action("ReportDowntime", new{fromDate=ViewBag.FromDate,toDate=ViewBag.ToDate,page=currentPage+1,pageSize})">下一页 <i class="fas fa-chevron-right"></i></a> }
+                                                { <a class="page-link" href="@Url.Action("ReportDowntime", new{fromDate=ViewBag.FromDate,toDate=ViewBag.ToDate,operation=ViewBag.Operation,reason=ViewBag.Reason,location=ViewBag.Location,machine=ViewBag.Machine,effect=ViewBag.Effect,station=ViewBag.Station,page=currentPage+1,pageSize})">下一页 <i class="fas fa-chevron-right"></i></a> }
                                                 else { <span class="page-link">下一页 <i class="fas fa-chevron-right"></i></span> }
                                             </li>
                                         </ul>

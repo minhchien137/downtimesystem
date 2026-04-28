@@ -879,16 +879,26 @@ namespace MachineStatusUpdate.Controllers
 
         /* 停机报告 */
         [HttpGet]
-        public async Task<IActionResult> ReportDowntime(string fromDate = "", string toDate = "", int page = 1, int pageSize = 10)
+        public async Task<IActionResult> ReportDowntime(
+                    string fromDate = "",
+                    string toDate = "",
+                    string operation = "",
+                    string reason = "",
+                    string location = "",
+                    string machine = "",
+                    string effect = "",
+                    string station = "",
+                    int page = 1,
+                    int pageSize = 10)
         {
             try
             {
-                var allData    = await GetDowntimeReportData(fromDate, toDate);
-                var allDataPct = await GetDowntimeReportDataWithPct(fromDate, toDate);
-                var machineData = await GetDowntimeReportByMachine(fromDate, toDate);
+                var allData = await GetDowntimeReportData(fromDate, toDate, operation, reason, location, machine, effect, station);
+                var allDataPct = await GetDowntimeReportDataWithPct(fromDate, toDate, operation, reason, location, machine, effect, station);
+                var machineData = await GetDowntimeReportByMachine(fromDate, toDate, operation, reason, location, machine, effect, station);
 
                 var totalRecords = allData.Count;
-                var totalPages   = (int)Math.Ceiling(totalRecords / (double)pageSize);
+                var totalPages = (int)Math.Ceiling(totalRecords / (double)pageSize);
 
                 page = Math.Max(1, Math.Min(page, Math.Max(1, totalPages)));
 
@@ -897,42 +907,95 @@ namespace MachineStatusUpdate.Controllers
                     .Take(pageSize)
                     .ToList();
 
-                ViewBag.FromDate            = fromDate;
-                ViewBag.ToDate              = toDate;
-                ViewBag.ChartData           = PrepareChartData(allData);
-                ViewBag.IssCodeChartData    = PrepareIssCodeChartData(allData);
-                ViewBag.DailyChartData      = PrepareDailyDowntimeChartData(allData, fromDate, toDate);
-                ViewBag.AllData             = allData;
-                ViewBag.AllDataWithPct      = allDataPct;
-                ViewBag.MachineData         = machineData;
-                ViewBag.MachineChartData    = PrepareMachineChartData(machineData);
-                ViewBag.CurrentPage         = page;
-                ViewBag.PageSize            = pageSize;
-                ViewBag.TotalRecords        = totalRecords;
-                ViewBag.TotalPages          = totalPages;
-                ViewBag.HasPreviousPage     = page > 1;
-                ViewBag.HasNextPage         = page < totalPages;
+                // ── Dropdown options ──
+                var allOperations = await _context.SVN_targets
+                    .AsNoTracking()
+                    .Where(x => x.Operation != null && x.Operation != "" && x.Operation.Contains("(SM)"))
+                    .Select(x => x.Operation).Distinct().OrderBy(x => x).ToListAsync();
+
+                var allReasons = await _context.SVN_Downtime_Reasons
+                    .AsNoTracking()
+                    .OrderBy(r => r.Reason_Name)
+                    .Select(r => new { r.Reason_Code, r.Reason_Name })
+                    .ToListAsync();
+
+                var allLocations = await _context.SVN_Downtime_Infos_Devel
+                    .AsNoTracking()
+                    .Where(x => x.Location != null && x.Location != "" && x.Operation != null && x.Operation.Contains("(SM)"))
+                    .Select(x => x.Location!).Distinct().OrderBy(x => x).ToListAsync();
+
+                var allMachines = await _context.SVN_Downtime_Infos_Devel
+                    .AsNoTracking()
+                    .Where(x => x.MachineCode != null && x.MachineCode != "" && x.Operation != null && x.Operation.Contains("(SM)"))
+                    .Select(x => x.MachineCode!).Distinct().OrderBy(x => x).ToListAsync();
+
+                var allStations = await _context.SVN_Downtime_Infos_Devel
+                    .AsNoTracking()
+                    .Where(x => x.Station != null && x.Station != "" && x.Operation != null && x.Operation.Contains("(SM)"))
+                    .Select(x => x.Station!).Distinct().OrderBy(x => x).ToListAsync();
+
+                ViewBag.OperationOptions = allOperations;
+                ViewBag.ReasonOptions = allReasons;
+                ViewBag.LocationOptions = allLocations;
+                ViewBag.MachineOptions = allMachines;
+                ViewBag.StationOptions = allStations;
+
+                ViewBag.FromDate = fromDate;
+                ViewBag.ToDate = toDate;
+                ViewBag.Operation = operation;
+                ViewBag.Reason = reason;
+                ViewBag.Location = location;
+                ViewBag.Machine = machine;
+                ViewBag.Effect = effect;
+                ViewBag.Station = station;
+                ViewBag.ChartData = PrepareChartData(allData);
+                ViewBag.IssCodeChartData = PrepareIssCodeChartData(allData);
+                ViewBag.DailyChartData = PrepareDailyDowntimeChartData(allData, fromDate, toDate);
+                ViewBag.AllData = allData;
+                ViewBag.AllDataWithPct = allDataPct;
+                ViewBag.MachineData = machineData;
+                ViewBag.MachineChartData = PrepareMachineChartData(machineData);
+                ViewBag.CurrentPage = page;
+                ViewBag.PageSize = pageSize;
+                ViewBag.TotalRecords = totalRecords;
+                ViewBag.TotalPages = totalPages;
+                ViewBag.HasPreviousPage = page > 1;
+                ViewBag.HasNextPage = page < totalPages;
 
                 return View(pagedData);
             }
             catch (Exception ex)
             {
-                ViewBag.ErrorMessage    = $"错误: {ex.Message}";
-                ViewBag.FromDate        = fromDate;
-                ViewBag.ToDate          = toDate;
-                ViewBag.CurrentPage     = 1;
-                ViewBag.PageSize        = 10;
-                ViewBag.TotalRecords    = 0;
-                ViewBag.TotalPages      = 1;
+                ViewBag.ErrorMessage = $"错误: {ex.Message}";
+                ViewBag.FromDate = fromDate;
+                ViewBag.ToDate = toDate;
+                ViewBag.Operation = operation;
+                ViewBag.Reason = reason;
+                ViewBag.Location = location;
+                ViewBag.Machine = machine;
+                ViewBag.Effect = effect;
+                ViewBag.Station = station;
+                ViewBag.CurrentPage = 1;
+                ViewBag.PageSize = 10;
+                ViewBag.TotalRecords = 0;
+                ViewBag.TotalPages = 1;
                 ViewBag.HasPreviousPage = false;
-                ViewBag.HasNextPage     = false;
+                ViewBag.HasNextPage = false;
+                ViewBag.OperationOptions = new List<string>();
+                ViewBag.ReasonOptions = new List<object>();
+                ViewBag.LocationOptions = new List<string>();
+                ViewBag.MachineOptions = new List<string>();
+                ViewBag.StationOptions = new List<string>();
                 return View(new List<DowntimeReportByOperation>());
             }
+        
         }
 
         /* 准备每日停机图表数据 */
         private DailyDowntimeChartData PrepareDailyDowntimeChartData(
-    List<DowntimeReportByOperation> reportData, string fromDate, string toDate)
+                List<DowntimeReportByOperation> reportData, string fromDate, string toDate,
+                string operation = "", string reason = "", string location = "",
+                string machine = "", string effect = "", string station = "")
         {
             var dailyData = new DailyDowntimeChartData
             {
@@ -953,6 +1016,12 @@ namespace MachineStatusUpdate.Controllers
                             };
 
                 query = query.Where(x => x.Operation != null && x.Operation.Contains("(SM)"));
+
+                if (!string.IsNullOrWhiteSpace(operation))
+                { var op = operation.Trim(); query = query.Where(x => x.Operation != null && x.Operation.Contains(op)); }
+
+                if (!string.IsNullOrWhiteSpace(machine))
+                { var mc = machine.Trim(); query = query.Where(x => x.MachineCode != null && x.MachineCode == mc); }
 
                 if (!string.IsNullOrEmpty(fromDate) && DateTime.TryParse(fromDate, out var from))
                     query = query.Where(x => x.Datetime.HasValue && x.Datetime.Value.Date >= from.Date);
@@ -1012,7 +1081,10 @@ namespace MachineStatusUpdate.Controllers
 
 
         /* 获取停机报告数据 (STOP -> RUN) */
-        private async Task<List<DowntimeReportByOperation>> GetDowntimeReportData(string fromDate, string toDate)
+        private async Task<List<DowntimeReportByOperation>> GetDowntimeReportData(
+    string fromDate, string toDate,
+    string operation = "", string reason = "", string location = "",
+    string machine = "", string effect = "", string station = "")
         {
             var query = from d in _context.SVN_Downtime_Infos_Devel
                         join r in _context.SVN_Downtime_Reasons
@@ -1021,7 +1093,10 @@ namespace MachineStatusUpdate.Controllers
                         select new
                         {
                             d.Operation,
-                            d.MachineCode,          // ← 新增
+                            d.MachineCode,
+                            d.Location,
+                            d.Effect,
+                            d.Station,
                             d.State,
                             d.Reason,
                             ErrorName = r != null ? r.Reason_Name : "未确定",
@@ -1030,48 +1105,57 @@ namespace MachineStatusUpdate.Controllers
 
             query = query.Where(x => x.Operation != null && x.Operation.Contains("(SM)"));
 
+            if (!string.IsNullOrWhiteSpace(operation))
+            { var _op = operation.Trim(); query = query.Where(x => x.Operation != null && x.Operation.Contains(_op)); }
+            if (!string.IsNullOrWhiteSpace(reason))
+            { var _re = reason.Trim(); query = query.Where(x => x.Reason != null && x.Reason == _re); }
+            if (!string.IsNullOrWhiteSpace(location))
+            { var _loc = location.Trim(); query = query.Where(x => x.Location != null && x.Location == _loc); }
+            if (!string.IsNullOrWhiteSpace(machine))
+            { var _mc = machine.Trim(); query = query.Where(x => x.MachineCode != null && x.MachineCode == _mc); }
+            if (!string.IsNullOrWhiteSpace(effect))
+            { var _ef = effect.Trim(); query = query.Where(x => x.Effect != null && x.Effect == _ef); }
+            if (!string.IsNullOrWhiteSpace(station))
+            { var _st = station.Trim(); query = query.Where(x => x.Station != null && x.Station == _st); }
+
             if (!string.IsNullOrEmpty(fromDate) && DateTime.TryParse(fromDate, out var from))
                 query = query.Where(x => x.Datetime.HasValue && x.Datetime.Value.Date >= from.Date);
-
             if (!string.IsNullOrEmpty(toDate) && DateTime.TryParse(toDate, out var to))
                 query = query.Where(x => x.Datetime.HasValue && x.Datetime.Value.Date <= to.Date);
 
             var allRecords = await query
-                .OrderBy(x => x.MachineCode)    // ← 更改
+                .OrderBy(x => x.MachineCode)
                 .ThenBy(x => x.Operation)
                 .ThenBy(x => x.Datetime)
                 .ToListAsync();
 
             var downtimeRecords = new List<DowntimeRecord>();
 
-            // ── 按设备号+工序分组，替代原来的员工编号+工序 ──
             var grouped = allRecords
                 .Where(x => !string.IsNullOrEmpty(x.Operation) && !string.IsNullOrEmpty(x.MachineCode))
-                .GroupBy(x => new { x.MachineCode, x.Operation });   // ← 更改
+                .GroupBy(x => new { x.MachineCode, x.Operation });
 
             foreach (var group in grouped)
             {
                 var records = group.OrderBy(x => x.Datetime).ToList();
-
                 for (int i = 0; i < records.Count - 1; i++)
                 {
                     var current = records[i];
                     var next = records[i + 1];
-
                     if (current.State?.Trim().ToUpper() == "STOP" &&
                         next.State?.Trim().ToUpper() == "RUN" &&
-                        current.Datetime.HasValue &&
-                        next.Datetime.HasValue)
+                        current.Datetime.HasValue && next.Datetime.HasValue)
                     {
                         var downtimeMinutes = (next.Datetime.Value - current.Datetime.Value).TotalMinutes;
-                        var reason = string.IsNullOrWhiteSpace(current.Reason) ? "N/A" : current.Reason.Trim();
-                        var errorName = string.IsNullOrWhiteSpace(current.ErrorName) ? "未确定" : current.ErrorName.Trim();
+                        // ✅ FIX: dùng tên _reason/_errorName để tránh conflict với parameter 'reason'
+                        var _reason = string.IsNullOrWhiteSpace(current.Reason) ? "N/A" : current.Reason.Trim();
+                        var _errorName = string.IsNullOrWhiteSpace(current.ErrorName) ? "未确定" : current.ErrorName.Trim();
 
                         downtimeRecords.Add(new DowntimeRecord
                         {
                             Operation = current.Operation.Trim(),
-                            ISS_Code = reason,
-                            ErrorName = errorName,
+                            ISS_Code = _reason,
+                            ErrorName = _errorName,
                             DowntimeMinutes = downtimeMinutes
                         });
                     }
@@ -1105,6 +1189,7 @@ namespace MachineStatusUpdate.Controllers
 
             return groupedReport;
         }
+
 
 
         /* 将分钟转换为时间字符串 */
@@ -1164,7 +1249,10 @@ namespace MachineStatusUpdate.Controllers
         }
 
         /* 获取停机报告数据 (含运行时间占比) */
-        private async Task<List<DowntimeReportByOperationWithPct>> GetDowntimeReportDataWithPct(string fromDate, string toDate)
+        private async Task<List<DowntimeReportByOperationWithPct>> GetDowntimeReportDataWithPct(
+  string fromDate, string toDate,
+  string operation = "", string reason = "", string location = "",
+  string machine = "", string effect = "", string station = "")
         {
             var query = from d in _context.SVN_Downtime_Infos_Devel
                         join r in _context.SVN_Downtime_Reasons
@@ -1173,7 +1261,10 @@ namespace MachineStatusUpdate.Controllers
                         select new
                         {
                             d.Operation,
-                            d.MachineCode,          // ← 新增
+                            d.MachineCode,
+                            d.Location,
+                            d.Effect,
+                            d.Station,
                             d.State,
                             d.Reason,
                             ErrorName = r != null ? r.Reason_Name : "未确定",
@@ -1182,24 +1273,35 @@ namespace MachineStatusUpdate.Controllers
 
             query = query.Where(x => x.Operation != null && x.Operation.Contains("(SM)"));
 
+            if (!string.IsNullOrWhiteSpace(operation))
+            { var _op = operation.Trim(); query = query.Where(x => x.Operation != null && x.Operation.Contains(_op)); }
+            if (!string.IsNullOrWhiteSpace(reason))
+            { var _re = reason.Trim(); query = query.Where(x => x.Reason != null && x.Reason == _re); }
+            if (!string.IsNullOrWhiteSpace(location))
+            { var _loc = location.Trim(); query = query.Where(x => x.Location != null && x.Location == _loc); }
+            if (!string.IsNullOrWhiteSpace(machine))
+            { var _mc = machine.Trim(); query = query.Where(x => x.MachineCode != null && x.MachineCode == _mc); }
+            if (!string.IsNullOrWhiteSpace(effect))
+            { var _ef = effect.Trim(); query = query.Where(x => x.Effect != null && x.Effect == _ef); }
+            if (!string.IsNullOrWhiteSpace(station))
+            { var _st = station.Trim(); query = query.Where(x => x.Station != null && x.Station == _st); }
+
             if (!string.IsNullOrEmpty(fromDate) && DateTime.TryParse(fromDate, out var from))
                 query = query.Where(x => x.Datetime.HasValue && x.Datetime.Value.Date >= from.Date);
-
             if (!string.IsNullOrEmpty(toDate) && DateTime.TryParse(toDate, out var to))
                 query = query.Where(x => x.Datetime.HasValue && x.Datetime.Value.Date <= to.Date);
 
             var allRecords = await query
-                .OrderBy(x => x.MachineCode)    // ← 更改
+                .OrderBy(x => x.MachineCode)
                 .ThenBy(x => x.Operation)
                 .ThenBy(x => x.Datetime)
                 .ToListAsync();
 
             var downtimeByOp = new Dictionary<string, List<(double Minutes, string Reason, string ErrorName)>>();
 
-            // ── 按设备号+工序分组 ──
             var grouped = allRecords
                 .Where(x => !string.IsNullOrEmpty(x.Operation) && !string.IsNullOrEmpty(x.MachineCode))
-                .GroupBy(x => new { x.MachineCode, x.Operation });   // ← 更改
+                .GroupBy(x => new { x.MachineCode, x.Operation });
 
             foreach (var group in grouped)
             {
@@ -1213,17 +1315,20 @@ namespace MachineStatusUpdate.Controllers
                         cur.Datetime.HasValue && next.Datetime.HasValue)
                     {
                         var mins = (next.Datetime.Value - cur.Datetime.Value).TotalMinutes;
-                        var op = cur.Operation!.Trim();
-                        if (!downtimeByOp.ContainsKey(op))
-                            downtimeByOp[op] = new List<(double, string, string)>();
-                        downtimeByOp[op].Add((mins,
+                        // ✅ FIX: dùng _opKey thay vì 'op' để tránh conflict với parameter 'operation'
+                        var _opKey = cur.Operation!.Trim();
+                        if (!downtimeByOp.ContainsKey(_opKey))
+                            downtimeByOp[_opKey] = new List<(double, string, string)>();
+                        downtimeByOp[_opKey].Add((
+                            mins,
                             string.IsNullOrWhiteSpace(cur.Reason) ? "N/A" : cur.Reason.Trim(),
-                            string.IsNullOrWhiteSpace(cur.ErrorName) ? "未确定" : cur.ErrorName.Trim()));
+                            // ✅ FIX: dùng cur.ErrorName (tên đúng trong anonymous type), không phải cur.ReasonName
+                            string.IsNullOrWhiteSpace(cur.ErrorName) ? "未确定" : cur.ErrorName.Trim()
+                        ));
                     }
                 }
             }
 
-            // 运行时间：每个工序从第一条记录到最后一条记录（此逻辑不变）
             var runningByOp = allRecords
                 .Where(x => !string.IsNullOrEmpty(x.Operation) && x.Datetime.HasValue)
                 .GroupBy(x => x.Operation!.Trim())
@@ -1235,19 +1340,20 @@ namespace MachineStatusUpdate.Controllers
             var result = downtimeByOp
                 .Select(kvp =>
                 {
-                    var op = kvp.Key;
+                    // ✅ FIX: đổi 'op' → '_opKey' để tránh conflict với parameter 'operation'
+                    var _opKey = kvp.Key;
                     var items = kvp.Value;
                     var totalDt = items.Sum(x => x.Minutes);
 
                     double runningMins = 0;
-                    if (runningByOp.TryGetValue(op, out var range))
+                    if (runningByOp.TryGetValue(_opKey, out var range))
                         runningMins = (range.Item2 - range.Item1).TotalMinutes;
 
                     var pct = runningMins > 0 ? Math.Round(totalDt / runningMins * 100, 2) : 0;
 
                     return new DowntimeReportByOperationWithPct
                     {
-                        Operation = op,
+                        Operation = _opKey,
                         TotalDowntimeCount = items.Count,
                         TotalDowntimeMinutes = totalDt,
                         TotalDowntimeFormatted = FormatMinutesToTime(totalDt),
@@ -1255,10 +1361,10 @@ namespace MachineStatusUpdate.Controllers
                         RunningTimeFormatted = FormatMinutesToTime(runningMins),
                         DowntimePct = pct,
                         ErrorDetails = items
-                            .GroupBy(x => new { ISS_Code = x.Reason, ErrorName = x.ErrorName })
+                            .GroupBy(x => new { ISS_Code = x.Reason, x.ErrorName })
                             .Select(g => new DowntimeReportByOperationError
                             {
-                                Operation = op,
+                                Operation = _opKey,
                                 ISS_Code = g.Key.ISS_Code,
                                 ErrorName = g.Key.ErrorName,
                                 DowntimeCount = g.Count(),
@@ -1277,8 +1383,12 @@ namespace MachineStatusUpdate.Controllers
 
 
 
+
         /* 按设备(EQ)获取停机数据 */
-        private async Task<List<DowntimeReportByMachine>> GetDowntimeReportByMachine(string fromDate, string toDate)
+        private async Task<List<DowntimeReportByMachine>> GetDowntimeReportByMachine(
+    string fromDate, string toDate,
+    string operation = "", string reason = "", string location = "",
+    string machine = "", string effect = "", string station = "")
         {
             var query = from d in _context.SVN_Downtime_Infos_Devel
                         join r in _context.SVN_Downtime_Reasons
@@ -1288,17 +1398,33 @@ namespace MachineStatusUpdate.Controllers
                         {
                             d.Operation,
                             d.MachineCode,
+                            d.Location,
+                            d.Effect,
+                            d.Station,
                             d.State,
                             d.Reason,
-                            ReasonName = r != null ? r.Reason_Name : "未确定",
+                            // ✅ FIX: đặt tên alias là 'ErrorName' — NHẤT QUÁN với 2 method trên
+                            ErrorName = r != null ? r.Reason_Name : "未确定",
                             d.Datetime
                         };
 
             query = query.Where(x => x.Operation != null && x.Operation.Contains("(SM)"));
 
+            if (!string.IsNullOrWhiteSpace(operation))
+            { var _op = operation.Trim(); query = query.Where(x => x.Operation != null && x.Operation.Contains(_op)); }
+            if (!string.IsNullOrWhiteSpace(reason))
+            { var _re = reason.Trim(); query = query.Where(x => x.Reason != null && x.Reason == _re); }
+            if (!string.IsNullOrWhiteSpace(location))
+            { var _loc = location.Trim(); query = query.Where(x => x.Location != null && x.Location == _loc); }
+            if (!string.IsNullOrWhiteSpace(machine))
+            { var _mc = machine.Trim(); query = query.Where(x => x.MachineCode != null && x.MachineCode == _mc); }
+            if (!string.IsNullOrWhiteSpace(effect))
+            { var _ef = effect.Trim(); query = query.Where(x => x.Effect != null && x.Effect == _ef); }
+            if (!string.IsNullOrWhiteSpace(station))
+            { var _st = station.Trim(); query = query.Where(x => x.Station != null && x.Station == _st); }
+
             if (!string.IsNullOrEmpty(fromDate) && DateTime.TryParse(fromDate, out var from))
                 query = query.Where(x => x.Datetime.HasValue && x.Datetime.Value.Date >= from.Date);
-
             if (!string.IsNullOrEmpty(toDate) && DateTime.TryParse(toDate, out var to))
                 query = query.Where(x => x.Datetime.HasValue && x.Datetime.Value.Date <= to.Date);
 
@@ -1308,12 +1434,12 @@ namespace MachineStatusUpdate.Controllers
                 .ThenBy(x => x.Datetime)
                 .ToListAsync();
 
+            // tuple: (Operation, Minutes, ReasonCode, ReasonName)
             var machineDowntimes = new Dictionary<string, List<(string Operation, double Minutes, string ReasonCode, string ReasonName)>>();
 
-            // ── 按设备号+工序分组（去除员工编号） ──
             var grouped = allRecords
                 .Where(x => !string.IsNullOrEmpty(x.MachineCode) && !string.IsNullOrEmpty(x.Operation))
-                .GroupBy(x => new { x.MachineCode, x.Operation });   // ← 更改
+                .GroupBy(x => new { x.MachineCode, x.Operation });
 
             foreach (var group in grouped)
             {
@@ -1330,11 +1456,13 @@ namespace MachineStatusUpdate.Controllers
                         var machineKey = cur.MachineCode!.Trim();
                         if (!machineDowntimes.ContainsKey(machineKey))
                             machineDowntimes[machineKey] = new();
+
                         machineDowntimes[machineKey].Add((
                             cur.Operation?.Trim() ?? "",
                             mins,
                             string.IsNullOrWhiteSpace(cur.Reason) ? "N/A" : cur.Reason.Trim(),
-                            string.IsNullOrWhiteSpace(cur.ReasonName) ? "未确定" : cur.ReasonName.Trim()
+                            // ✅ FIX KEY: đổi cur.ReasonName → cur.ErrorName (alias đúng trong anonymous type)
+                            string.IsNullOrWhiteSpace(cur.ErrorName) ? "未确定" : cur.ErrorName.Trim()
                         ));
                     }
                 }
@@ -1343,13 +1471,15 @@ namespace MachineStatusUpdate.Controllers
             return machineDowntimes
                 .Select(kvp =>
                 {
-                    var machine = kvp.Key;
+                    // ✅ FIX: đổi 'machine' → '_machineKey' để tránh conflict với parameter 'machine'
+                    var _machineKey = kvp.Key;
                     var items = kvp.Value;
                     var totalDt = items.Sum(x => x.Minutes);
                     var mainOp = items.GroupBy(x => x.Operation).OrderByDescending(g => g.Count()).First().Key;
+
                     return new DowntimeReportByMachine
                     {
-                        MachineCode = machine,
+                        MachineCode = _machineKey,
                         Operation = mainOp,
                         DowntimeCount = items.Count,
                         TotalDowntimeMinutes = totalDt,
@@ -1358,7 +1488,7 @@ namespace MachineStatusUpdate.Controllers
                             .GroupBy(x => new { x.ReasonCode, x.ReasonName })
                             .Select(g => new DowntimeReportByMachineReason
                             {
-                                MachineCode = machine,
+                                MachineCode = _machineKey,
                                 ReasonCode = g.Key.ReasonCode,
                                 ReasonName = g.Key.ReasonName,
                                 DowntimeCount = g.Count(),
@@ -1375,6 +1505,7 @@ namespace MachineStatusUpdate.Controllers
 
 
 
+
         /* 按设备准备图表数据 */
         private MachineDowntimeChartData PrepareMachineChartData(List<DowntimeReportByMachine> machineData)
         {
@@ -1386,15 +1517,23 @@ namespace MachineStatusUpdate.Controllers
             };
         }
 
-
         /* 导出停机报告到Excel */
+
         [HttpGet]
-        public async Task<IActionResult> ExportDowntimeReportToExcel(string fromDate = "", string toDate = "")
+        public async Task<IActionResult> ExportDowntimeReportToExcel(
+    string fromDate = "",
+    string toDate = "",
+    string operation = "",
+    string reason = "",
+    string location = "",
+    string machine = "",
+    string effect = "",
+    string station = "")
         {
             try
             {
-                var reportData   = await GetDowntimeReportDataWithPct(fromDate, toDate);
-                var machineData  = await GetDowntimeReportByMachine(fromDate, toDate);
+                var reportData = await GetDowntimeReportDataWithPct(fromDate, toDate, operation, reason, location, machine, effect, station);
+                var machineData = await GetDowntimeReportByMachine(fromDate, toDate, operation, reason, location, machine, effect, station);
 
                 using (var workbook = new XLWorkbook())
                 {
@@ -1419,27 +1558,28 @@ namespace MachineStatusUpdate.Controllers
                         currentRow += 2;
                     }
 
-                    foreach (var operation in reportData)
+                    // ✅ FIX: đổi 'operation' → 'opRow' để tránh conflict với parameter 'operation'
+                    foreach (var opRow in reportData)
                     {
-                        ws.Cell(currentRow, 1).Value = $"工序: {operation.Operation}";
+                        ws.Cell(currentRow, 1).Value = $"工序: {opRow.Operation}";
                         ws.Cell(currentRow, 1).Style.Font.Bold = true;
                         ws.Cell(currentRow, 1).Style.Fill.BackgroundColor = XLColor.LightBlue;
                         ws.Range(currentRow, 1, currentRow, 8).Merge();
                         currentRow++;
 
                         ws.Cell(currentRow, 1).Value = "停机次数:";
-                        ws.Cell(currentRow, 2).Value = operation.TotalDowntimeCount;
+                        ws.Cell(currentRow, 2).Value = opRow.TotalDowntimeCount;
                         ws.Cell(currentRow, 3).Value = "总停机时长:";
-                        ws.Cell(currentRow, 4).Value = operation.TotalDowntimeFormatted;
+                        ws.Cell(currentRow, 4).Value = opRow.TotalDowntimeFormatted;
                         ws.Cell(currentRow, 5).Value = "运行时长:";
-                        ws.Cell(currentRow, 6).Value = operation.RunningTimeFormatted;
+                        ws.Cell(currentRow, 6).Value = opRow.RunningTimeFormatted;
                         ws.Cell(currentRow, 7).Value = "停机占比:";
-                        ws.Cell(currentRow, 8).Value = $"{operation.DowntimePct}%";
+                        ws.Cell(currentRow, 8).Value = $"{opRow.DowntimePct}%";
                         ws.Cell(currentRow, 1).Style.Font.Bold = true;
                         ws.Cell(currentRow, 3).Style.Font.Bold = true;
                         ws.Cell(currentRow, 5).Style.Font.Bold = true;
                         ws.Cell(currentRow, 7).Style.Font.Bold = true;
-                        ws.Cell(currentRow, 8).Style.Font.FontColor = operation.DowntimePct >= 10 ? XLColor.Red : XLColor.DarkGreen;
+                        ws.Cell(currentRow, 8).Style.Font.FontColor = opRow.DowntimePct >= 10 ? XLColor.Red : XLColor.DarkGreen;
                         currentRow++;
 
                         string[] headers = { "#", "故障代码", "故障名称", "次数", "总时长(分钟)", "总时长", "占比%" };
@@ -1455,7 +1595,7 @@ namespace MachineStatusUpdate.Controllers
                         currentRow++;
 
                         int seq = 1;
-                        foreach (var error in operation.ErrorDetails)
+                        foreach (var error in opRow.ErrorDetails)
                         {
                             ws.Cell(currentRow, 1).Value = seq++;
                             ws.Cell(currentRow, 2).Value = error.ISS_Code;
@@ -1463,15 +1603,15 @@ namespace MachineStatusUpdate.Controllers
                             ws.Cell(currentRow, 4).Value = error.DowntimeCount;
                             ws.Cell(currentRow, 5).Value = Math.Round(error.TotalDowntimeMinutes, 2);
                             ws.Cell(currentRow, 6).Value = error.TotalDowntimeFormatted;
-                            double pct = operation.TotalDowntimeMinutes > 0
-                                ? error.TotalDowntimeMinutes / operation.TotalDowntimeMinutes * 100 : 0;
+                            double pct = opRow.TotalDowntimeMinutes > 0
+                                ? error.TotalDowntimeMinutes / opRow.TotalDowntimeMinutes * 100 : 0;
                             ws.Cell(currentRow, 7).Value = $"{Math.Round(pct, 1)}%";
                             currentRow++;
                         }
                         currentRow += 2;
                     }
 
-                    ws.Column(1).Width = 6;  ws.Column(2).Width = 14; ws.Column(3).Width = 30;
+                    ws.Column(1).Width = 6; ws.Column(2).Width = 14; ws.Column(3).Width = 30;
                     ws.Column(4).Width = 10; ws.Column(5).Width = 14; ws.Column(6).Width = 14;
                     ws.Column(7).Width = 10; ws.Column(8).Width = 10;
 
@@ -1495,7 +1635,6 @@ namespace MachineStatusUpdate.Controllers
                         r2 += 2;
                     }
 
-                    // 汇总表头
                     string[] sumHdr = { "#", "设备号", "工序/产线", "停机次数", "总时长(分钟)", "总时长", "占总停机比%" };
                     for (int i = 0; i < sumHdr.Length; i++)
                     {
@@ -1510,6 +1649,7 @@ namespace MachineStatusUpdate.Controllers
 
                     var grandTotal = machineData.Sum(x => x.TotalDowntimeMinutes);
                     int mSeq = 1;
+                    // ✅ FIX: đổi 'm' giữ nguyên — không conflict, OK
                     foreach (var m in machineData)
                     {
                         ws2.Cell(r2, 1).Value = mSeq++;
@@ -1525,7 +1665,6 @@ namespace MachineStatusUpdate.Controllers
 
                     r2 += 2;
 
-                    // 按设备明细
                     foreach (var m in machineData)
                     {
                         ws2.Cell(r2, 1).Value = $"设备: {m.MachineCode}  |  产线: {m.Operation}  |  总停机: {m.TotalDowntimeFormatted}  |  次数: {m.DowntimeCount}";
@@ -1560,7 +1699,7 @@ namespace MachineStatusUpdate.Controllers
                         r2 += 2;
                     }
 
-                    ws2.Column(1).Width = 6;  ws2.Column(2).Width = 16; ws2.Column(3).Width = 30;
+                    ws2.Column(1).Width = 6; ws2.Column(2).Width = 16; ws2.Column(3).Width = 30;
                     ws2.Column(4).Width = 10; ws2.Column(5).Width = 14; ws2.Column(6).Width = 14;
                     ws2.Column(7).Width = 12;
 
@@ -1578,6 +1717,7 @@ namespace MachineStatusUpdate.Controllers
                 return Json(new { success = false, message = $"导出Excel时出错: {ex.Message}" });
             }
         }
+
 
         // ══════════════════════════════════════════════════════
         // POST /Status/TechnicianRespond
