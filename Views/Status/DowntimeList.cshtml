@@ -223,6 +223,7 @@
     .badge-stop     { background: #fee2e2; color: #dc2626; }
     .badge-run      { background: #dcfce7; color: #16a34a; }
     .badge-response { background: #fef3c7; color: #d97706; }
+    .badge-reject   { background: #9bddfc; color: #3700ff; }
 
     .no-data {
         text-align: center;
@@ -508,7 +509,9 @@
                     {
                         bool isStop     = string.Equals(item.State, "STOP",     StringComparison.OrdinalIgnoreCase);
                         bool isResponse = string.Equals(item.State, "RESPONSE", StringComparison.OrdinalIgnoreCase);
-                        string badgeCss = isStop ? "badge-stop" : isResponse ? "badge-response" : "badge-run";
+                        bool isReject   = string.Equals(item.State, "REJECT",   StringComparison.OrdinalIgnoreCase);
+                        string badgeCss = isStop ? "badge-stop" : isResponse ? "badge-response" : isReject ? "badge-reject" : "badge-run";
+
                         <tr>
                             <td style="white-space:nowrap;">@item.Operation</td>
                             <td>@(item.MachineCode ?? "-")</td>
@@ -559,7 +562,8 @@
             {
                 bool isStop     = string.Equals(item.State, "STOP",     StringComparison.OrdinalIgnoreCase);
                 bool isResponse = string.Equals(item.State, "RESPONSE", StringComparison.OrdinalIgnoreCase);
-                string badgeCss = isStop ? "badge-stop" : isResponse ? "badge-response" : "badge-run";
+                bool isReject   = string.Equals(item.State, "REJECT",   StringComparison.OrdinalIgnoreCase);
+                string badgeCss = isStop ? "badge-stop" : isResponse ? "badge-response" : isReject ? "badge-reject" : "badge-run";
                 string effLabel = item.Effect == "1" ? "影响生产" : item.Effect == "2" ? "不影响生产" : (item.Effect ?? "-");
 
                 <div class="downtime-card">

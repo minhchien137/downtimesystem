@@ -158,6 +158,27 @@
     .btn-accept:active { transform: translateY(1px); }
     .btn-accept:disabled { opacity: .55; cursor: not-allowed; transform: none; }
 
+    /* ===== Reject Button ===== */
+   .btn-reject {
+        background: linear-gradient(135deg, #b91c1c, #ef4444);
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 9px 20px;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        box-shadow: 0 3px 10px rgba(239,68,68,.35);
+        transition: all .18s;
+    }
+    .btn-reject:hover   { filter: brightness(1.08); transform: translateY(-1px); }
+    .btn-reject:active  { transform: translateY(1px); }
+    .btn-reject:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+
+
     /* ===== Response — Đã sửa xong button ===== */
     .btn-fix-complete {
         background: linear-gradient(135deg, #0d6efd, #3b82f6);
@@ -218,6 +239,102 @@
     }
     .responded-badge.accepted { background: #dcfce7; color: #166534; }
     .responded-badge.waited   { background: #fef3c7; color: #92400e; }
+    .responded-badge.rejected { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+
+    /* ===== Reject Modal ===== */
+    .reject-modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,.55);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+    }
+    .reject-modal-overlay.open { display: flex; }
+ 
+    .reject-modal {
+        background: #fff;
+        border-radius: 16px;
+        padding: 28px 28px 24px;
+        width: 100%;
+        max-width: 460px;
+        box-shadow: 0 20px 60px rgba(0,0,0,.25);
+        animation: rejectModalIn .18s ease;
+    }
+    @@keyframes rejectModalIn {
+        from { transform: scale(.94); opacity: 0; }
+        to   { transform: scale(1);   opacity: 1; }
+    }
+    .reject-modal h3 {
+        margin: 0 0 6px;
+        font-size: 18px;
+        font-weight: 700;
+        color: #111;
+    }
+    .reject-modal .modal-sub {
+        font-size: 13px;
+        color: #6b7280;
+        margin-bottom: 18px;
+    }
+    .reject-modal textarea {
+        width: 100%;
+        border: 2px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 12px 14px;
+        font-size: 14px;
+        font-family: inherit;
+        resize: vertical;
+        min-height: 90px;
+        outline: none;
+        transition: border-color .18s;
+        box-sizing: border-box;
+    }
+    .reject-modal textarea:focus   { border-color: #ef4444; }
+    .reject-modal textarea.invalid { border-color: #ef4444; background: #fff5f5; }
+    .reject-modal .char-hint {
+        font-size: 11px;
+        color: #9ca3af;
+        text-align: right;
+        margin-top: 4px;
+        margin-bottom: 16px;
+    }
+    .reject-modal .char-hint.warn { color: #ef4444; font-weight: 600; }
+    .reject-modal .modal-footer {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+    }
+    .reject-modal .btn-modal-cancel {
+        background: #f3f4f6;
+        color: #374151;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 22px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background .15s;
+    }
+    .reject-modal .btn-modal-cancel:hover { background: #e5e7eb; }
+    .reject-modal .btn-modal-submit {
+        background: linear-gradient(135deg, #b91c1c, #ef4444);
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 22px;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: not-allowed;
+        opacity: .4;
+        transition: all .15s;
+    }
+    .reject-modal .btn-modal-submit.active {
+        opacity: 1;
+        cursor: pointer;
+    }
+    .reject-modal .btn-modal-submit.active:hover { filter: brightness(1.08); }
+
 
     @@media (max-width: 600px) {
         .summary-row { grid-template-columns: 1fr 1fr; }
@@ -914,7 +1031,29 @@ body.flashing {
 }
 </style>
 
+
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+
+
+
+<!-- ===== Reject Reason Modal ===== -->
+<div class="reject-modal-overlay" id="rejectModalOverlay">
+    <div class="reject-modal">
+        <h3>❌ 拒绝维修请求</h3>
+        <p class="modal-sub">设备: <strong id="rejectModalMachine">—</strong> · 产线：: <strong id="rejectModalOp">—</strong></p>
+        <textarea id="rejectReasonInput"
+                  placeholder="请输入拒绝理由... (必填)"
+                  maxlength="300"
+                  oninput="onRejectInput(this)"></textarea>
+        <div class="char-hint" id="rejectCharHint">0 / 300 字符</div>
+        <div class="modal-footer">
+            <button class="btn-modal-cancel" onclick="closeRejectModal()">取消</button>
+            <button class="btn-modal-submit" id="rejectSubmitBtn" onclick="submitReject()">❌ 确认拒绝</button>
+        </div>
+    </div>
+</div>
+
 <script>
 "use strict";
 
@@ -929,6 +1068,8 @@ let cntStop  = 0;
 let cntRun   = 0;
 let cntTotal = 0;
 let cntAccept = 0;
+let cntReject = 0;
+let _rejectCtx = null;
 let audioCtx = null;
 let audioUnlocked = false;
 
@@ -1130,7 +1271,10 @@ function renderStopCard(data, prepend = true) {
     const alreadyResponded = data.techAction && data.techAction !== '';
     const actionsHtml = alreadyResponded
         ? buildRespondedBadge(data.techAction, data.techUsername, data.respondDatetime, !!data.fixComplete, responseTimeStr)
-        : `<button class="btn-accept" onclick="respondToOperator(this,'ACCEPT')">✅ 接受 — 正在前往维修</button>`;
+        : `<div style="display:flex;gap:10px;flex-wrap:wrap;">
+     <button class="btn-accept" onclick="respondToOperator(this,'ACCEPT')">✅ 接受 — 正在前往维修</button>
+     <button class="btn-reject" onclick="openRejectModal(this)">❌ 拒绝 / Reject</button>
+   </div>`;
 
     card.innerHTML = `
         <div class="notif-top">
@@ -1174,12 +1318,16 @@ function renderStopCard(data, prepend = true) {
 }
 
 function buildRespondedBadge(action, techUser, respondTime, fixComplete = false, responseTimeStr = null) {
-    const badge = `<span class="responded-badge accepted">✅ 已接受${techUser ? ' 由 ' + techUser : ''}${respondTime ? ' · ' + respondTime : ''}</span>`;
+    // ── REJECT ──
+    if (action === 'REJECT') {
+        return `<span class="responded-badge rejected">❌ 已拒绝${techUser ? '，由 ' + techUser : ''}${respondTime ? ' · ' + respondTime : ''}</span>`;
+    }
 
+    // ── ACCEPT ──
+    const badge = `<span class="responded-badge accepted">✅ 已接受${techUser ? ' 由 ' + techUser : ''}${respondTime ? ' · ' + respondTime : ''}</span>`;
     const respTimeBadge = responseTimeStr
         ? `<span class="response-time-badge">⚡ 响应时间: ${responseTimeStr}</span>`
         : '';
-
     const responseBtn = fixComplete
         ? `<span class="responded-badge fix-done">🔧 已发送修复完成通知</span>`
         : `<button class="btn-fix-complete" onclick="techFixComplete(this)">🔧 响应 — 已修复完成</button>`;
@@ -1203,7 +1351,7 @@ async function respondToOperator(btn, action) {
     const mins   = minutesBetween(stopDt, nowDt);
     const responseTimeStr = mins !== null ? formatMinutes(mins) : null;
 
-    card.querySelectorAll('.btn-accept, .btn-wait').forEach(b => b.disabled = true);
+    card.querySelectorAll('.btn-accept, .btn-reject, .btn-wait').forEach(b => b.disabled = true);
     btn.innerHTML = '⏳ 发送中...';
 
     try {
@@ -1221,15 +1369,140 @@ async function respondToOperator(btn, action) {
             if (action === 'ACCEPT') { cntAccept++; }
             updateCounters();
         } else {
-            card.querySelectorAll('.btn-accept, .btn-wait').forEach(b => b.disabled = false);
+            card.querySelectorAll('.btn-accept, .btn-reject, .btn-wait').forEach(b => b.disabled = false);
             btn.innerHTML = '✅ 接受 — 正在前往维修';
         }
     } catch (err) {
         console.error('respondToOperator error:', err);
-        card.querySelectorAll('.btn-accept, .btn-wait').forEach(b => b.disabled = false);
+        card.querySelectorAll('.btn-accept, .btn-reject, .btn-wait').forEach(b => b.disabled = false);
         btn.innerHTML = '✅ 接受 — 正在前往维修';
     }
 }
+
+    /* ===== Reject Modal logic ===== */
+function openRejectModal(btn) {
+    const card = btn.closest('.notif-card');
+    if (!card) return;
+
+    _rejectCtx = {
+        btn,
+        techResponseId   : card.dataset.techResponseId   || '',
+        operatorUsername : card.dataset.operatorUsername  || '',
+        machineCode      : card.dataset.machineCode       || '',
+        operation        : card.dataset.operation         || '',
+        stopDatetime     : card.dataset.stopDatetime      || ''
+    };
+
+    document.getElementById('rejectModalMachine').textContent = _rejectCtx.machineCode || '—';
+    document.getElementById('rejectModalOp').textContent      = _rejectCtx.operation   || '—';
+
+    const ta = document.getElementById('rejectReasonInput');
+    ta.value = '';
+    ta.classList.remove('invalid');
+    document.getElementById('rejectCharHint').textContent = '0 / 300 ký tự';
+    document.getElementById('rejectCharHint').classList.remove('warn');
+    document.getElementById('rejectSubmitBtn').classList.remove('active');
+
+    document.getElementById('rejectModalOverlay').classList.add('open');
+    setTimeout(() => ta.focus(), 120);
+}
+
+function closeRejectModal() {
+    document.getElementById('rejectModalOverlay').classList.remove('open');
+    _rejectCtx = null;
+}
+
+function onRejectInput(ta) {
+    const len  = ta.value.trim().length;
+    const hint = document.getElementById('rejectCharHint');
+    const btn  = document.getElementById('rejectSubmitBtn');
+
+    hint.textContent = `${ta.value.length} / 300 ký tự`;
+    hint.classList.toggle('warn', ta.value.length > 270);
+
+    if (len > 0) {
+    ta.classList.remove('invalid');
+    btn.classList.add('active');
+} else {
+    btn.classList.remove('active');
+}
+
+}
+
+async function submitReject() {
+    if (!_rejectCtx) return;
+
+    const ta     = document.getElementById('rejectReasonInput');
+    const reason = ta.value.trim();
+
+    if (!reason) {
+        ta.classList.add('invalid');
+        ta.focus();
+        return;
+    }
+
+    const submitBtn = document.getElementById('rejectSubmitBtn');
+    submitBtn.disabled   = true;
+    submitBtn.textContent = '⏳ Đang gửi...';
+
+    const stopDt = parseDT(_rejectCtx.stopDatetime);
+    const mins   = minutesBetween(stopDt, new Date());
+    const responseTimeStr = mins !== null ? formatMinutes(mins) : null;
+
+    try {
+        const res = await fetch(`${pathBase}/Status/TechnicianRespond`, {
+            method  : 'POST',
+            headers : { 'Content-Type': 'application/json' },
+            body    : JSON.stringify({
+                techResponseId   : parseInt(_rejectCtx.techResponseId) || 0,
+                action           : 'REJECT',
+                operatorUsername : _rejectCtx.operatorUsername,
+                machineCode      : _rejectCtx.machineCode,
+                rejectReason     : reason
+            })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            const card = _rejectCtx.btn.closest('.notif-card');
+            if (card) {
+                const actionsDiv = card.querySelector('.notif-actions');
+                if (actionsDiv) {
+                    actionsDiv.innerHTML = `
+                        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+                            <span class="responded-badge rejected">❌ 已拒绝</span>
+                            ${responseTimeStr ? `<span class="response-time-badge">⚡ 时间: ${responseTimeStr}</span>` : ''}
+                            <span style="font-size:12px;color:#6b7280;font-style:italic;">理由: ${reason}</span>
+                        </div>`;
+                }
+            }
+            cntReject++;
+            updateCounters();
+            closeRejectModal();
+        } else {
+            submitBtn.disabled   = false;
+            submitBtn.textContent = '❌ 确认拒绝';
+            submitBtn.classList.add('active');
+        }
+    } catch (err) {
+        console.error('submitReject error:', err);
+        submitBtn.disabled   = false;
+        submitBtn.textContent = '❌ 确认拒绝';
+        submitBtn.classList.add('active');
+    }
+}
+
+// Đóng modal khi click ra ngoài
+document.getElementById('rejectModalOverlay').addEventListener('click', function(e) {
+    if (e.target === this) closeRejectModal();
+});
+
+// Đóng modal khi nhấn Escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeRejectModal();
+});
+
+
 
 /* ===== Tech bấm Response (Đã sửa xong) — tạo RUN record + notify Prod ===== */
 async function techFixComplete(btn) {
@@ -1423,6 +1696,8 @@ async function loadPendingFromDB() {
                 cntStop++;
             } else if (item.techAction === 'ACCEPT') {
                 cntAccept++;
+            } else if (item.techAction === 'REJECT') {
+                cntReject++;
             }
         });
 
@@ -1662,4 +1937,6 @@ function teShowToast(msg, isError = false) {
     t.className   = 'te-toast show' + (isError ? ' error' : '');
     setTimeout(() => t.classList.remove('show'), 3000);
 }
+
+
 </script>

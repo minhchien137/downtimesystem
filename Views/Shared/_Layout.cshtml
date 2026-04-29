@@ -46,7 +46,7 @@
         }
         .nav-logout:hover { background: #9B0B22; }
 
-        /* ── Bell notification (Production only) ── */
+        /* ── Bell notification ── */
         .bell-wrapper {
             position: relative;
             display: inline-flex;
@@ -294,21 +294,82 @@
 
         if (!myUsername) return;
 
-        // ─── 渲染单条通知 ──────────────────────────────
+        // ─── Sound ────────────────────────────────────────────────────
+        let _audioCtx = null;
+        function ensureAudio() {
+            if (_audioCtx) return _audioCtx;
+            try {
+                _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (_audioCtx.state === 'suspended') _audioCtx.resume();
+            } catch(e) {}
+            return _audioCtx;
+        }
+        ['click','touchstart','keydown'].forEach(ev =>
+            document.addEventListener(ev, () => ensureAudio(), { once: false, passive: true })
+        );
+
+        function playNotifSound() {
+            const ctx = ensureAudio();
+            if (!ctx) return;
+            if (ctx.state === 'suspended') ctx.resume();
+            [[0, 660],[0.25, 880]].forEach(([offset, freq]) => {
+                const osc  = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain); gain.connect(ctx.destination);
+                osc.type = 'sine'; osc.frequency.value = freq;
+                const t = ctx.currentTime + offset;
+                gain.gain.setValueAtTime(0.5, t);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+                osc.start(t); osc.stop(t + 0.35);
+            });
+        }
+
+        // ─── Toast popup ──────────────────────────────────────────────
+        function showToast(msg, type) {
+            let toast = document.getElementById('layoutToast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'layoutToast';
+                document.body.appendChild(toast);
+                const s = document.createElement('style');
+                s.textContent = `@@keyframes ltIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}`;
+                document.head.appendChild(s);
+            }
+            const colors = {
+                accept: ['#16a34a', '#22c55e'],
+                reject: ['#b91c1c', '#ef4444'],
+                fix:    ['#0d6efd', '#3b82f6'],
+                stop:   ['#b91c1c', '#ef4444']
+            };
+            const [bg, border] = colors[type] || colors.accept;
+            toast.style.cssText = `
+                position:fixed;bottom:24px;right:24px;z-index:99999;
+                max-width:380px;padding:14px 18px;border-radius:12px;
+                font-size:13px;font-weight:600;color:#fff;
+                box-shadow:0 8px 28px rgba(0,0,0,.25);
+                border-left:5px solid ${border};background:${bg};
+                animation:ltIn .25s ease;
+            `;
+            toast.textContent = msg;
+            clearTimeout(toast._t);
+            toast._t = setTimeout(() => { if (toast.parentNode) toast.remove(); }, 6000);
+        }
+
+        // ─── 渲染单条通知 ──────────────────────────────────────────────
         function renderItem(n) {
-            const isRead    = n.isRead;
-            const type      = n.notifType;
-            const isAccept  = n.techAction === 'ACCEPT';
-            const isWait    = n.techAction === 'WAIT';
+            const isRead   = n.isRead;
+            const type     = n.notifType;
+            const isAccept = n.techAction === 'ACCEPT';
+            const isWait   = n.techAction === 'WAIT';
             const readStyle = isRead ? 'opacity:0.6;' : '';
 
             let borderColor = '#ef4444';
             let icon = '🛑';
             if (type === 'TECH_RESPONSE') { borderColor = isAccept ? '#22c55e' : '#f59e0b'; icon = isAccept ? '✅' : '⏳'; }
+            if (type === 'TECH_REJECT')   { borderColor = '#ef4444'; icon = '❌'; }
             if (type === 'RUN')           { borderColor = '#3b82f6'; icon = '✅'; }
             if (type === 'FIX_COMPLETE')  { borderColor = '#0d6efd'; icon = '🔧'; }
 
-            // Badge nguồn (chỉ hiển thị với Admin)
             const sourceBadge = myRole === 'Admin'
                 ? `<span style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:99px;margin-left:6px;
                     background:${(type==='STOP'||type==='RUN') ? '#f3e8ff' : '#e0f2fe'};
@@ -333,7 +394,7 @@
                 </div>`;
         }
 
-        // ─── 从数据库加载通知 ───────────────────────────────
+        // ─── Load thông báo từ DB ──────────────────────────────────────
         async function loadNotifications() {
             try {
                 const res  = await fetch(`${pathBase}/Status/GetMyNotifications`);
@@ -358,14 +419,12 @@
                     bellBadge.style.display = 'none';
                 }
 
-                // Badge trên nav "我的通知" (Production)
                 const navProdBadge = document.getElementById('navProdBadge');
                 if (navProdBadge) {
                     navProdBadge.textContent   = count > 9 ? '9+' : String(count);
                     navProdBadge.style.display = count > 0 ? 'inline' : 'none';
                 }
 
-                // Badge trên nav "通知仪表板" (Admin)
                 const navAdminBadge = document.getElementById('navAdminBadge');
                 if (navAdminBadge) {
                     navAdminBadge.textContent   = count > 9 ? '9+' : String(count);
@@ -377,13 +436,17 @@
             }
         }
 
-        function addRealTimeItem() {
+        function shakeBell() {
             if (bellBtn) {
                 bellBtn.classList.remove('shake');
                 void bellBtn.offsetWidth;
                 bellBtn.classList.add('shake');
                 setTimeout(() => bellBtn.classList.remove('shake'), 700);
             }
+        }
+
+        function addRealTimeItem() {
+            shakeBell();
             loadNotifications();
         }
 
@@ -435,9 +498,35 @@
             .build();
 
         if (myRole === 'Production' || myRole === 'Admin') {
-            conn.on("ReceiveTechResponse", () => addRealTimeItem());
-            conn.on("ReceiveFixComplete",  () => addRealTimeItem());
+            conn.on("ReceiveTechResponse", (data) => {
+                addRealTimeItem();
+                playNotifSound();
+                showToast(
+                    data && data.action === 'ACCEPT'
+                        ? `✅ 技术员 [${data.techName}] 正在前往维修设备 ${data.machineCode}`
+                        : `⏳ 技术员已查看通知，请稍候`,
+                    'accept'
+                );
+            });
+            conn.on("ReceiveTechReject", (data) => {
+                addRealTimeItem();
+                playNotifSound();
+                showToast(
+                    `❌ 技术员 [${data.techName}] 已拒绝 — 设备: ${data.machineCode}`
+                    + (data && data.rejectReason ? ` | 原因: ${data.rejectReason}` : ''),
+                    'reject'
+                );
+            });
+            conn.on("ReceiveFixComplete", (data) => {
+                addRealTimeItem();
+                playNotifSound();
+                showToast(
+                    `🔧 设备 ${data.machineCode} 已修复完成！`,
+                    'fix'
+                );
+            });
         }
+
         if (myRole === 'Technical' || myRole === 'Admin') {
             conn.on("ReceiveStopNotification", () => addRealTimeItem());
             conn.on("ReceiveRunNotification",  () => addRealTimeItem());

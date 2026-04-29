@@ -389,6 +389,118 @@
 </div>
 
 <script>
+
+// ════ SOUND & BELL cho Production ════
+let prodAudioCtx = null;
+let prodUnreadCount = 0;
+
+function ensureProdAudio() {
+    if (prodAudioCtx) return prodAudioCtx;
+    try {
+        prodAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (prodAudioCtx.state === 'suspended') prodAudioCtx.resume();
+    } catch(e) {}
+    return prodAudioCtx;
+}
+['click','touchstart','keydown'].forEach(e =>
+    document.addEventListener(e, () => ensureProdAudio(), { once: false, passive: true })
+);
+
+function playProdSound() {
+    const ctx = ensureProdAudio();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') ctx.resume();
+    [[0, 660],[0.25, 880]].forEach(([offset, freq]) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = 'sine'; osc.frequency.value = freq;
+        const t = ctx.currentTime + offset;
+        gain.gain.setValueAtTime(0.5, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+        osc.start(t); osc.stop(t + 0.35);
+    });
+}
+
+function updateBell(count) {
+    const badge = document.getElementById('bellBadge');
+    if (!badge) return;
+    if (count > 0) {
+        badge.textContent = count > 9 ? '9+' : count;
+        badge.style.display = 'inline-flex';
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+function showProdToast(msg, type) {
+    let toast = document.getElementById('prodToast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'prodToast';
+        document.body.appendChild(toast);
+    }
+    const colors = {
+        accept: ['#16a34a','#22c55e'],
+        reject: ['#b91c1c','#ef4444'],
+        fix:    ['#0d6efd','#3b82f6']
+    };
+    const [bg, border] = colors[type] || colors.accept;
+    toast.style.cssText = `
+        position:fixed;bottom:24px;right:24px;z-index:99999;
+        max-width:380px;padding:14px 18px;border-radius:12px;
+        font-size:13px;font-weight:600;color:#fff;
+        box-shadow:0 8px 28px rgba(0,0,0,.25);
+        border-left:5px solid ${border};background:${bg};
+        animation:prodToastIn .25s ease;
+    `;
+    toast.textContent = msg;
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => toast.remove(), 6000);
+}
+
+// Thêm CSS animation 1 lần
+if (!document.getElementById('prodToastStyle')) {
+    const s = document.createElement('style');
+    s.id = 'prodToastStyle';
+    s.textContent = `@@keyframes prodToastIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}`;
+    document.head.appendChild(s);
+}
+
+// ════ SignalR listeners ════
+if (typeof connection !== 'undefined') {
+    connection.on("ReceiveTechResponse", function(data) {
+        playProdSound();
+        prodUnreadCount++;
+        updateBell(prodUnreadCount);
+        showProdToast(
+            data.action === 'ACCEPT'
+                ? `✅ 技术员 [${data.techName}] 正在前往维修设备 ${data.machineCode}`
+                : `⏳ 技术员 [${data.techName}] 已查看，请稍候`,
+            'accept'
+        );
+    });
+
+    connection.on("ReceiveTechReject", function(data) {
+        playProdSound();
+        prodUnreadCount++;
+        updateBell(prodUnreadCount);
+        showProdToast(
+            `❌ 技术员 [${data.techName}] 已拒绝 — 设备: ${data.machineCode}`
+            + (data.rejectReason ? ` | 原因: ${data.rejectReason}` : ''),
+            'reject'
+        );
+    });
+
+    connection.on("ReceiveFixComplete", function(data) {
+        playProdSound();
+        prodUnreadCount++;
+        updateBell(prodUnreadCount);
+        showProdToast(`🔧 设备 ${data.machineCode} 已修复完成！`, 'fix');
+    });
+}
+
+// ════ Pagination (giữ nguyên) ════
 (function () {
     // ── State ──
     let currentFilter = 'ALL';
@@ -421,8 +533,6 @@
         cards.forEach((c, i) => {
             c.style.display = (i >= start && i < end) ? '' : 'none';
         });
-
-        // Empty state already handled server-side; nothing extra needed
 
         // Pagination controls
         const wrap = document.getElementById('paginationWrap');
@@ -462,7 +572,7 @@
         btn('‹', currentPage - 1, false, currentPage === 1);
 
         // Page numbers with smart ellipsis
-        const delta = 1; // pages around current
+        const delta = 1;
         const range = [];
         for (let p = 1; p <= pages; p++) {
             if (p === 1 || p === pages ||
@@ -502,11 +612,11 @@
     function goToPage(p) {
         currentPage = p;
         render();
-        // Scroll to top of list smoothly
         document.getElementById('pnList').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     // ── Init ──
     render();
 })();
+
 </script>

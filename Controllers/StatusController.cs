@@ -1729,67 +1729,102 @@ namespace MachineStatusUpdate.Controllers
         {
             var techUser = HttpContext.Session.GetString("UserName") ?? "技术员";
 
-            // 更新TechResponses表中的状态
             var record = await _context.SVN_Downtime_TechResponses.FindAsync(dto.TechResponseId);
             if (record == null)
                 return Json(new { success = false, message = "记录未找到" });
 
-            record.TechAction = dto.Action;   // "ACCEPT"
+            record.TechAction = dto.Action;   // "ACCEPT" | "REJECT"
             record.TechUsername = techUser;
             record.RespondDatetime = DateTime.Now;
             await _context.SaveChangesAsync();
 
-            // ── Nếu ACCEPT → tạo record RESPONSE vào SVN_Downtime_Info_Devel ──
+            // ── ACCEPT → tạo record RESPONSE ──
             if (dto.Action == "ACCEPT")
             {
                 var stopRecord = await _context.SVN_Downtime_Infos_Devel.FindAsync(record.DowntimeId);
 
                 var responseRecord = new SVN_Downtime_Info_Devel
                 {
-                    State        = "RESPONSE",
-                    Operation    = record.Operation,
-                    MachineCode  = record.MachineCode,
-                    Location     = record.Location,
+                    State = "RESPONSE",
+                    Operation = record.Operation,
+                    MachineCode = record.MachineCode,
+                    Location = record.Location,
                     EmployeeCode = record.EmployeeCode,
                     EmployeeName = record.EmployeeName,
-                    Reason       = record.Reason,
-                    Effect       = record.Effect,
-                    Station      = record.Station,
-                    Description  = record.Description,
+                    Reason = record.Reason,
+                    Effect = record.Effect,
+                    Station = record.Station,
+                    Description = record.Description,
                     EstimateTime = record.EstimateTime,
-                    Code         = stopRecord?.Code,
-                    Name         = stopRecord?.Name,
-                    Datetime     = DateTime.Now
+                    Code = stopRecord?.Code,
+                    Name = stopRecord?.Name,
+                    Datetime = DateTime.Now
                 };
                 _context.SVN_Downtime_Infos_Devel.Add(responseRecord);
                 await _context.SaveChangesAsync();
             }
 
-            // ── 保存技术员响应通知 → 生产端 ──
+            // ── REJECT → tạo bản ghi MỚI giống STOP nhưng State = "REJECT", lưu lý do từ chối ──
+            if (dto.Action == "REJECT")
+            {
+                var stopRecord = await _context.SVN_Downtime_Infos_Devel.FindAsync(record.DowntimeId);
+
+                var rejectRecord = new SVN_Downtime_Info_Devel
+                {
+                    State = "REJECT",
+                    Operation = record.Operation,
+                    MachineCode = record.MachineCode,
+                    Location = record.Location,
+                    EmployeeCode = record.EmployeeCode,
+                    EmployeeName = record.EmployeeName,
+                    Reason = record.Reason,
+                    Effect = record.Effect,
+                    Station = record.Station,
+                    // Ghi lý do từ chối vào Description
+                    Description = string.IsNullOrWhiteSpace(dto.RejectReason)
+                                       ? record.Description
+                                       : $"[REJECT] {dto.RejectReason}",
+                    EstimateTime = record.EstimateTime,
+                    Code = stopRecord?.Code,
+                    Name = stopRecord?.Name,
+                    Image = stopRecord?.Image,
+                    Datetime = DateTime.Now
+                };
+                _context.SVN_Downtime_Infos_Devel.Add(rejectRecord);
+                await _context.SaveChangesAsync();
+            }
+
+            // ── Thông báo về Prod & Admin ──
             if (!string.IsNullOrWhiteSpace(dto.OperatorUsername))
             {
-                var notifTitle = dto.Action == "ACCEPT"
-                    ? $"✅ 技术员 [{techUser}] 正在前往维修设备 {dto.MachineCode ?? "-"}"
-                    : $"⏳ 技术员 [{techUser}] 已查看 — 请稍候";
+                string notifTitle = dto.Action switch
+                {
+                    "ACCEPT" => $"✅ 技术员 [{techUser}] 正在前往维修设备 {dto.MachineCode ?? "-"}",
+                    "REJECT" => $"❌ 技术员 [{techUser}] 已拒绝 — 设备: {dto.MachineCode ?? "-"}"
+                                 + (string.IsNullOrWhiteSpace(dto.RejectReason) ? "" : $" | 原因: {dto.RejectReason}"),
+                    _ => $"⏳ 技术员 [{techUser}] 已查看 — 请稍候"
+                };
 
-                // 发送给特定生产端
+                string notifType = dto.Action == "REJECT" ? "TECH_REJECT" : "TECH_RESPONSE";
+
                 await SaveNotificationAsync(
                     recipientUsername: dto.OperatorUsername,
                     recipientRole: "Production",
-                    notifType: "TECH_RESPONSE",
+                    notifType: notifType,
                     title: notifTitle,
+                    body: dto.Action == "REJECT" ? dto.RejectReason : null,
                     machineCode: dto.MachineCode,
                     techResponseId: dto.TechResponseId,
                     techAction: dto.Action,
                     techName: techUser
                 );
 
-                // 同时发送给管理员
                 await SaveNotificationAsync(
                     recipientUsername: "ALL_ADMIN",
                     recipientRole: "Admin",
-                    notifType: "TECH_RESPONSE",
+                    notifType: notifType,
                     title: notifTitle,
+                    body: dto.Action == "REJECT" ? dto.RejectReason : null,
                     machineCode: dto.MachineCode,
                     techResponseId: dto.TechResponseId,
                     techAction: dto.Action,
@@ -1797,25 +1832,44 @@ namespace MachineStatusUpdate.Controllers
                 );
             }
 
-            // SignalR推送给操作员
+            // ── SignalR → Prod ──
             if (!string.IsNullOrWhiteSpace(dto.OperatorUsername))
             {
-                await _hubContext.Clients
-                    .Group($"Operator_{dto.OperatorUsername}")
-                    .SendAsync("ReceiveTechResponse", new
-                    {
-                        action = dto.Action,
-                        techName = techUser,
-                        machineCode = dto.MachineCode ?? "",
-                        message = dto.Action == "ACCEPT"
-                            ? $"✅ 技术员 [{techUser}] 已收到信息并正在准备维修设备 {dto.MachineCode}。"
-                            : $"⏳ 技术员 [{techUser}] 已查看通知，请稍候。",
-                        datetime = DateTime.Now.ToString("dd/MM/yyyy HH:mm")
-                    });
+                if (dto.Action == "REJECT")
+                {
+                    await _hubContext.Clients
+                        .Group($"Operator_{dto.OperatorUsername}")
+                        .SendAsync("ReceiveTechReject", new
+                        {
+                            techName = techUser,
+                            machineCode = dto.MachineCode ?? "",
+                            rejectReason = dto.RejectReason ?? "",
+                            message = $"❌ 技术员 [{techUser}] 已拒绝 — 设备: {dto.MachineCode ?? "-"}"
+                                           + (string.IsNullOrWhiteSpace(dto.RejectReason) ? "" : $" 理由: {dto.RejectReason}"),
+                            datetime = DateTime.Now.ToString("dd/MM/yyyy HH:mm")
+                        });
+                }
+                else
+                {
+                    await _hubContext.Clients
+                        .Group($"Operator_{dto.OperatorUsername}")
+                        .SendAsync("ReceiveTechResponse", new
+                        {
+                            action = dto.Action,
+                            techName = techUser,
+                            machineCode = dto.MachineCode ?? "",
+                            message = dto.Action == "ACCEPT"
+                                ? $"✅ 技术员 [{techUser}] 已收到信息并正在准备维修设备 {dto.MachineCode}。"
+                                : $"⏳ 技术员 [{techUser}] 已查看通知，请稍候。",
+                            datetime = DateTime.Now.ToString("dd/MM/yyyy HH:mm")
+                        });
+                }
             }
 
             return Json(new { success = true });
         }
+
+
         // ══════════════════════════════════════════════════════════════════════
         // POST /Status/TechnicianFixComplete
         // 技术员点击"已修复完成" → 创建RUN记录 + 通知生产端
@@ -2079,7 +2133,9 @@ namespace MachineStatusUpdate.Controllers
             public int     TechResponseId   { get; set; }   // SVN_Downtime_TechResponses中的Id
             public string  Action           { get; set; } = "";
             public string? OperatorUsername { get; set; }
-            public string? MachineCode      { get; set; }
+            public string? MachineCode { get; set; }
+            
+            public string? RejectReason     { get; set; }  
         }
 
         // ── GET /Status/ProductionNotifications ──
