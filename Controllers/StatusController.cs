@@ -143,16 +143,16 @@ namespace MachineStatusUpdate.Controllers
 
             ViewBag.Employees = employees;
 
-            // 操作 / Location
-            var operation = await _context.SM_Operations
+           var locations = await _context.SVN_Downtime_SMEQs
                 .AsNoTracking()
-                .Where(x => x.Operation != null && x.Operation != "")
-                .Select(x => x.Operation)
+                .Where(x => x.location != null && x.location != "")
+                .Select(x => x.location)
                 .Distinct()
                 .OrderBy(x => x)
                 .ToListAsync();
 
-            ViewBag.Operations = operation;
+            ViewBag.Operations = locations;
+
 
             // 设备、模治具编号 / Machine/Fixture no. — từ bảng SVN_Downtime_SMEQ
             var smeqs = await _context.SVN_Downtime_SMEQs
@@ -165,6 +165,28 @@ namespace MachineStatusUpdate.Controllers
 
             return View("CreateDownTime");
         }
+
+        [HttpGet]
+        public async Task<IActionResult> GetMachinesByLocation(string location)
+        {
+            if (string.IsNullOrWhiteSpace(location))
+                return Json(new { machines = new List<object>() });
+
+            var machines = await _context.SVN_Downtime_SMEQs
+                .AsNoTracking()
+                .Where(e => e.location != null && e.location.Trim() == location.Trim())
+                .OrderBy(e => e.name)
+                .Select(e => new
+                {
+                    e.name,
+                    e.serialnumber,
+                    label = e.name + (!string.IsNullOrEmpty(e.serialnumber) ? $" - {e.serialnumber}" : "")
+                })
+                .ToListAsync();
+
+            return Json(new { machines });
+        }
+
 
         /* GET 停机历史记录 */
         [HttpGet]

@@ -681,36 +681,8 @@
                 </div>
             </div>
 
-              <!-- Operation dropdown -->
-            <div class="form-group">
-                <label class="form-label">生产线 / Operation</label>
-                <div class="select-arrow-wrapper">
-                    <select id="Operation" name="Operation" class="form-control" required>
-                        <option value="">-- 选择生产线 (Select Operation) --</option>
-                        @foreach (var op in ops)
-                        {
-                            var opDesc = op switch
-                            {
-                                "Sakura-WSS03-00300(SM)" => "Middle Panel Sakura Pink",
-                                "Sakura-WSS03-00301(SM)" => "Back Panel Sakura Pink",
-                                "Sakura-WSS03-00306(SM)" => "Middle Panel Sakura Green",
-                                "Sakura-WSS03-00307(SM)" => "Back Panel Sakura Green",
-                                "Sakura-WSS03-00303(SM)" => "Middle Panel Sakura Green",
-                                "Sakura-WSS03-00304(SM)" => "Back Panel Sakura Green",
-                                "Sakura-RM15A-1001NW(SM)" => "FG Sakura Pink",
-                                "Sakura-RM15A-1002NW(SM)" => "FG Sakura Green",
-                                "Sakura-RM15A-1000NW(SM)" => "FG Sakura Blue",
-                                _ => ""
-                            };
-                            var displayText = opDesc != "" ? $"{op} / {opDesc}" : op;
-                            <option value="@op">@displayText</option>
-                        }
-                    </select>
-                </div>
-            </div>
 
-
-            <!-- Location dropdown -->
+             <!-- Operation / Location dropdown -->
             <div class="form-group">
                 <label class="form-label">操作 / Location</label>
                 <input type="hidden" id="OperationValue" name="Location" />
@@ -752,9 +724,6 @@
                     </div>
                 </div>
             </div>
-
-           
-            
 
             <!-- Machine/Fixture dropdown -->
             <div class="form-group">
@@ -808,6 +777,35 @@
                 </div>
             </div>
 
+           
+
+            <!-- Production Line dropdown -->
+            <div class="form-group">
+                <label class="form-label">生产线 / Operation</label>
+                <div class="select-arrow-wrapper">
+                    <select id="Operation" name="Operation" class="form-control" required>
+                        <option value="">-- 选择生产线 (Select Operation) --</option>
+                        @foreach (var op in ops)
+                        {
+                            var opDesc = op switch
+                            {
+                                "Sakura-WSS03-00300(SM)" => "Middle Panel Sakura Pink",
+                                "Sakura-WSS03-00301(SM)" => "Back Panel Sakura Pink",
+                                "Sakura-WSS03-00306(SM)" => "Middle Panel Sakura Green",
+                                "Sakura-WSS03-00307(SM)" => "Back Panel Sakura Green",
+                                "Sakura-WSS03-00303(SM)" => "Middle Panel Sakura Green",
+                                "Sakura-WSS03-00304(SM)" => "Back Panel Sakura Green",
+                                "Sakura-RM15A-1001NW(SM)" => "FG Sakura Pink",
+                                "Sakura-RM15A-1002NW(SM)" => "FG Sakura Green",
+                                "Sakura-RM15A-1000NW(SM)" => "FG Sakura Blue",
+                                _ => ""
+                            };
+                            var displayText = opDesc != "" ? $"{op} / {opDesc}" : op;
+                            <option value="@op">@displayText</option>
+                        }
+                    </select>
+                </div>
+            </div>
 
             <!-- ISS code / Reason -->
             <div class="form-group">
@@ -1218,27 +1216,101 @@
     }
 
     function selectOpOption(opt) {
-        const value = opt.dataset.value || '';
-        const label = opt.dataset.label || '';
-        const isPlaceholder = opt.classList.contains('placeholder-opt');
+    const value = opt.dataset.value || '';
+    const label = opt.dataset.label || '';
+    const isPlaceholder = opt.classList.contains('placeholder-opt');
 
-        opValueInput.value = value;
+    opValueInput.value = value;
 
-        if (isPlaceholder || !value) {
-            opTriggerText.textContent = '-- 选择工序 (Select Operation) --';
-            opTriggerText.classList.remove('has-value');
-        } else {
-            opTriggerText.textContent = label;
-            opTriggerText.classList.add('has-value');
+    if (isPlaceholder || !value) {
+        opTriggerText.textContent = '-- 选择工序 (Select Location) --';
+        opTriggerText.classList.remove('has-value');
+    } else {
+        opTriggerText.textContent = label;
+        opTriggerText.classList.add('has-value');
+    }
+
+    opOptionList.querySelectorAll('.select-search-option').forEach(o =>
+        o.classList.toggle('selected', o === opt)
+    );
+
+    closeOpDropdown();
+    opTrigger.focus();
+
+    // ── AUTO-FILTER MACHINE DROPDOWN THEO LOCATION ──
+    if (value) {
+        filterMachinesByLocation(value);
+    } else {
+        resetMachineOptionsToAll();
+    }
+    }
+/* ============ Filter máy theo Location ============ */
+        async function filterMachinesByLocation(locationValue) {
+            try {
+                // Reset machine selection trước
+                resetMachineDropdown();
+
+                const url = `${pathBase}/Status/GetMachinesByLocation?location=${encodeURIComponent(locationValue)}`;
+                const res = await fetch(url);
+                if (!res.ok) return;
+                const json = await res.json();
+
+                // Rebuild machine option list
+                rebuildMachineOptions(json.machines || []);
+
+                if (json.machines && json.machines.length > 0) {
+                    showToast(`找到 ${json.machines.length} 台设备 (Found ${json.machines.length} machine(s))`, 'success', 1800);
+                } else {
+                    showToast('该位置暂无设备 (No machines found for this location)', 'error', 2200);
+                }
+            } catch (e) {
+                console.error('filterMachinesByLocation error:', e);
+            }
         }
 
-        opOptionList.querySelectorAll('.select-search-option').forEach(o =>
-            o.classList.toggle('selected', o === opt)
-        );
+        function rebuildMachineOptions(machines) {
+            // Giữ lại placeholder, xóa hết option cũ
+            const placeholder = machineOptionList.querySelector('.placeholder-opt');
+            machineOptionList.innerHTML = '';
+            
+            if (placeholder) {
+                machineOptionList.appendChild(placeholder);
+            } else {
+                const ph = document.createElement('div');
+                ph.className = 'select-search-option placeholder-opt';
+                ph.dataset.value = '';
+                ph.dataset.label = '';
+                ph.textContent = '-- 选择设备编号 (Select machine/fixture no.) --';
+                machineOptionList.appendChild(ph);
+            }
 
-        closeOpDropdown();
-        opTrigger.focus();
-    }
+            machines.forEach(m => {
+                const div = document.createElement('div');
+                div.className = 'select-search-option';
+                div.dataset.value = m.label;
+                div.dataset.label = m.label;
+                div.textContent = m.label;
+                machineOptionList.appendChild(div);
+            });
+        }
+
+        function resetMachineOptionsToAll() {
+            // Khôi phục lại toàn bộ danh sách máy ban đầu (reload từ ViewBag)
+            resetMachineDropdown();
+            
+            // Rebuild từ data gốc đã render sẵn trong HTML
+            const allOriginalOptions = @Html.Raw(
+                System.Text.Json.JsonSerializer.Serialize(
+                    (ViewBag.SMEQs as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>())
+                    .Select(e => new { 
+                        label = (string)e.name + (!string.IsNullOrEmpty((string)e.serialnumber) ? $" - {e.serialnumber}" : "") 
+                    })
+                )
+            );
+            rebuildMachineOptions(allOriginalOptions);
+        }
+
+
 
     function resetOpDropdown() {
         opValueInput.value = '';
@@ -1661,8 +1733,7 @@
                             machineCode : n.machineCode,
                             operation   : n.operation,
                             techName    : n.techName,
-
-                            message: n.body || `✅ 机器 ${n.machineCode}（${n.operation}）已维修完成。`,
+                            message     : n.body || `✅ Máy ${n.machineCode} (${n.operation}) đã được sửa xong.`,
                             datetime    : n.createdAt
                         });
                     } else if (n.notifType === 'TECH_RESPONSE') {
