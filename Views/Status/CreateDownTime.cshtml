@@ -681,48 +681,36 @@
                 </div>
             </div>
 
-            <!-- Machine/Fixture dropdown -->
+              <!-- Operation dropdown -->
             <div class="form-group">
-                <label class="form-label">设备、模治具编号 / Machine/Fixture no.</label>
-                <input type="hidden" id="MachineNo" name="MachineCode" />
-                <div class="select-search-wrapper">
-                    <div class="select-search-trigger" id="machineTrigger"
-                        tabindex="0"
-                        onclick="toggleMachineDropdown()"
-                        onkeydown="handleMachineTriggerKey(event)"
-                        role="combobox"
-                        aria-haspopup="listbox"
-                        aria-expanded="false"
-                        aria-controls="machineDropdown">
-                        <span class="select-search-trigger-text" id="machineTriggerText">
-                            -- 加载中... (Loading...) --
-                        </span>
-                    </div>
-                    <div class="select-search-dropdown" id="machineDropdown" role="listbox">
-                        <div class="select-search-box">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                                stroke="#8fa8c0" stroke-width="2.5"
-                                stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="11" cy="11" r="8"/>
-                                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                            </svg>
-                            <input type="text" id="machineSearchInput"
-                                placeholder="搜索设备... (Search machine...)"
-                                oninput="filterMachineOptions(this.value)"
-                                onkeydown="handleMachineSearchKey(event)"
-                                autocomplete="off"
-                                aria-label="Search machines" />
-                        </div>
-                        <div class="select-search-list" id="machineOptionList">
-                            <div class="select-search-option placeholder-opt" data-value="" data-label="">
-                                -- 选择设备编号 (Select machine/fixture no.) --
-                            </div>
-                        </div>
-                    </div>
+                <label class="form-label">生产线 / Operation</label>
+                <div class="select-arrow-wrapper">
+                    <select id="Operation" name="Operation" class="form-control" required>
+                        <option value="">-- 选择生产线 (Select Operation) --</option>
+                        @foreach (var op in ops)
+                        {
+                            var opDesc = op switch
+                            {
+                                "Sakura-WSS03-00300(SM)" => "Middle Panel Sakura Pink",
+                                "Sakura-WSS03-00301(SM)" => "Back Panel Sakura Pink",
+                                "Sakura-WSS03-00306(SM)" => "Middle Panel Sakura Green",
+                                "Sakura-WSS03-00307(SM)" => "Back Panel Sakura Green",
+                                "Sakura-WSS03-00303(SM)" => "Middle Panel Sakura Green",
+                                "Sakura-WSS03-00304(SM)" => "Back Panel Sakura Green",
+                                "Sakura-RM15A-1001NW(SM)" => "FG Sakura Pink",
+                                "Sakura-RM15A-1002NW(SM)" => "FG Sakura Green",
+                                "Sakura-RM15A-1000NW(SM)" => "FG Sakura Blue",
+                                _ => ""
+                            };
+                            var displayText = opDesc != "" ? $"{op} / {opDesc}" : op;
+                            <option value="@op">@displayText</option>
+                        }
+                    </select>
                 </div>
             </div>
 
-            <!-- Operation / Location dropdown -->
+
+            <!-- Location dropdown -->
             <div class="form-group">
                 <label class="form-label">操作 / Location</label>
                 <input type="hidden" id="OperationValue" name="Location" />
@@ -765,33 +753,61 @@
                 </div>
             </div>
 
-            <!-- Production Line dropdown -->
+           
+            
+
+            <!-- Machine/Fixture dropdown -->
             <div class="form-group">
-                <label class="form-label">生产线 / Operation</label>
-                <div class="select-arrow-wrapper">
-                    <select id="Operation" name="Operation" class="form-control" required>
-                        <option value="">-- 选择生产线 (Select Operation) --</option>
-                        @foreach (var op in ops)
-                        {
-                            var opDesc = op switch
+                <label class="form-label">设备、模治具编号 / Machine/Fixture no.</label>
+                <input type="hidden" id="MachineNo" name="MachineCode" />
+                <div class="select-search-wrapper">
+                    <div class="select-search-trigger" id="machineTrigger"
+                        tabindex="0"
+                        onclick="toggleMachineDropdown()"
+                        onkeydown="handleMachineTriggerKey(event)"
+                        role="combobox"
+                        aria-haspopup="listbox"
+                        aria-expanded="false"
+                        aria-controls="machineDropdown">
+                        <span class="select-search-trigger-text" id="machineTriggerText">
+                            -- 选择设备编号 (Select machine/fixture no.) --
+                        </span>
+                    </div>
+                    <div class="select-search-dropdown" id="machineDropdown" role="listbox">
+                        <div class="select-search-box">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                stroke="#8fa8c0" stroke-width="2.5"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"/>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                            </svg>
+                            <input type="text" id="machineSearchInput"
+                                placeholder="搜索设备... (Search machine...)"
+                                oninput="filterMachineOptions(this.value)"
+                                onkeydown="handleMachineSearchKey(event)"
+                                autocomplete="off"
+                                aria-label="Search machines" />
+                        </div>
+                        <div class="select-search-list" id="machineOptionList">
+                            <div class="select-search-option placeholder-opt" data-value="" data-label="">
+                                -- 选择设备编号 (Select machine/fixture no.) --
+                            </div>
+                            @{ var smeqs = (ViewBag.SMEQs as IEnumerable<dynamic>) ?? Enumerable.Empty<dynamic>(); }
+                            @foreach (var eq in smeqs)
                             {
-                                "Sakura-WSS03-00300(SM)" => "Middle Panel Sakura Pink",
-                                "Sakura-WSS03-00301(SM)" => "Back Panel Sakura Pink",
-                                "Sakura-WSS03-00306(SM)" => "Middle Panel Sakura Green",
-                                "Sakura-WSS03-00307(SM)" => "Back Panel Sakura Green",
-                                "Sakura-WSS03-00303(SM)" => "Middle Panel Sakura Green",
-                                "Sakura-WSS03-00304(SM)" => "Back Panel Sakura Green",
-                                "Sakura-RM15A-1001NW(SM)" => "FG Sakura Pink",
-                                "Sakura-RM15A-1002NW(SM)" => "FG Sakura Green",
-                                "Sakura-RM15A-1000NW(SM)" => "FG Sakura Blue",
-                                _ => ""
-                            };
-                            var displayText = opDesc != "" ? $"{op} / {opDesc}" : op;
-                            <option value="@op">@displayText</option>
-                        }
-                    </select>
+                                var serialPart = !string.IsNullOrEmpty((string)eq.serialnumber) ? $" - {eq.serialnumber}" : "";
+                                var label = $"{eq.name}{serialPart}";
+                                <div class="select-search-option"
+                                     data-value="@label"
+                                     data-label="@label">
+                                    @label
+                                </div>
+                            }
+                        </div>
+                    </div>
                 </div>
             </div>
+
 
             <!-- ISS code / Reason -->
             <div class="form-group">
@@ -827,8 +843,8 @@
                 <span asp-validation-for="Datetime" class="text-danger"></span>
             </div>
 
-            <!-- Estimated time (optional) -->
-            <div class="form-group">
+            <!-- Estimated time (optional) — hidden -->
+            <div class="form-group" style="display:none;">
                 <label class="form-label" for="EstimateTime">预计时间 (Estimated time) - 可选 (Optional)</label>
                 <input asp-for="EstimateTime" type="time" class="form-control" id="EstimateTime" name="EstimateTime"
                        step="60" placeholder="hh:mm" />
@@ -1645,7 +1661,8 @@
                             machineCode : n.machineCode,
                             operation   : n.operation,
                             techName    : n.techName,
-                            message     : n.body || `✅ Máy ${n.machineCode} (${n.operation}) đã được sửa xong.`,
+
+                            message: n.body || `✅ 机器 ${n.machineCode}（${n.operation}）已维修完成。`,
                             datetime    : n.createdAt
                         });
                     } else if (n.notifType === 'TECH_RESPONSE') {
@@ -2028,40 +2045,7 @@
         }
     });
 
-    /* ============ Load Machine/Fixture từ Odoo API ============ */
-    async function loadMachineOptions() {
-        machineTriggerText.textContent = '⏳ 加载中... (Loading...)';
-
-        try {
-            const res = await fetch(`${pathBase}/api/odoo/equipments/sm-eq`);
-            if (!res.ok) throw new Error('API error');
-
-            const data = await res.json();
-
-            machineOptionList.querySelectorAll('.select-search-option:not(.placeholder-opt)').forEach(o => o.remove());
-
-            data.records.forEach(eq => {
-                const serialPart = eq.serialNo ? ` - ${eq.serialNo}` : '';
-                const label = `${eq.name}${serialPart}`;
-
-                const opt = document.createElement('div');
-                opt.className = 'select-search-option';
-                opt.dataset.value = label;
-                opt.dataset.label = label;
-                opt.textContent = label;
-                machineOptionList.appendChild(opt);
-            });
-
-            machineTriggerText.textContent = '-- 选择设备编号 (Select machine/fixture no.) --';
-
-        } catch (err) {
-            console.error('Lỗi load machine:', err);
-            machineTriggerText.textContent = '⚠ Lỗi load dữ liệu';
-        }
-    }
-
     window.addEventListener('DOMContentLoaded', () => {
-        loadMachineOptions();
         machineTrigger?.focus();
         updateDatetimeRange();
         if (opEl?.value) onOperationChanged();

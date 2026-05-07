@@ -154,6 +154,15 @@ namespace MachineStatusUpdate.Controllers
 
             ViewBag.Operations = operation;
 
+            // 设备、模治具编号 / Machine/Fixture no. — từ bảng SVN_Downtime_SMEQ
+            var smeqs = await _context.SVN_Downtime_SMEQs
+                .AsNoTracking()
+                .OrderBy(e => e.name)
+                .Select(e => new { e.name, e.serialnumber })
+                .ToListAsync();
+
+            ViewBag.SMEQs = smeqs;
+
             return View("CreateDownTime");
         }
 
@@ -1041,25 +1050,32 @@ namespace MachineStatusUpdate.Controllers
                 {
                     var records = group.OrderBy(x => x.Datetime).ToList();
 
-                    for (int i = 0; i < records.Count - 1; i++)
-                    {
-                        var current = records[i];
-                        var next = records[i + 1];
+                    for (int i = 0; i < records.Count; i++)
+{
+    var current = records[i];
+    if (current.State?.Trim().ToUpper() != "STOP" || !current.Datetime.HasValue) continue;
 
-                        if (current.State?.Trim().ToUpper() == "STOP" &&
-                            next.State?.Trim().ToUpper() == "RUN" &&
-                            current.Datetime.HasValue &&
-                            next.Datetime.HasValue)
+                        for (int j = i + 1; j < records.Count; j++)
                         {
-                            var downtimeMinutes = (next.Datetime.Value - current.Datetime.Value).TotalMinutes;
-                            var dateKey = current.Datetime.Value.Date;
+                            var next = records[j];
+                            if (!next.Datetime.HasValue) continue;
+                            var nextState = next.State?.Trim().ToUpper();
 
-                            if (downtimeByDate.ContainsKey(dateKey))
-                                downtimeByDate[dateKey] = (downtimeByDate[dateKey].Minutes + downtimeMinutes,
-                                                           downtimeByDate[dateKey].Count + 1);
-                            else
-                                downtimeByDate[dateKey] = (downtimeMinutes, 1);
+                            if (nextState == "RUN")
+                            {
+                                var downtimeMinutes = (next.Datetime.Value - current.Datetime.Value).TotalMinutes;
+                                var dateKey = current.Datetime.Value.Date;
+
+                                if (downtimeByDate.ContainsKey(dateKey))
+                                    downtimeByDate[dateKey] = (downtimeByDate[dateKey].Minutes + downtimeMinutes,
+                                                               downtimeByDate[dateKey].Count + 1);
+                                else
+                                    downtimeByDate[dateKey] = (downtimeMinutes, 1);
+                                break;
+                            }
+                            else if (nextState == "STOP") break;
                         }
+    
                     }
                 }
 
@@ -1138,26 +1154,33 @@ namespace MachineStatusUpdate.Controllers
             foreach (var group in grouped)
             {
                 var records = group.OrderBy(x => x.Datetime).ToList();
-                for (int i = 0; i < records.Count - 1; i++)
-                {
-                    var current = records[i];
-                    var next = records[i + 1];
-                    if (current.State?.Trim().ToUpper() == "STOP" &&
-                        next.State?.Trim().ToUpper() == "RUN" &&
-                        current.Datetime.HasValue && next.Datetime.HasValue)
-                    {
-                        var downtimeMinutes = (next.Datetime.Value - current.Datetime.Value).TotalMinutes;
-                        // ✅ FIX: dùng tên _reason/_errorName để tránh conflict với parameter 'reason'
-                        var _reason = string.IsNullOrWhiteSpace(current.Reason) ? "N/A" : current.Reason.Trim();
-                        var _errorName = string.IsNullOrWhiteSpace(current.ErrorName) ? "未确定" : current.ErrorName.Trim();
+                for (int i = 0; i < records.Count; i++)
+{
+    var current = records[i];
+    if (current.State?.Trim().ToUpper() != "STOP" || !current.Datetime.HasValue) continue;
 
-                        downtimeRecords.Add(new DowntimeRecord
-                        {
-                            Operation = current.Operation.Trim(),
-                            ISS_Code = _reason,
-                            ErrorName = _errorName,
-                            DowntimeMinutes = downtimeMinutes
-                        });
+    for (int j = i + 1; j < records.Count; j++)
+    {
+        var next = records[j];
+        if (!next.Datetime.HasValue) continue;
+        var nextState = next.State?.Trim().ToUpper();
+
+        if (nextState == "RUN")
+        {
+            var downtimeMinutes = (next.Datetime.Value - current.Datetime.Value).TotalMinutes;
+            var _reason = string.IsNullOrWhiteSpace(current.Reason) ? "N/A" : current.Reason.Trim();
+            var _errorName = string.IsNullOrWhiteSpace(current.ErrorName) ? "未确定" : current.ErrorName.Trim();
+
+            downtimeRecords.Add(new DowntimeRecord
+            {
+                Operation = current.Operation.Trim(),
+                ISS_Code = _reason,
+                ErrorName = _errorName,
+                DowntimeMinutes = downtimeMinutes
+            });
+            break;
+        }
+        else if (nextState == "STOP") break;
                     }
                 }
             }
@@ -1306,25 +1329,31 @@ namespace MachineStatusUpdate.Controllers
             foreach (var group in grouped)
             {
                 var records = group.OrderBy(x => x.Datetime).ToList();
-                for (int i = 0; i < records.Count - 1; i++)
-                {
-                    var cur = records[i];
-                    var next = records[i + 1];
-                    if (cur.State?.Trim().ToUpper() == "STOP" &&
-                        next.State?.Trim().ToUpper() == "RUN" &&
-                        cur.Datetime.HasValue && next.Datetime.HasValue)
-                    {
-                        var mins = (next.Datetime.Value - cur.Datetime.Value).TotalMinutes;
-                        // ✅ FIX: dùng _opKey thay vì 'op' để tránh conflict với parameter 'operation'
-                        var _opKey = cur.Operation!.Trim();
-                        if (!downtimeByOp.ContainsKey(_opKey))
-                            downtimeByOp[_opKey] = new List<(double, string, string)>();
-                        downtimeByOp[_opKey].Add((
-                            mins,
-                            string.IsNullOrWhiteSpace(cur.Reason) ? "N/A" : cur.Reason.Trim(),
-                            // ✅ FIX: dùng cur.ErrorName (tên đúng trong anonymous type), không phải cur.ReasonName
-                            string.IsNullOrWhiteSpace(cur.ErrorName) ? "未确定" : cur.ErrorName.Trim()
-                        ));
+               for (int i = 0; i < records.Count; i++)
+{
+    var cur = records[i];
+    if (cur.State?.Trim().ToUpper() != "STOP" || !cur.Datetime.HasValue) continue;
+
+    for (int j = i + 1; j < records.Count; j++)
+    {
+        var next = records[j];
+        if (!next.Datetime.HasValue) continue;
+        var nextState = next.State?.Trim().ToUpper();
+
+        if (nextState == "RUN")
+        {
+            var mins = (next.Datetime.Value - cur.Datetime.Value).TotalMinutes;
+            var _opKey = cur.Operation!.Trim();
+            if (!downtimeByOp.ContainsKey(_opKey))
+                downtimeByOp[_opKey] = new List<(double, string, string)>();
+            downtimeByOp[_opKey].Add((
+                mins,
+                string.IsNullOrWhiteSpace(cur.Reason) ? "N/A" : cur.Reason.Trim(),
+                string.IsNullOrWhiteSpace(cur.ErrorName) ? "未确定" : cur.ErrorName.Trim()
+            ));
+            break;
+        }
+        else if (nextState == "STOP") break;
                     }
                 }
             }
@@ -1444,27 +1473,35 @@ namespace MachineStatusUpdate.Controllers
             foreach (var group in grouped)
             {
                 var records = group.OrderBy(x => x.Datetime).ToList();
-                for (int i = 0; i < records.Count - 1; i++)
-                {
-                    var cur = records[i];
-                    var next = records[i + 1];
-                    if (cur.State?.Trim().ToUpper() == "STOP" &&
-                        next.State?.Trim().ToUpper() == "RUN" &&
-                        cur.Datetime.HasValue && next.Datetime.HasValue)
-                    {
-                        var mins = (next.Datetime.Value - cur.Datetime.Value).TotalMinutes;
-                        var machineKey = cur.MachineCode!.Trim();
-                        if (!machineDowntimes.ContainsKey(machineKey))
-                            machineDowntimes[machineKey] = new();
+                for (int i = 0; i < records.Count; i++)
+{
+    var cur = records[i];
+    if (cur.State?.Trim().ToUpper() != "STOP" || !cur.Datetime.HasValue) continue;
 
-                        machineDowntimes[machineKey].Add((
-                            cur.Operation?.Trim() ?? "",
-                            mins,
-                            string.IsNullOrWhiteSpace(cur.Reason) ? "N/A" : cur.Reason.Trim(),
-                            // ✅ FIX KEY: đổi cur.ReasonName → cur.ErrorName (alias đúng trong anonymous type)
-                            string.IsNullOrWhiteSpace(cur.ErrorName) ? "未确定" : cur.ErrorName.Trim()
-                        ));
+                    for (int j = i + 1; j < records.Count; j++)
+                    {
+                        var next = records[j];
+                        if (!next.Datetime.HasValue) continue;
+                        var nextState = next.State?.Trim().ToUpper();
+
+                        if (nextState == "RUN")
+                        {
+                            var mins = (next.Datetime.Value - cur.Datetime.Value).TotalMinutes;
+                            var machineKey = cur.MachineCode!.Trim();
+                            if (!machineDowntimes.ContainsKey(machineKey))
+                                machineDowntimes[machineKey] = new();
+
+                            machineDowntimes[machineKey].Add((
+                                cur.Operation?.Trim() ?? "",
+                                mins,
+                                string.IsNullOrWhiteSpace(cur.Reason) ? "N/A" : cur.Reason.Trim(),
+                                string.IsNullOrWhiteSpace(cur.ErrorName) ? "未确定" : cur.ErrorName.Trim()
+                            ));
+                            break;
+                        }
+                        else if (nextState == "STOP") break;
                     }
+    
                 }
             }
 

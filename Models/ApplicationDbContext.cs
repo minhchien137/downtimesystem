@@ -9,16 +9,6 @@ namespace MachineStatusUpdate.Models
         {
         }
 
-        public DbSet<SVN_Equipment_Info_History> SVN_Equipment_Info_History { get; set; }
-
-        public DbSet<SVN_Equipment_Info_History_Test> SVN_Equipment_Info_History_Test { get; set; }
-
-        public DbSet<SVN_Equipment_Machine_Info> sVN_Equipment_Machine_Info { get; set; }
-
-        public DbSet<SVN_Equipment_Status_Update_Detail> SVN_Equipment_Status_Update_Detail { get; set; }
-
-        // public DbSet<SVN_Downtime_Info> SVN_Downtime_Infos { get; set; }
-
         public DbSet<SVN_Downtime_Info_Devel> SVN_Downtime_Infos_Devel { get; set; }
 
 
@@ -39,7 +29,8 @@ namespace MachineStatusUpdate.Models
 
         public DbSet<SM_Operation> SM_Operations { get; set; }
 
-        
+        public DbSet<SVN_Downtime_SMEQ> SVN_Downtime_SMEQs { get; set; }
+
         public DbSet<SVN_Defect_Cookie> SVN_Defect_Cookies { get; set; }
 
 

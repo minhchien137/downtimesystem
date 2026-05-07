@@ -484,7 +484,7 @@
                     <th>原因 (Reason)</th>
                     <th>影响 (Effect)</th>
                     <th>工位 (Station)</th>
-                    <th>预计时间 (Estimate)</th>
+                    <th style="display:none;">预计时间 (Estimate)</th>
                     <th>状态 (State)</th>
                     <th>动作 (Action)</th>
                     <th>图片 (Image)</th>
@@ -526,7 +526,7 @@
                                 else { <span>-</span> }
                             </td>
                             <td>@(item.Station ?? "-")</td>
-                            <td>@(string.IsNullOrEmpty(item.EstimateTime) ? "-" : item.EstimateTime)</td>
+                            <td style="display:none;">@(string.IsNullOrEmpty(item.EstimateTime) ? "-" : item.EstimateTime)</td>
                             <td><span class="badge @badgeCss">@item.State</span></td>
                             <td>@(item.Action ?? "-")</td>
                             <td>
@@ -603,8 +603,8 @@
                         <span class="card-value">@effLabel</span>
                     </div>
                     <div class="card-row">
-                        <span class="card-label">预计时间 (Estimate):</span>
-                        <span class="card-value">@(string.IsNullOrEmpty(item.EstimateTime) ? "-" : item.EstimateTime)</span>
+                        <span class="card-label" style="display:none;">预计时间 (Estimate):</span>
+                        <span class="card-value" style="display:none;">@(string.IsNullOrEmpty(item.EstimateTime) ? "-" : item.EstimateTime)</span>
                     </div>
                     @if (!string.IsNullOrEmpty(item.Description))
                     {
