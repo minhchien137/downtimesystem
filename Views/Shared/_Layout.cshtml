@@ -131,8 +131,34 @@
             font-size: 13px;
         }
         .bell-notif-item:last-child { border-bottom: none; }
-        .bell-notif-item.accept-item { border-left: 4px solid #22c55e; }
-        .bell-notif-item.wait-item   { border-left: 4px solid #f59e0b; }
+        .bell-notif-item.unread {
+            background: #fef08a !important;
+            border-bottom: 1px solid #fbbf24;
+            border-left-width: 5px !important;
+        }
+        .bell-notif-item.unread .bell-notif-title { font-weight: 700; }
+        .bell-notif-item.accept-item { border-left: 5px solid #22c55e; }
+        .bell-notif-item.wait-item   { border-left: 5px solid #f59e0b; }
+        .bell-mark-read-btn {
+            background: none;
+            border: 1px solid #d1d5db;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 700;
+            color: #6b7280;
+            padding: 2px 7px;
+            line-height: 1.4;
+            transition: all .15s;
+            white-space: nowrap;
+        }
+        .bell-mark-read-btn:hover { background: #dcfce7; border-color: #22c55e; color: #166534; }
+        .bell-notif-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 6px;
+        }
         .bell-notif-title { font-weight: 700; margin-bottom: 3px; }
         .bell-notif-title.accept { color: #166534; }
         .bell-notif-title.wait   { color: #92400e; }
@@ -361,7 +387,7 @@
             const type     = n.notifType;
             const isAccept = n.techAction === 'ACCEPT';
             const isWait   = n.techAction === 'WAIT';
-            const readStyle = isRead ? 'opacity:0.6;' : '';
+            const readStyle = isRead ? 'background:#ffffff;opacity:0.7;' : '';
 
             let borderColor = '#ef4444';
             let icon = '🛑';
@@ -379,15 +405,23 @@
                 : '';
 
             const unreadDot = !isRead
-                ? `<span style="display:inline-block;width:8px;height:8px;background:#ef4444;border-radius:50%;margin-left:6px;vertical-align:middle;"></span>`
+                ? `<span style="display:inline-block;padding:1px 7px;background:#ef4444;color:#fff;border-radius:99px;font-size:10px;font-weight:700;margin-left:6px;vertical-align:middle;">NEW</span>`
+                : '';
+
+            const markBtn = !isRead
+                ? `<button class="bell-mark-read-btn" title="标记已读 / Mark as read"
+                       onclick="event.stopPropagation(); markOneRead(${n.id}, this.closest('.bell-notif-item'))">✓</button>`
                 : '';
 
             return `
-                <div class="bell-notif-item" data-id="${n.id}"
-                     style="border-left:4px solid ${borderColor}; ${readStyle} cursor:pointer;"
-                     onclick="markOneRead(${n.id}, this)">
-                    <div class="bell-notif-title" style="color:#1e293b;">
-                        ${icon} ${n.title} ${sourceBadge} ${unreadDot}
+                <div class="bell-notif-item ${!isRead ? 'unread' : ''}" data-id="${n.id}" data-tech-response-id="${n.techResponseId || ''}" data-notif-id="${n.id}"
+                     style="border-left:5px solid ${borderColor}; ${readStyle} cursor:pointer;"
+                     onclick="handleBellItemClick(${n.id}, ${n.techResponseId || 0}, this)">
+                    <div class="bell-notif-header-row">
+                        <div class="bell-notif-title" style="color:#1e293b;flex:1;">
+                            ${icon} ${n.title} ${sourceBadge} ${unreadDot}
+                        </div>
+                        ${markBtn}
                     </div>
                     ${n.body ? `<div class="bell-notif-body">${n.body}</div>` : ''}
                     <div class="bell-notif-time">🕐 ${n.createdAt}${n.techName ? ` &nbsp;·&nbsp; 👤 ${n.techName}` : ''}</div>
@@ -401,6 +435,12 @@
                 const data = await res.json();
                 if (!data.success) return;
 
+                // DEBUG — mở Console (F12) để xem
+                if (data.notifications && data.notifications.length) {
+                    console.log('[Bell] Raw notifications:', JSON.stringify(data.notifications.slice(0,3)));
+                    console.log('[Bell] unreadCount:', data.unreadCount);
+                }
+
                 bellList.innerHTML = '';
 
                 if (!data.notifications || data.notifications.length === 0) {
@@ -409,6 +449,8 @@
                     data.notifications.forEach(n => {
                         bellList.insertAdjacentHTML('beforeend', renderItem(n));
                     });
+                    // Ẩn các item đã bị xóa bởi Tech từ notification list
+                    applyDismissedFilter();
                 }
 
                 const count = data.unreadCount || 0;
@@ -451,24 +493,30 @@
         }
 
         window.markOneRead = async function(id, el) {
-            if (el.style.opacity === '0.6') return;
+            if (!el) return;
+            // Optimistic UI update immediately
+            el.classList.remove('unread');
+            el.style.background = '#ffffff';
+            el.style.opacity = '0.7';
+            const dot = el.querySelector('.pn-unread-dot, span[style*="border-radius:50%"]');
+            if (dot) dot.remove();
+            const markBtn = el.querySelector('.bell-mark-read-btn');
+            if (markBtn) markBtn.remove();
+            const newBadge = el.querySelector('span[style*="background:#ef4444"]');
+            if (newBadge && newBadge.textContent.trim() === 'NEW') newBadge.remove();
             try {
                 await fetch(`${pathBase}/Status/MarkNotificationRead`, {
                     method : 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body   : JSON.stringify({ id })
                 });
-                el.style.opacity = '0.6';
-                const dot = el.querySelector('span[style*="border-radius:50%"]');
-                if (dot) dot.remove();
                 loadNotifications();
             } catch(e) {}
         };
 
         window.toggleBellDropdown = function(e) {
             e.stopPropagation();
-            const isOpen = bellDrop.classList.toggle('open');
-            if (isOpen) markAllRead();
+            bellDrop.classList.toggle('open');
         };
 
         async function markAllRead() {
@@ -543,6 +591,64 @@
                 setTimeout(startConn, 5000);
             }
         }
+
+        // ─── Lọc bỏ bell items đã bị Tech xóa (sync với localStorage) ──
+        function applyDismissedFilter() {
+            if (myRole !== 'Technical') return;
+            try {
+                const dismissed = JSON.parse(localStorage.getItem('dismissedTechCards_v1') || '[]');
+                if (!dismissed.length) return;
+                bellList.querySelectorAll('.bell-notif-item').forEach(el => {
+                    const rid = parseInt(el.dataset.techResponseId || '0');
+                    if (rid && dismissed.includes(rid)) el.remove();
+                });
+                // Ẩn badge nếu list trống
+                if (!bellList.querySelector('.bell-notif-item')) {
+                    bellBadge.style.display = 'none';
+                }
+            } catch(e) {}
+        }
+        // Expose để NotificationDashboard gọi khi xóa card
+        window.filterDismissedBellItems = applyDismissedFilter;
+
+        // ─── Click bell item → scroll đến card trong NotificationDashboard / ProductionNotifications ──
+        window.handleBellItemClick = function(id, techRespId, el) {
+            // Always mark as read on click for any role
+            markOneRead(id, el);
+
+            if (myRole === 'Technical' && techRespId) {
+                const onDashboard = window.location.pathname
+                    .toLowerCase().includes('notificationdashboard');
+                if (onDashboard) {
+                    bellDrop.classList.remove('open');
+                    if (typeof window.scrollToTechCard === 'function') {
+                        window.scrollToTechCard(techRespId);
+                    }
+                } else {
+                    window.location.href =
+                        `${pathBase}/Status/NotificationDashboard?highlight=${techRespId}`;
+                }
+                return;
+            }
+
+            if (myRole === 'Production') {
+                const onProdPage = window.location.pathname
+                    .toLowerCase().includes('productionnotifications');
+                bellDrop.classList.remove('open');
+                if (onProdPage) {
+                    if (typeof window.scrollToProdCard === 'function') {
+                        window.scrollToProdCard(id);
+                    }
+                } else {
+                    window.location.href =
+                        `${pathBase}/Status/ProductionNotifications?highlight=${id}`;
+                }
+                return;
+            }
+        };
+
+        // Expose để các trang con gọi được
+        window.loadNotifications = loadNotifications;
 
         loadNotifications();
         startConn();

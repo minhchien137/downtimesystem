@@ -63,6 +63,55 @@ namespace MachineStatusUpdate.Controllers
 
 
         // ============================================================
+        // GET: GetMachineRunStatus
+        // 检查设备是否处于STOP状态，以及技术员是否已接受（ACCEPT）
+        // Prod dùng để quyết định có cho phép bấm RUN không
+        // ============================================================
+        [HttpGet]
+        public async Task<IActionResult> GetMachineRunStatus(string machineNo)
+        {
+            if (string.IsNullOrWhiteSpace(machineNo))
+                return Json(new { isStop = false, techAccepted = false, currentState = "" });
+
+            // Lấy record mới nhất của máy này (không giới hạn ngày)
+            var latest = await _context.SVN_Downtime_Infos_Devel
+                .Where(x => x.MachineCode != null
+                            && x.MachineCode.Trim() == machineNo.Trim()
+                            && x.Datetime.HasValue)
+                .OrderByDescending(x => x.Datetime)
+                .Select(x => new { x.State })
+                .FirstOrDefaultAsync();
+
+            if (latest == null)
+                return Json(new { isStop = false, techAccepted = false, currentState = "" });
+
+            var stateNorm = (latest.State ?? "").Trim().ToUpper();
+
+            // Nếu bản ghi mới nhất là RUN → máy đã chạy rồi, không cần Run nữa
+            if (stateNorm == "RUN")
+                return Json(new { isStop = false, techAccepted = false, currentState = "RUN" });
+
+            // STOP hoặc RESPONSE đều là trạng thái "đang dừng / đang sửa"
+            bool isStop = stateNorm == "STOP" || stateNorm == "RESPONSE";
+
+            if (!isStop)
+                return Json(new { isStop = false, techAccepted = false, currentState = stateNorm });
+
+            // Tìm TechResponse mới nhất cho máy này (không giới hạn ngày)
+            var techResp = await _context.SVN_Downtime_TechResponses
+                .Where(x => x.MachineCode != null
+                            && x.MachineCode.Trim() == machineNo.Trim()
+                            && x.StopDatetime.HasValue)
+                .OrderByDescending(x => x.StopDatetime)
+                .Select(x => new { x.TechAction })
+                .FirstOrDefaultAsync();
+
+            bool techAccepted = techResp?.TechAction == "ACCEPT";
+
+            return Json(new { isStop = true, techAccepted, currentState = stateNorm });
+        }
+
+        // ============================================================
         // GET: GetLatestStopByMachine
         // 根据设备号返回当天最新的停机记录，用于按"运行"按钮时自动填充表单
         // ============================================================
@@ -81,6 +130,7 @@ namespace MachineStatusUpdate.Controllers
                 .OrderByDescending(x => x.Datetime)
                 .Select(x => new
                 {
+                    svnCode      = (x.EmployeeCode ?? "").Trim(),   // field name frontend đang dùng
                     employeeCode = (x.EmployeeCode ?? "").Trim(),
                     employeeName = (x.EmployeeName ?? "").Trim(),
                     operation    = (x.Operation    ?? "").Trim(),
@@ -853,18 +903,26 @@ namespace MachineStatusUpdate.Controllers
         }
 
 
-        // ── API: 技术员刷新页面时加载今天的通知列表 ──
+        // ── API: 技术员刷新页面时加载通知列表 (支持按日期筛选) ──
         [HttpGet]
-        public async Task<IActionResult> GetPendingNotifications()
+        public async Task<IActionResult> GetPendingNotifications(string date = "")
         {
-            var today = DateTime.Now.Date;
+            DateTime targetDate = DateTime.Now.Date;
+            if (!string.IsNullOrWhiteSpace(date) &&
+                DateTime.TryParseExact(date, "yyyy-MM-dd",
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.None, out var parsedDate))
+            {
+                targetDate = parsedDate.Date;
+            }
+
             var list = await _context.SVN_Downtime_TechResponses
                 .AsNoTracking()
-                .Where(x => x.StopDatetime.HasValue && x.StopDatetime.Value.Date == today)
+                .Where(x => x.StopDatetime.HasValue && x.StopDatetime.Value.Date == targetDate)
                 .OrderByDescending(x => x.StopDatetime)
                 .Select(x => new {
                     id               = x.Id,
-                    techResponseId   = x.Id,   // 别名，方便JS使用card.dataset.techResponseId
+                    techResponseId   = x.Id,
                     downtimeId       = x.DowntimeId,
                     machineCode      = x.MachineCode      ?? "",
                     operation        = x.Operation        ?? "",
@@ -878,15 +936,19 @@ namespace MachineStatusUpdate.Controllers
                     description      = x.Description      ?? "",
                     location         = x.Location         ?? "",
                     datetime         = x.StopDatetime.HasValue
-                                       ? x.StopDatetime.Value.ToString("dd/MM/yyyy HH:mm") : "",
-                    techAction       = x.TechAction   ?? "",  // "" | "ACCEPT" | "WAIT"
+                                    ? x.StopDatetime.Value.ToString("dd/MM/yyyy HH:mm") : "",
+                    techAction       = x.TechAction   ?? "",
                     techUsername     = x.TechUsername  ?? "",
                     respondDatetime  = x.RespondDatetime.HasValue
-                                       ? x.RespondDatetime.Value.ToString("dd/MM/yyyy HH:mm") : "",
+                                    ? x.RespondDatetime.Value.ToString("dd/MM/yyyy HH:mm") : "",
                     fixComplete      = x.TechAction != null && x.TechAction != "" &&
-                                       // 检查是否已为此停机记录发送过FIX_COMPLETE通知
-                                       _context.SVN_Notifications
-                                           .Any(n => n.TechResponseId == x.Id && n.NotifType == "FIX_COMPLETE")
+                                    _context.SVN_Notifications
+                                        .Any(n => n.TechResponseId == x.Id && n.NotifType == "FIX_COMPLETE"),
+                    // ← THÊM DÒNG NÀY:
+                    prodRun          = _context.SVN_Downtime_Infos_Devel
+                                        .Any(r => r.MachineCode == x.MachineCode
+                                                && r.State == "RUN"
+                                                && r.Datetime > x.StopDatetime)
                 })
                 .ToListAsync();
 
@@ -2145,6 +2207,51 @@ namespace MachineStatusUpdate.Controllers
             return Json(new { success = true });
         }
 
+        // Thêm vào StatusController.cs, cạnh MarkNotificationRead:
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> DeleteMyNotification([FromBody] MarkReadDto dto)
+        {
+            var username = HttpContext.Session.GetString("UserName") ?? "";
+            if (string.IsNullOrEmpty(username)) return Json(new { success = false });
+
+            var notif = await _context.SVN_Notifications.FindAsync(dto.Id);
+            if (notif == null) return Json(new { success = false, message = "未找到通知" });
+
+            // Chỉ cho xóa notification của chính mình
+            if (notif.RecipientUsername != username)
+                return Json(new { success = false, message = "无权限删除" });
+
+            _context.SVN_Notifications.Remove(notif);
+            await _context.SaveChangesAsync();
+            return Json(new { success = true });
+        }
+
+        // ── POST /Status/DeleteTechNotification ───────────────────────────────
+        // Dành cho Tech: xóa notification theo TechResponseId (vì recipient = "ALL_TECH")
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> DeleteTechNotification([FromBody] DeleteTechNotifDto dto)
+        {
+            var username = HttpContext.Session.GetString("UserName") ?? "";
+            var role     = HttpContext.Session.GetString("UserRole") ?? "";
+            if (string.IsNullOrEmpty(username) || role != "Technical")
+                return Json(new { success = false, message = "无权限" });
+
+            // Xóa tất cả notification liên quan đến TechResponseId này mà Tech nhận được
+            var notifs = await _context.SVN_Notifications
+                .Where(n => n.TechResponseId == dto.TechResponseId
+                         && (n.RecipientUsername == "ALL_TECH" || n.RecipientUsername == username))
+                .ToListAsync();
+
+            if (!notifs.Any())
+                return Json(new { success = false, message = "未找到通知" });
+
+            _context.SVN_Notifications.RemoveRange(notifs);
+            await _context.SaveChangesAsync();
+            return Json(new { success = true, deletedCount = notifs.Count });
+        }
+
 
         // ── POST /Status/MarkAllNotificationsRead ─────────────────────────────
         // 将当前用户的所有通知标记为已读
@@ -2183,6 +2290,11 @@ namespace MachineStatusUpdate.Controllers
         public class MarkReadDto
         {
             public int Id { get; set; }
+        }
+
+        public class DeleteTechNotifDto
+        {
+            public int TechResponseId { get; set; }
         }
 
 

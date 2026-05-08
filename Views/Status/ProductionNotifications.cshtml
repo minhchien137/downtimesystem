@@ -90,7 +90,38 @@
         transition: box-shadow .2s;
     }
     .pn-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.08); }
-    .pn-card.unread { box-shadow: 0 0 0 2px rgba(13,110,253,.15), 0 2px 8px rgba(0,0,0,.04); }
+    .pn-card.unread {
+        background: #fef9c3 !important;
+        border-left-width: 6px !important;
+        box-shadow: 0 0 0 2px rgba(251,191,36,.35), 0 2px 8px rgba(0,0,0,.06);
+    }
+
+    /* Mark-read button on each card */
+    .pn-mark-read-btn {
+        background: none;
+        border: 1.5px solid #d1d5db;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 11px;
+        font-weight: 700;
+        color: #6b7280;
+        padding: 3px 9px;
+        transition: all .15s;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+    .pn-mark-read-btn:hover { background: #dcfce7; border-color: #22c55e; color: #166534; }
+
+    /* Highlight animation khi navigate từ bell */
+    @@keyframes pnHighlight {
+        0%   { box-shadow: 0 0 0 4px rgba(59,130,246,.6), 0 4px 20px rgba(59,130,246,.3); }
+        70%  { box-shadow: 0 0 0 4px rgba(59,130,246,.6), 0 4px 20px rgba(59,130,246,.3); }
+        100% { box-shadow: 0 2px 8px rgba(0,0,0,.04); }
+    }
+    .pn-card.highlighted {
+        animation: pnHighlight 2.5s ease forwards;
+        outline: 2px solid #3b82f6;
+    }
 
     .pn-card.type-accept   { border-left-color: #22c55e; }
     .pn-card.type-wait     { border-left-color: #f59e0b; }
@@ -227,9 +258,61 @@
     }
     .pn-pagesize select:focus { border-color: #0d6efd; }
 
+    /* Delete button */
+    .pn-delete-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: #d1d5db;
+        font-size: 16px;
+        line-height: 1;
+        padding: 2px 5px;
+        border-radius: 5px;
+        transition: color .15s, background .15s;
+        flex-shrink: 0;
+    }
+    .pn-delete-btn:hover { color: #ef4444; background: #fee2e2; }
+
+    /* Date filter bar */
+    .pn-date-filter {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-bottom: 14px;
+        padding: 12px 16px;
+        background: #fff;
+        border: 1.5px solid var(--border);
+        border-radius: 10px;
+    }
+    .pn-date-filter label { font-size: 13px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+    .pn-date-filter input[type="date"] {
+        border: 1.5px solid var(--border);
+        border-radius: 8px;
+        padding: 6px 10px;
+        font-size: 13px;
+        color: var(--text);
+        outline: none;
+        cursor: pointer;
+    }
+    .pn-date-filter input[type="date"]:focus { border-color: #0d6efd; }
+    .pn-filter-btn {
+        padding: 7px 16px;
+        border-radius: 8px;
+        border: none;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: filter .15s;
+    }
+    .pn-filter-btn:hover { filter: brightness(1.08); }
+    .pn-filter-btn.apply { background: #0d6efd; color: #fff; }
+    .pn-filter-btn.clear { background: #f3f4f6; color: #374151; border: 1.5px solid var(--border); }
+
     @@media (max-width: 600px) {
         .pn-summary { grid-template-columns: 1fr 1fr; }
         .pn-pagination-wrap { flex-direction: column; align-items: flex-start; }
+        .pn-date-filter { flex-direction: column; align-items: flex-start; }
     }
 </style>
 
@@ -284,6 +367,17 @@
         </div>
     </div>
 
+    <!-- Date filter bar -->
+    <div class="pn-date-filter">
+        <label>📅 日期筛选 / Date:</label>
+        <input type="date" id="filterFrom">
+        <span style="color:#6b7280;font-size:13px;">—</span>
+        <input type="date" id="filterTo">
+        <button class="pn-filter-btn apply" onclick="applyDateFilter()">🔍 筛选</button>
+        <button class="pn-filter-btn clear" onclick="clearDateFilter()">✕ 清除</button>
+        <span id="dateFilterInfo" style="font-size:12px;color:#6b7280;margin-left:4px;"></span>
+    </div>
+
     <!-- Filter tabs -->
     <div class="pn-tabs">
         <button class="pn-tab active" onclick="setFilter('ALL', this)">全部 All (@total)</button>
@@ -336,15 +430,17 @@
                                   : isWait   ? "WAIT"
                                   : "OTHER";
 
-                <div class="pn-card @typeClass @(!n.IsRead ? "unread" : "")" data-filter="@dataFilter">
+                <div class="pn-card @typeClass @(!n.IsRead ? "unread" : "")" data-filter="@dataFilter" data-date="@n.CreatedAt.ToString("yyyy-MM-dd")" data-id="@n.Id" id="pn-card-@n.Id">
                     <div class="pn-card-top">
                         <span class="pn-badge @badgeClass">@icon</span>
                         <div style="display:flex;align-items:center;gap:8px;">
                             @if (!n.IsRead)
                             {
+                                <button class="pn-mark-read-btn" onclick="markProdCardRead(this, @n.Id)" title="标记已读 / Mark as read">✓ 已读</button>
                                 <span class="pn-unread-dot" title="未读"></span>
                             }
                             <span class="pn-time">🕐 @n.CreatedAt.ToString("HH:mm")</span>
+                            <button class="pn-delete-btn" onclick="deleteNotif(this, @n.Id)" title="删除此通知">🗑</button>
                         </div>
                     </div>
                     <div class="pn-title">@n.Title</div>
@@ -500,7 +596,134 @@ if (typeof connection !== 'undefined') {
     });
 }
 
-// ════ Pagination (giữ nguyên) ════
+// ════ Xóa thông báo ════
+async function deleteNotif(btn, id) {
+    if (!confirm('确认删除此通知？\nDelete this notification?')) return;
+    btn.disabled = true;
+    btn.textContent = '…';
+    try {
+        const res  = await fetch('/downtime/Status/DeleteMyNotification', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ id })
+        });
+        const json = await res.json();
+        if (json.success) {
+            const card = btn.closest('.pn-card');
+            card.style.transition = 'opacity .2s, transform .2s';
+            card.style.opacity    = '0';
+            card.style.transform  = 'translateX(30px)';
+            // Sync bell ngay lập tức
+            if (typeof window.loadNotifications === 'function') window.loadNotifications();
+            setTimeout(() => {
+                card.remove();
+                if (!document.querySelector('#pnList .pn-card')) {
+                    document.getElementById('pnList').innerHTML =
+                        `<div class="pn-empty"><span class="empty-icon">📭</span>暂无通知。</div>`;
+                }
+                if (typeof window._pnRender === 'function') window._pnRender();
+            }, 220);
+        } else {
+            btn.disabled = false;
+            btn.textContent = '🗑';
+            alert(json.message || '删除失败 / Delete failed');
+        }
+    } catch(e) {
+        btn.disabled = false;
+        btn.textContent = '🗑';
+        alert('删除失败 / Delete failed');
+    }
+}
+
+// ════ Date filter ════
+function applyDateFilter() {
+    const from = document.getElementById('filterFrom').value; // "yyyy-MM-dd"
+    const to   = document.getElementById('filterTo').value;
+    const info = document.getElementById('dateFilterInfo');
+    let shown = 0, hidden = 0;
+
+    document.querySelectorAll('#pnList .pn-card').forEach(card => {
+        const d = card.dataset.date || '';
+        let visible = true;
+        if (from && d < from) visible = false;
+        if (to   && d > to)   visible = false;
+        card.dataset.dateHidden = visible ? '0' : '1';
+        // chỉ ẩn nếu đang display != none từ filter tab
+        if (!visible) { card.style.display = 'none'; hidden++; }
+        else shown++;
+    });
+
+    if (from || to) {
+        info.textContent = `已筛选: 显示 ${shown} 条，隐藏 ${hidden} 条`;
+    } else {
+        info.textContent = '';
+    }
+}
+
+function clearDateFilter() {
+    document.getElementById('filterFrom').value = '';
+    document.getElementById('filterTo').value   = '';
+    document.getElementById('dateFilterInfo').textContent = '';
+    document.querySelectorAll('#pnList .pn-card').forEach(c => {
+        c.dataset.dateHidden = '0';
+        // Cho pagination tự xử lý display — chỉ bỏ force-hide
+        c.style.display = '';
+    });
+    // Re-trigger pagination render
+    if (typeof window._pnRender === 'function') window._pnRender();
+}
+
+// ════ Mark single prod card as read ════
+async function markProdCardRead(btn, id) {
+    try {
+        await fetch('/Status/MarkNotificationRead', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ id })
+        });
+    } catch(e) {}
+    const card = btn.closest('.pn-card');
+    card.classList.remove('unread');
+    // Remove dot and button
+    const dot = card.querySelector('.pn-unread-dot');
+    if (dot) dot.remove();
+    btn.remove();
+    // Reload bell badge in layout
+    if (typeof window.loadNotifications === 'function') window.loadNotifications();
+}
+
+// ════ Scroll & highlight card từ bell click ════
+window.scrollToProdCard = function(id) {
+    const card = document.getElementById('pn-card-' + id);
+    if (!card) return;
+    // Nếu card đang ẩn (pagination), đổi về trang có card đó
+    if (card.style.display === 'none') {
+        // Bỏ filter, show all rồi render lại
+        window.setFilter('ALL', document.querySelector('.pn-tab'));
+        if (typeof window._pnRender === 'function') window._pnRender();
+    }
+    setTimeout(() => {
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        card.classList.add('highlighted');
+        setTimeout(() => card.classList.remove('highlighted'), 3000);
+    }, 150);
+};
+
+// ════ Xử lý ?highlight=<id> khi navigate từ bell ════
+(function() {
+    const params = new URLSearchParams(window.location.search);
+    const hid = params.get('highlight');
+    if (hid) {
+        // Đợi render xong rồi scroll
+        setTimeout(() => window.scrollToProdCard(parseInt(hid)), 400);
+        // Clean URL
+        const url = new URL(window.location.href);
+        url.searchParams.delete('highlight');
+        history.replaceState(null, '', url.toString());
+    }
+})();
+
+
 (function () {
     // ── State ──
     let currentFilter = 'ALL';
@@ -514,7 +737,8 @@ if (typeof connection !== 'undefined') {
 
     function getVisibleCards() {
         return getAllCards().filter(c =>
-            currentFilter === 'ALL' || c.dataset.filter === currentFilter
+            (currentFilter === 'ALL' || c.dataset.filter === currentFilter)
+            && c.dataset.dateHidden !== '1'
         );
     }
 
@@ -616,6 +840,7 @@ if (typeof connection !== 'undefined') {
     }
 
     // ── Init ──
+    window._pnRender = render;
     render();
 })();
 

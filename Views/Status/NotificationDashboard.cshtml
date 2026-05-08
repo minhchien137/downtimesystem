@@ -489,21 +489,51 @@
         word-break: break-word;
     }
 
-    /* Dismiss button */
+    /* Dismiss / Delete button */
     .notif-dismiss {
         position: absolute;
         top: 10px;
         right: 12px;
         background: transparent;
         border: none;
-        font-size: 18px;
+        font-size: 16px;
         color: var(--muted);
         cursor: pointer;
-        padding: 0 4px;
+        padding: 2px 5px;
         line-height: 1;
+        border-radius: 6px;
+        transition: all .15s;
     }
 
-    .notif-dismiss:hover { color: var(--text); }
+    .notif-dismiss:hover { color: #ef4444; background: #fee2e2; }
+
+    /* Date filter in toolbar */
+    .notif-date-filter {
+        border: 1.5px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 7px 10px;
+        font-size: 13px;
+        outline: none;
+        cursor: pointer;
+        font-family: inherit;
+        color: #374151;
+        transition: border-color .18s;
+    }
+    .notif-date-filter:focus { border-color: #ef4444; }
+
+    .btn-today {
+        background: #eff6ff;
+        color: #1d4ed8;
+        border: 1.5px solid #bfdbfe;
+        border-radius: 8px;
+        padding: 7px 12px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all .15s;
+        white-space: nowrap;
+    }
+    .btn-today:hover { background: #dbeafe; }
 
     /* Audio permission banner */
     .audio-banner {
@@ -887,6 +917,8 @@
         <!-- Toolbar -->
         <div class="toolbar">
             <div class="toolbar-title">📬 通知列表</div>
+            <input type="date" id="notifDateFilter" class="notif-date-filter" onchange="reloadByDate()" title="筛选日期">
+            <button class="btn-today" onclick="setToday()">📅 今天</button>
             <button class="btn-sound" id="btnSound" onclick="toggleSound()">🔔 声音: 开</button>
             <button class="btn-clear" onclick="clearAll()">🗑 清空已完成</button>
         </div>
@@ -1270,13 +1302,14 @@ function renderStopCard(data, prepend = true) {
     // Nếu đã có techAction (load từ DB), render ngay trạng thái đã respond
     const alreadyResponded = data.techAction && data.techAction !== '';
     const actionsHtml = alreadyResponded
-        ? buildRespondedBadge(data.techAction, data.techUsername, data.respondDatetime, !!data.fixComplete, responseTimeStr)
+        ? buildRespondedBadge(data.techAction, data.techUsername, data.respondDatetime, !!data.fixComplete, responseTimeStr, !!data.prodRun)
         : `<div style="display:flex;gap:10px;flex-wrap:wrap;">
      <button class="btn-accept" onclick="respondToOperator(this,'ACCEPT')">✅ 接受 — 正在前往维修</button>
      <button class="btn-reject" onclick="openRejectModal(this)">❌ 拒绝 / Reject</button>
    </div>`;
 
     card.innerHTML = `
+        <button class="notif-dismiss" onclick="deleteCard(this)" title="删除通知 / Delete">🗑</button>
         <div class="notif-top">
             <span class="notif-badge badge-stop">🛑 停机 / 呼叫</span>
             <span class="notif-time">${data.datetime || new Date().toLocaleString('zh-CN')}</span>
@@ -1317,7 +1350,7 @@ function renderStopCard(data, prepend = true) {
     else card.classList.remove('new-card');
 }
 
-function buildRespondedBadge(action, techUser, respondTime, fixComplete = false, responseTimeStr = null) {
+function buildRespondedBadge(action, techUser, respondTime, fixComplete = false, responseTimeStr = null, prodRun = false) {
     // ── REJECT ──
     if (action === 'REJECT') {
         return `<span class="responded-badge rejected">❌ 已拒绝${techUser ? '，由 ' + techUser : ''}${respondTime ? ' · ' + respondTime : ''}</span>`;
@@ -1328,9 +1361,14 @@ function buildRespondedBadge(action, techUser, respondTime, fixComplete = false,
     const respTimeBadge = responseTimeStr
         ? `<span class="response-time-badge">⚡ 响应时间: ${responseTimeStr}</span>`
         : '';
-    const responseBtn = fixComplete
-        ? `<span class="responded-badge fix-done">🔧 已发送修复完成通知</span>`
-        : `<button class="btn-fix-complete" onclick="techFixComplete(this)">🔧 响应 — 已修复完成</button>`;
+    let responseBtn;
+    if (fixComplete) {
+        responseBtn = `<span class="responded-badge fix-done">🔧 已发送修复完成通知</span>`;
+    } else if (prodRun) {
+        responseBtn = `<span class="responded-badge" style="background:#dbeafe;color:#1e40af;">▶ 生产已Run — 无需操作</span>`;
+    } else {
+        responseBtn = `<button class="btn-fix-complete" onclick="techFixComplete(this)">🔧 响应 — 已修复完成</button>`;
+    }
 
     return `<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">${badge}${respTimeBadge}${responseBtn}</div>`;
 }
@@ -1549,7 +1587,7 @@ function renderRunCard(data) {
     const card = document.createElement('div');
     card.className = 'notif-card run-card';
     card.innerHTML = `
-        <button class="notif-dismiss" onclick="dismissCard(this)" title="关闭">×</button>
+        <button class="notif-dismiss" onclick="deleteCard(this)" title="删除通知 / Delete">🗑</button>
         <div class="notif-top">
             <span class="notif-badge badge-run">▶ 恢复运行</span>
             <span class="notif-time">${data.datetime || new Date().toLocaleString('zh-CN')}</span>
@@ -1562,19 +1600,83 @@ function renderRunCard(data) {
     notifList.insertBefore(card, notifList.firstChild);
 }
 
-/* ===== dismissCard — chỉ cho dismiss card đã responded ===== */
-function dismissCard(btn) {
-    const card = btn.closest('.notif-card');
-    const badge = card.querySelector('.responded-badge');
-    if (!badge) {
-        // Chưa respond → không cho đóng, nhắc Tech xử lý trước
-        card.style.outline = '2px solid #ef4444';
-        setTimeout(() => card.style.outline = '', 1200);
-        return;
-    }
-    card.remove();
-    if (notifList.querySelectorAll('.notif-card').length === 0) showEmptyState();
+/* ===== deleteCard — xóa card khỏi DOM + lưu vào localStorage ===== */
+const DISMISSED_KEY = 'dismissedTechCards_v1';
+
+function getDismissedIds() {
+    try { return JSON.parse(localStorage.getItem(DISMISSED_KEY) || '[]'); } catch { return []; }
 }
+
+function saveDismissedId(id) {
+    const ids = getDismissedIds();
+    const numId = parseInt(id);
+    if (numId && !ids.includes(numId)) {
+        ids.push(numId);
+        localStorage.setItem(DISMISSED_KEY, JSON.stringify(ids));
+    }
+}
+
+async function deleteCard(btn) {
+    const card = btn.closest('.notif-card');
+    if (!card) return;
+
+    const techRespId = parseInt(card.dataset.techResponseId || '0');
+    const isPending  = !card.querySelector('.responded-badge, .fix-done') && !card.classList.contains('run-card');
+
+    if (isPending) {
+        const ok = confirm('⚠️ 此通知尚未处理！确定要删除吗？\nThis notification is not handled yet. Delete anyway?');
+        if (!ok) return;
+    }
+
+    // Xóa card khỏi DOM ngay (optimistic UI)
+    card.style.transition = 'opacity .2s, transform .2s';
+    card.style.opacity    = '0';
+    card.style.transform  = 'translateX(30px)';
+    setTimeout(() => {
+        card.remove();
+        if (notifList.querySelectorAll('.notif-card').length === 0) showEmptyState();
+    }, 200);
+
+    // Cập nhật counters
+    if (isPending) cntStop  = Math.max(0, cntStop - 1);
+    else if (card.classList.contains('run-card')) cntRun = Math.max(0, cntRun - 1);
+    cntTotal = Math.max(0, cntTotal - 1);
+    updateCounters();
+
+    // Lưu localStorage để filter khi reload (giữ lại để tương thích)
+    if (techRespId) saveDismissedId(techRespId);
+
+    // Gọi API xóa notification khỏi SVN_Notifications (server-side)
+   // Gọi API xóa notification khỏi SVN_Notifications (server-side)
+if (techRespId) {
+    try {
+        await fetch(`${pathBase}/Status/DeleteTechNotification`, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ techResponseId: techRespId })
+        });
+    } catch(e) { /* silent fail */ }
+}
+
+    // ── Xóa luôn bell items liên quan đến techRespId này ──
+    if (techRespId) {
+        document.querySelectorAll(`#bellList .bell-notif-item[data-tech-response-id="${techRespId}"]`)
+            .forEach(el => el.remove());
+        // Nếu bell list trống → hiện empty state
+        if (!document.querySelector('#bellList .bell-notif-item')) {
+            const bellList = document.getElementById('bellList');
+            if (bellList) bellList.innerHTML = '<div class="bell-drop-empty" id="bellEmpty">暂无通知。</div>';
+            const bellBadge = document.getElementById('bellBadge');
+            if (bellBadge) bellBadge.style.display = 'none';
+        }
+    }
+
+    // Reload bell để badge count khớp
+    if (typeof window.loadNotifications === 'function') window.loadNotifications();
+}
+
+/* ===== dismissCard (legacy — giữ lại để tránh lỗi nếu code cũ gọi) ===== */
+function dismissCard(btn) { deleteCard(btn); }
 
 function showEmptyState() {
     const empty = document.createElement('div');
@@ -1585,10 +1687,10 @@ function showEmptyState() {
 }
 
 function clearAll() {
-    // Chỉ xóa các card đã responded
     notifList.querySelectorAll('.notif-card').forEach(card => {
-        const badge = card.querySelector('.responded-badge');
-        if (badge) card.remove();
+        const isDone = card.querySelector('.responded-badge, .fix-done')
+                       || card.classList.contains('run-card');
+        if (isDone) card.remove();
     });
     if (notifList.querySelectorAll('.notif-card').length === 0) {
         notifList.innerHTML = '';
@@ -1641,6 +1743,22 @@ connection.on("ReceiveRunNotification", (data) => {
     renderRunCard(data);
     playRunSound();
     showBrowserNotif(`▶ 恢复运行: ${data.machineCode}`, `设备已重新运行\n${data.operation}`);
+
+    // Nếu Prod đã nhấn Run → disable nút "已修复完成" trên card tương ứng
+    if (data.machineCode) {
+        document.querySelectorAll('.notif-card').forEach(card => {
+            if ((card.dataset.machineCode || '').trim() === data.machineCode.trim()) {
+                const fixBtn = card.querySelector('.btn-fix-complete');
+                if (fixBtn) {
+                    const badge = document.createElement('span');
+                    badge.className = 'responded-badge';
+                    badge.style.cssText = 'background:#dbeafe;color:#1e40af;';
+                    badge.textContent = '▶ 生产已Run — 无需操作';
+                    fixBtn.replaceWith(badge);
+                }
+            }
+        });
+    }
 });
 
 // Connection state handlers
@@ -1678,11 +1796,22 @@ async function startConnection() {
 /* ===== Load thông báo từ DB khi Tech vào/refresh trang ===== */
 async function loadPendingFromDB() {
     try {
-        const res  = await fetch(`${pathBase}/Status/GetPendingNotifications`);
-        if (!res.ok) return;
-        const list = await res.json();
+        const dateVal = document.getElementById('notifDateFilter')?.value || '';
+        const url = dateVal
+            ? `${pathBase}/Status/GetPendingNotifications?date=${encodeURIComponent(dateVal)}`
+            : `${pathBase}/Status/GetPendingNotifications`;
 
-        if (!list || list.length === 0) return;
+        const res  = await fetch(url);
+        if (!res.ok) return;
+        const rawList = await res.json();
+
+        if (!rawList || rawList.length === 0) return;
+
+        // Lọc bỏ các card đã bị xóa (lưu trong localStorage)
+        const dismissed = getDismissedIds();
+        const list = rawList.filter(item => !dismissed.includes(item.id));
+
+        if (list.length === 0) return;
 
         // Xóa empty state nếu có
         const empty = document.getElementById('emptyState');
@@ -1711,9 +1840,75 @@ async function loadPendingFromDB() {
     }
 }
 
+/* ===== scrollToTechCard — được gọi từ _Layout khi click bell item ===== */
+window.scrollToTechCard = function(techRespId) {
+    if (!techRespId) return;
+
+    // Chuyển sang tab 通知列表 nếu đang ở tab khác
+    const tabNotif = document.getElementById('tabNotif');
+    const tabEdit  = document.getElementById('tabEdit');
+    if (tabNotif && !tabNotif.classList.contains('active')) {
+        tabNotif.classList.add('active');
+        if (tabEdit) tabEdit.classList.remove('active');
+        document.querySelectorAll('.tech-tab-btn').forEach(b => b.classList.remove('active'));
+        const firstBtn = document.querySelector('.tech-tab-btn');
+        if (firstBtn) firstBtn.classList.add('active');
+    }
+
+    // Tìm card theo data-tech-response-id
+    const card = document.querySelector(`.notif-card[data-tech-response-id="${techRespId}"]`);
+    if (!card) return;
+
+    // Scroll đến card
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    // Highlight card bằng blue glow 2.5 giây
+    card.style.transition = 'box-shadow .25s';
+    card.style.boxShadow  = '0 0 0 3px #3b82f6, 0 6px 24px rgba(59,130,246,.4)';
+    setTimeout(() => { card.style.boxShadow = ''; }, 2500);
+};
+
+/* ===== Date filter helpers ===== */
+function setToday() {
+    const df = document.getElementById('notifDateFilter');
+    if (df) {
+        df.value = new Date().toISOString().split('T')[0];
+        reloadByDate();
+    }
+}
+
+async function reloadByDate() {
+    // Clear list và reset counters
+    notifList.innerHTML = '';
+    cntStop = cntRun = cntTotal = cntAccept = 0;
+    updateCounters();
+    emptyState = null;
+    // Hiện empty state tạm
+    const tmp = document.createElement('div');
+    tmp.className = 'notif-empty';
+    tmp.id = 'emptyState';
+    tmp.innerHTML = `<span class="empty-icon">⏳</span>正在加载...`;
+    notifList.appendChild(tmp);
+    emptyState = tmp;
+    await loadPendingFromDB();
+}
+
 /* ===== Init ===== */
 document.addEventListener('DOMContentLoaded', () => {
-    loadPendingFromDB();   // ← Load từ DB ngay khi trang mở
+    // Set default date = today
+    const df = document.getElementById('notifDateFilter');
+    if (df) df.value = new Date().toISOString().split('T')[0];
+
+    loadPendingFromDB().then(() => {
+        // Sau khi load xong, check URL param ?highlight=xxx để scroll đến đúng card
+        const highlightId = new URLSearchParams(window.location.search).get('highlight');
+        if (highlightId) {
+            setTimeout(() => window.scrollToTechCard(parseInt(highlightId)), 300);
+            // Xóa param khỏi URL để tránh re-highlight khi reload
+            history.replaceState({}, '', window.location.pathname);
+        }
+    });
+
     startConnection();
     requestBrowserNotification();
 

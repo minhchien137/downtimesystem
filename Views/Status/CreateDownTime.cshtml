@@ -14,7 +14,7 @@
     // Admin sees all 3; Technical sees Response+Run; Production sees Call+Run
     bool _showCall     = _isAdmin || _isProduction;
     bool _showResponse = _isAdmin || _isTechnical;
-    bool _showRun      = _isAdmin || _isTechnical; // Production chỉ thấy Call
+    bool _showRun      = _isAdmin || _isProduction;
 }
 
 <style>
@@ -146,7 +146,7 @@
 
     /* ---- nút Call (đỏ) ---- */
     .btn-call {
-        background: linear-gradient(135deg, #c0392b, #e74c3c);
+        background: linear-gradient(135deg, #fca23a, #ffac28);
         color: #fff;
         border: none;
         border-radius: 10px;
@@ -914,7 +914,7 @@
             @if (_showCall)
             {
                 <button type="button" id="btnCall" class="btn-call">
-                    📞 呼叫 (Call)
+                    🔔 Response
                 </button>
             }
             @if (_showResponse)
@@ -925,7 +925,8 @@
             }
             @if (_showRun)
             {
-                <button type="button" id="btnRun" class="btn-run">
+                <button type="button" id="btnRun" class="btn-run" disabled style="opacity:0.5;"
+                        title="请先选择设备并等待技术员接受 / Select machine and wait for technician to accept">
                     ▶ 运行 (Run)
                 </button>
             }
@@ -1446,6 +1447,12 @@
         resetEmpDropdown();
         resetOpDropdown();
         removeImageDT();
+        // Reset nút Run về disabled vì không còn bản ghi STOP nào được chọn
+        if (btnRun) {
+            btnRun.disabled = true;
+            btnRun.title    = '请先选择设备编号 / Please select a machine first';
+            btnRun.style.opacity = '0.5';
+        }
         setTimeout(() => machineTrigger?.focus(), 50);
     }
 
@@ -1591,6 +1598,27 @@
             if (!validateRequiredFields()) return;
         }
 
+          if (nextState === 'STOP') {
+            const machineNo = (machineEl?.value || '').trim();
+            if (machineNo) {
+                try {
+                    const statusRes  = await fetch(`${pathBase}/Status/GetMachineRunStatus?machineNo=${encodeURIComponent(machineNo)}`);
+                    const statusJson = await statusRes.json();
+
+                    if (statusJson.currentState === 'STOP') {
+                        showToast('⚠ 此设备已呼叫，正在等待技术员！\n(Machine already called — waiting for technician.)', 'error', 3500);
+                        return;
+                    }
+
+                    if (statusJson.currentState === 'RESPONSE') {
+                        showToast('🔧 此设备正在维修中，请等待技术员完成！\n(Machine is being repaired — please wait for technician to finish.)', 'error', 3500);
+                        return;
+                    }
+                } catch(e) { /* ignore */ }
+            }
+        }
+
+
         if (nextState === 'RUN') {
             const machineNo = (machineEl?.value || '').trim();
             if (!machineNo) {
@@ -1598,6 +1626,24 @@
                 machineTrigger.focus();
                 return;
             }
+            // Kiểm tra lại một lần nữa trước khi submit
+            try {
+                const statusRes  = await fetch(`${pathBase}/Status/GetMachineRunStatus?machineNo=${encodeURIComponent(machineNo)}`);
+                const statusJson = await statusRes.json();
+
+                // Máy đã được Tech sửa xong (state = RUN) → không cho Prod nhấn Run thêm
+                if (statusJson.currentState === 'RUN') {
+                    showToast('✅ 设备已恢复运行，无需再次操作！\n(Machine is already running, no action needed!)', 'error', 3500);
+                    await checkRunButtonStatus(machineNo);
+                    return;
+                }
+
+                // Máy đang STOP nhưng Tech chưa ACCEPT → chưa cho Run
+                if (statusJson.isStop && !statusJson.techAccepted) {
+                    showToast('⏳ 请等待技术员接受请求后再运行！\n(Please wait for technician to accept before running!)', 'error', 3500);
+                    return;
+                }
+            } catch(e) { /* ignore network errors */ }
         }
 
         // ── Build FormData ──
@@ -1684,11 +1730,23 @@
                 // Nhận thông báo phản hồi từ Kỹ thuật
                 conn.on("ReceiveTechResponse", (data) => {
                     showTechResponseNotif(data);
+                    // Nếu Tech ACCEPT → enable lại nút Run
+                    if (data.action === 'ACCEPT') {
+                        const curMachine = (machineEl?.value || '').trim();
+                        if (!curMachine || curMachine === data.machineCode) {
+                            checkRunButtonStatus(data.machineCode || curMachine);
+                        }
+                    }
                 });
 
                 // Nhận thông báo Kỹ thuật đã sửa xong
                 conn.on("ReceiveFixComplete", (data) => {
                     showFixCompleteNotif(data);
+                    // Khi Tech sửa xong → Run đã được tạo từ Tech side, reset button
+                    const curMachine = (machineEl?.value || '').trim();
+                    if (!curMachine || curMachine === data.machineCode) {
+                        checkRunButtonStatus(data.machineCode || curMachine);
+                    }
                 });
 
                 try {
@@ -1993,17 +2051,23 @@
 
                 const d = json.data;
 
-                // ✅ FIX: Auto-fill Employee — set vào employeeCodeEl
-                if (d.svnCode) {
-                    employeeCodeEl.value = d.svnCode;
+                // ✅ Auto-fill Employee — dùng employeeCode từ response
+                if (d.svnCode || d.employeeCode) {
+                    const empCode = (d.svnCode || d.employeeCode || '').trim();
+                    employeeCodeEl.value = empCode;
                     const empOpt = Array.from(empOptionList.querySelectorAll('.select-search-option'))
-                        .find(o => (o.dataset.value || '').toLowerCase() === d.svnCode.toLowerCase());
+                        .find(o => (o.dataset.value || '').toLowerCase() === empCode.toLowerCase());
                     if (empOpt) {
-                        employeeNameEl.value = empOpt.dataset.chinese || d.svnCode;
-                        empTriggerText.textContent = empOpt.dataset.label || d.svnCode;
+                        employeeNameEl.value = empOpt.dataset.chinese || empCode;
+                        empTriggerText.textContent = empOpt.dataset.label || empCode;
                         empTriggerText.classList.add('has-value');
                         empOptionList.querySelectorAll('.select-search-option').forEach(o =>
                             o.classList.toggle('selected', o === empOpt));
+                    } else if (d.employeeName) {
+                        // Nếu không tìm thấy trong dropdown, điền tên trực tiếp
+                        employeeNameEl.value = d.employeeName;
+                        empTriggerText.textContent = `${empCode} - ${d.employeeName}`;
+                        empTriggerText.classList.add('has-value');
                     }
                 }
 
@@ -2055,6 +2119,52 @@
             } catch (e) {
                 console.error('Auto-fill error:', e);
             }
+        }
+
+        // ── Kiểm tra trạng thái máy để enable/disable nút Run ──
+        await checkRunButtonStatus(value);
+    }
+
+    /* ============ Kiểm tra nút Run: chỉ cho phép Run khi máy đang STOP và Tech đã ACCEPT ============ */
+    async function checkRunButtonStatus(machineNo) {
+        if (!btnRun) return;
+
+        if (!machineNo) {
+            // Chưa chọn máy → disable Run (không có gì để Run)
+            btnRun.disabled = true;
+            btnRun.title    = '请先选择设备编号 / Please select a machine first';
+            btnRun.style.opacity = '0.5';
+            return;
+        }
+
+        try {
+            const res  = await fetch(`${pathBase}/Status/GetMachineRunStatus?machineNo=${encodeURIComponent(machineNo)}`);
+            if (!res.ok) return;
+            const json = await res.json();
+
+            if (json.currentState === 'RUN') {
+                // Tech đã sửa xong và tạo RUN → Prod không cần nhấn Run nữa
+                btnRun.disabled = true;
+                btnRun.title    = '✅ 设备已恢复运行 / Machine already running (repaired by technician)';
+                btnRun.style.opacity = '0.5';
+            } else if (!json.isStop) {
+                // Không có bản ghi STOP nào (máy đang bình thường / chưa Stop) → không cho Run
+                btnRun.disabled = true;
+                btnRun.title    = '⚠ 设备尚未停机，无需运行 / Machine is not in STOP state';
+                btnRun.style.opacity = '0.5';
+            } else if (json.isStop && !json.techAccepted) {
+                // Máy đang STOP nhưng Tech chưa ACCEPT → lock Run
+                btnRun.disabled = true;
+                btnRun.title    = '⏳ 请等待技术员接受后才能运行 / Please wait for technician to accept before running';
+                btnRun.style.opacity = '0.5';
+            } else {
+                // Máy đang STOP và Tech đã ACCEPT → Prod được phép Run
+                btnRun.disabled = false;
+                btnRun.title    = '';
+                btnRun.style.opacity = '';
+            }
+        } catch(e) {
+            console.error('checkRunButtonStatus error:', e);
         }
     }
 
