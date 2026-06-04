@@ -25,6 +25,13 @@ namespace MachineStatusUpdate.Models
         [Column("EnglishName")]
         [StringLength(50)]
         public string EnglishName { get; set; }
+
+
+        [Column("NameDepart")]
+        [StringLength(50)]
+        public string NameDepart { get; set; }
+
+
     }
 
 }

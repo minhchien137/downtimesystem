@@ -1109,6 +1109,11 @@ let audioUnlocked = false;
 let titleFlashInterval = null;
 const originalTitle = document.title;
 
+const pieEmployees = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+    (ViewBag.PieEmployees as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>())
+    .Select(e => new { englishName = (string)e.EnglishName, chineseName = (string)e.ChineseName })
+));
+
 /* ===== Unlock AudioContext ngay khi user click/touch lần đầu ===== */
 function ensureAudioCtx() {
     if (audioUnlocked && audioCtx) return audioCtx;
@@ -1301,12 +1306,20 @@ function renderStopCard(data, prepend = true) {
 
     // Nếu đã có techAction (load từ DB), render ngay trạng thái đã respond
     const alreadyResponded = data.techAction && data.techAction !== '';
+    const pieOptions = pieEmployees.map(e =>
+        `<option value="${e.englishName}">${e.englishName} - ${e.chineseName}</option>`
+    ).join('');
+
     const actionsHtml = alreadyResponded
         ? buildRespondedBadge(data.techAction, data.techUsername, data.respondDatetime, !!data.fixComplete, responseTimeStr, !!data.prodRun)
-        : `<div style="display:flex;gap:10px;flex-wrap:wrap;">
-     <button class="btn-accept" onclick="respondToOperator(this,'ACCEPT')">✅ 接受 — 正在前往维修</button>
-     <button class="btn-reject" onclick="openRejectModal(this)">❌ 拒绝 / Reject</button>
-   </div>`;
+        : `<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+            <select class="pie-emp-select" style="border:1.5px solid #e5e7eb;border-radius:8px;padding:8px 12px;font-size:13px;outline:none;min-width:200px;cursor:pointer;">
+            <option value="">-- 选择PIE员工 (Select PIE) --</option>
+            ${pieOptions}
+            </select>
+            <button class="btn-accept" onclick="respondToOperator(this,'ACCEPT')">✅ Response</button>
+            <button class="btn-reject" onclick="openRejectModal(this)">❌ 拒绝 / Reject</button>
+        </div>`;
 
     card.innerHTML = `
         <button class="notif-dismiss" onclick="deleteCard(this)" title="删除通知 / Delete">🗑</button>
@@ -1378,12 +1391,25 @@ async function respondToOperator(btn, action) {
     const card = btn.closest('.notif-card');
     if (!card) return;
 
+    // ── Validate PIE employee ──
+    const empSelect = card.querySelector('.pie-emp-select');
+    if (empSelect && !empSelect.value) {
+        empSelect.style.borderColor = '#ef4444';
+        empSelect.style.boxShadow = '0 0 0 3px rgba(239,68,68,0.2)';
+        empSelect.focus();
+        teShowToast('⚠ 请先选择PIE员工！', true);
+        return;
+    }
+    if (empSelect) {
+        empSelect.style.borderColor = '#e5e7eb';
+        empSelect.style.boxShadow = '';
+    }
+
     const techResponseId   = card.dataset.techResponseId   || '';
     const operatorUsername = card.dataset.operatorUsername || '';
     const machineCode      = card.dataset.machineCode      || '';
     const actionsDiv       = card.querySelector('.notif-actions');
 
-    // Tính response time real-time
     const stopDt = parseDT(card.dataset.stopDatetime);
     const nowDt  = new Date();
     const mins   = minutesBetween(stopDt, nowDt);
@@ -1408,12 +1434,12 @@ async function respondToOperator(btn, action) {
             updateCounters();
         } else {
             card.querySelectorAll('.btn-accept, .btn-reject, .btn-wait').forEach(b => b.disabled = false);
-            btn.innerHTML = '✅ 接受 — 正在前往维修';
+            btn.innerHTML = '✅ Response';
         }
     } catch (err) {
         console.error('respondToOperator error:', err);
         card.querySelectorAll('.btn-accept, .btn-reject, .btn-wait').forEach(b => b.disabled = false);
-        btn.innerHTML = '✅ 接受 — 正在前往维修';
+        btn.innerHTML = '✅ Response';
     }
 }
 

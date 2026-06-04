@@ -185,11 +185,17 @@ namespace MachineStatusUpdate.Controllers
             ViewBag.ReasonOptions = rea;
 
             // 员工工号 / Employee ID no.
-            var employees = await _context.SM_EmployInfos
+            var userRole = HttpContext.Session.GetString("UserRole") ?? "";
+
+            var allEmployees = await _context.SM_EmployInfos
                 .AsNoTracking()
                 .OrderBy(e => e.EnglishName)
-                .Select(e => new { e.Id, e.ChineseName, e.EnglishName })
+                .Select(e => new { e.Id, e.ChineseName, e.EnglishName, e.NameDepart })
                 .ToListAsync();
+
+            var employees = userRole == "Production"
+                ? allEmployees.Where(e => (e.NameDepart ?? "").Trim().ToUpper() == "PROD").ToList()
+                : allEmployees;
 
             ViewBag.Employees = employees;
 
@@ -216,15 +222,18 @@ namespace MachineStatusUpdate.Controllers
             return View("CreateDownTime");
         }
 
+        // SAU — thêm operations distinct vào response
         [HttpGet]
         public async Task<IActionResult> GetMachinesByLocation(string location)
         {
             if (string.IsNullOrWhiteSpace(location))
-                return Json(new { machines = new List<object>() });
+                return Json(new { machines = new List<object>(), operations = new List<string>() });
+
+            var loc = location.Trim();
 
             var machines = await _context.SVN_Downtime_SMEQs
                 .AsNoTracking()
-                .Where(e => e.location != null && e.location.Trim() == location.Trim())
+                .Where(e => e.location != null && e.location.Trim() == loc)
                 .OrderBy(e => e.name)
                 .Select(e => new
                 {
@@ -234,8 +243,19 @@ namespace MachineStatusUpdate.Controllers
                 })
                 .ToListAsync();
 
-            return Json(new { machines });
+            // Lấy distinct operation thuộc location đó
+            var operations = await _context.SVN_Downtime_SMEQs
+                .AsNoTracking()
+                .Where(e => e.location != null && e.location.Trim() == loc
+                         && e.operation != null && e.operation != "")
+                .Select(e => e.operation.Trim())
+                .Distinct()
+                .OrderBy(x => x)
+                .ToListAsync();
+
+            return Json(new { machines, operations });
         }
+
 
 
         /* GET 停机历史记录 */
@@ -878,6 +898,18 @@ namespace MachineStatusUpdate.Controllers
                 .ToListAsync();
 
             ViewBag.PendingNotifications = pending;
+            
+            var allEmp = await _context.SM_EmployInfos
+                .AsNoTracking()
+                .OrderBy(e => e.EnglishName)
+                .Select(e => new { e.EnglishName, e.ChineseName, e.NameDepart })
+                .ToListAsync();
+
+            ViewBag.PieEmployees = allEmp
+                .Where(e => (e.NameDepart ?? "").Trim().ToUpper() == "PIE")
+                .Select(e => new { e.EnglishName, e.ChineseName })
+                .ToList();
+    
             return View();
         }
 

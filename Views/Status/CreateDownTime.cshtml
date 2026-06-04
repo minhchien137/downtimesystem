@@ -146,7 +146,7 @@
 
     /* ---- nút Call (đỏ) ---- */
     .btn-call {
-        background: linear-gradient(135deg, #fca23a, #ffac28);
+        background: linear-gradient(135deg, #e53935, #f44336);
         color: #fff;
         border: none;
         border-radius: 10px;
@@ -155,7 +155,7 @@
         font-size: 14px;
         cursor: pointer;
         min-width: 120px;
-        box-shadow: 0 4px 14px rgba(231, 76, 60, 0.35);
+        box-shadow: 0 4px 14px rgba(229, 57, 53, 0.35);
         transition: all 0.2s ease;
         display: inline-flex;
         align-items: center;
@@ -163,7 +163,7 @@
     }
 
     .btn-call:hover {
-        box-shadow: 0 6px 20px rgba(231, 76, 60, 0.55);
+        box-shadow: 0 6px 20px rgba(229, 57, 53, 0.55);
         transform: translateY(-1px);
     }
 
@@ -914,7 +914,7 @@
             @if (_showCall)
             {
                 <button type="button" id="btnCall" class="btn-call">
-                    🔔 Response
+                    ☎️ @(_isProduction ? "Call to PIE" : "Response")
                 </button>
             }
             @if (_showResponse)
@@ -939,6 +939,13 @@
     "use strict";
 
     const pathBase = '@Context.Request.PathBase'.replace(/\/$/, '');
+    
+    const allOriginalOptionsForOp = @Html.Raw(
+    System.Text.Json.JsonSerializer.Serialize(
+        (ViewBag.OperationOptions as IEnumerable<string> ?? Enumerable.Empty<string>()).ToList()
+        )
+    );
+
 
     function formatLocal(d) {
         const pad = n => String(n).padStart(2, '0');
@@ -1246,9 +1253,9 @@
     }
     }
 /* ============ Filter máy theo Location ============ */
+        // SAU — thêm rebuild Operation dropdown
         async function filterMachinesByLocation(locationValue) {
             try {
-                // Reset machine selection trước
                 resetMachineDropdown();
 
                 const url = `${pathBase}/Status/GetMachinesByLocation?location=${encodeURIComponent(locationValue)}`;
@@ -1256,8 +1263,11 @@
                 if (!res.ok) return;
                 const json = await res.json();
 
-                // Rebuild machine option list
+                // ── Rebuild Machine list ──
                 rebuildMachineOptions(json.machines || []);
+
+                // ── Rebuild Operation (生产线 native select) — distinct, không lặp ──
+                rebuildOperationOptions(json.operations || []);
 
                 if (json.machines && json.machines.length > 0) {
                     showToast(`找到 ${json.machines.length} 台设备 (Found ${json.machines.length} machine(s))`, 'success', 1800);
@@ -1309,7 +1319,43 @@
                 )
             );
             rebuildMachineOptions(allOriginalOptions);
+
+            // ── THÊM: restore lại toàn bộ Operation khi bỏ chọn Location ──
+            rebuildOperationOptions(allOriginalOptionsForOp);
         }
+
+
+        // Thêm mới — rebuild native select Operation theo location
+        function rebuildOperationOptions(operations) {
+            if (!opEl) return;
+
+            // Xóa hết option cũ (giữ lại placeholder đầu tiên)
+            while (opEl.options.length > 1) opEl.remove(1);
+
+            // Reset về placeholder
+            opEl.selectedIndex = 0;
+            syncSelectColor(opEl);
+
+            if (operations.length === 0) return;
+
+            operations.forEach(op => {
+                const opt = document.createElement('option');
+                opt.value = op;
+                // Áp dụng label mapping nếu có
+                const desc = operationLabels[op];
+                opt.textContent = desc ? `${op} / ${desc}` : op;
+                opEl.appendChild(opt);
+            });
+
+            // Nếu chỉ có 1 operation → tự động chọn luôn
+            if (operations.length === 1) {
+                opEl.selectedIndex = 1;
+                syncSelectColor(opEl);
+                onOperationChanged();
+            }
+        }
+
+
 
 
 
@@ -1581,12 +1627,12 @@
             return false;
         }
 
-        const issCode = (IssCodeEl?.value || '').trim();
+        @* const issCode = (IssCodeEl?.value || '').trim();
         if (!issCode) {
             showToast('请选择原因！ (Please select a reason!)', 'error', 2400);
             IssCodeEl?.focus();
             return false;
-        }
+        } *@
 
         return true;
     }
