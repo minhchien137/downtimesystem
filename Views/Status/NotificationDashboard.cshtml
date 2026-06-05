@@ -1109,10 +1109,7 @@ let audioUnlocked = false;
 let titleFlashInterval = null;
 const originalTitle = document.title;
 
-const pieEmployees = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
-    (ViewBag.PieEmployees as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>())
-    .Select(e => new { englishName = (string)e.EnglishName, chineseName = (string)e.ChineseName })
-));
+const pieEmployees = @Html.Raw(ViewBag.PieEmployeesJson ?? "[]");
 
 /* ===== Unlock AudioContext ngay khi user click/touch lần đầu ===== */
 function ensureAudioCtx() {
@@ -1422,7 +1419,14 @@ async function respondToOperator(btn, action) {
         const res = await fetch(`${pathBase}/Status/TechnicianRespond`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ techResponseId: parseInt(techResponseId) || 0, action, operatorUsername, machineCode })
+            body: JSON.stringify({
+            techResponseId   : parseInt(techResponseId) || 0,
+            action,
+            operatorUsername,
+            machineCode,
+            techEmployeeName : empSelect ? empSelect.value : ''  // ← THÊM
+        })
+
         });
         const data = await res.json();
 

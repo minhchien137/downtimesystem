@@ -304,7 +304,7 @@ namespace MachineStatusUpdate.Controllers
                             };
 
                 // ----- 固定筛选：只取SM -----
-                query = query.Where(x => x.Operation != null && x.Operation.Contains("(SM)"));
+              //  query = query.Where(x => x.Operation != null && x.Operation.Contains("(SM)"));
 
                 // ----- 原有筛选条件 -----
                 if (!string.IsNullOrWhiteSpace(operation))
@@ -905,11 +905,13 @@ namespace MachineStatusUpdate.Controllers
                 .Select(e => new { e.EnglishName, e.ChineseName, e.NameDepart })
                 .ToListAsync();
 
-            ViewBag.PieEmployees = allEmp
+            var pieList = allEmp
                 .Where(e => (e.NameDepart ?? "").Trim().ToUpper() == "PIE")
-                .Select(e => new { e.EnglishName, e.ChineseName })
+                .Select(e => new { englishName = e.EnglishName, chineseName = e.ChineseName })
                 .ToList();
-    
+
+            ViewBag.PieEmployeesJson = System.Text.Json.JsonSerializer.Serialize(pieList);
+
             return View();
         }
 
@@ -1880,7 +1882,9 @@ namespace MachineStatusUpdate.Controllers
         [IgnoreAntiforgeryToken]
         public async Task<IActionResult> TechnicianRespond([FromBody] TechRespondDto dto)
         {
-            var techUser = HttpContext.Session.GetString("UserName") ?? "技术员";
+            var techUser = !string.IsNullOrWhiteSpace(dto.TechEmployeeName)
+            ? dto.TechEmployeeName
+            : HttpContext.Session.GetString("UserName") ?? "技术员";
 
             var record = await _context.SVN_Downtime_TechResponses.FindAsync(dto.TechResponseId);
             if (record == null)
@@ -1898,20 +1902,24 @@ namespace MachineStatusUpdate.Controllers
 
                 var responseRecord = new SVN_Downtime_Info_Devel
                 {
-                    State = "RESPONSE",
-                    Operation = record.Operation,
-                    MachineCode = record.MachineCode,
-                    Location = record.Location,
-                    EmployeeCode = record.EmployeeCode,
-                    EmployeeName = record.EmployeeName,
-                    Reason = record.Reason,
-                    Effect = record.Effect,
-                    Station = record.Station,
-                    Description = record.Description,
+                    State        = "RESPONSE",
+                    Operation    = record.Operation,
+                    MachineCode  = record.MachineCode,
+                    Location     = record.Location,
+                    EmployeeCode = !string.IsNullOrWhiteSpace(dto.TechEmployeeName)
+                                ? dto.TechEmployeeName
+                                : record.EmployeeCode,
+                    EmployeeName = !string.IsNullOrWhiteSpace(dto.TechEmployeeName)
+                                ? dto.TechEmployeeName
+                                : record.EmployeeName,
+                    Reason       = record.Reason,
+                    Effect       = record.Effect,
+                    Station      = record.Station,
+                    Description  = record.Description,
                     EstimateTime = record.EstimateTime,
-                    Code = stopRecord?.Code,
-                    Name = stopRecord?.Name,
-                    Datetime = DateTime.Now
+                    Code         = stopRecord?.Code,
+                    Name         = stopRecord?.Name,
+                    Datetime     = DateTime.Now
                 };
                 _context.SVN_Downtime_Infos_Devel.Add(responseRecord);
                 await _context.SaveChangesAsync();
@@ -2338,7 +2346,9 @@ namespace MachineStatusUpdate.Controllers
             public string? OperatorUsername { get; set; }
             public string? MachineCode { get; set; }
             
-            public string? RejectReason     { get; set; }  
+            public string? RejectReason { get; set; }
+            public string? TechEmployeeName { get; set; }
+
         }
 
         // ── GET /Status/ProductionNotifications ──
