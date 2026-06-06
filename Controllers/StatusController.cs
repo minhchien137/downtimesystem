@@ -912,6 +912,13 @@ namespace MachineStatusUpdate.Controllers
 
             ViewBag.PieEmployeesJson = System.Text.Json.JsonSerializer.Serialize(pieList);
 
+            // Reason list cho PIE điền khi Response
+            ViewBag.PieReasonOptions = await _context.SVN_Downtime_Reasons
+                .AsNoTracking()
+                .OrderBy(r => r.Reason_Name)
+                .Select(r => new { r.Reason_Code, r.Reason_Name })
+                .ToListAsync();
+
             return View();
         }
 
@@ -1895,10 +1902,20 @@ namespace MachineStatusUpdate.Controllers
             record.RespondDatetime = DateTime.Now;
             await _context.SaveChangesAsync();
 
-            // ── ACCEPT → tạo record RESPONSE ──
+            // ── ACCEPT → cập nhật record STOP gốc với thông tin kỹ thuật + tạo RESPONSE ──
             if (dto.Action == "ACCEPT")
             {
                 var stopRecord = await _context.SVN_Downtime_Infos_Devel.FindAsync(record.DowntimeId);
+
+                // Patch các field kỹ thuật vào record STOP gốc (PIE mới biết)
+                if (stopRecord != null)
+                {
+                    if (!string.IsNullOrWhiteSpace(dto.Reason))       stopRecord.Reason       = dto.Reason;
+                    if (!string.IsNullOrWhiteSpace(dto.Effect))       stopRecord.Effect       = dto.Effect;
+                    if (!string.IsNullOrWhiteSpace(dto.EstimateTime)) stopRecord.EstimateTime = dto.EstimateTime;
+                    if (!string.IsNullOrWhiteSpace(dto.Description))  stopRecord.Description  = dto.Description;
+                    await _context.SaveChangesAsync();
+                }
 
                 var responseRecord = new SVN_Downtime_Info_Devel
                 {
@@ -1912,11 +1929,11 @@ namespace MachineStatusUpdate.Controllers
                     EmployeeName = !string.IsNullOrWhiteSpace(dto.TechEmployeeName)
                                 ? dto.TechEmployeeName
                                 : record.EmployeeName,
-                    Reason       = record.Reason,
-                    Effect       = record.Effect,
+                    Reason       = dto.Reason ?? record.Reason,
+                    Effect       = dto.Effect ?? record.Effect,
+                    EstimateTime = dto.EstimateTime ?? record.EstimateTime,
                     Station      = record.Station,
-                    Description  = record.Description,
-                    EstimateTime = record.EstimateTime,
+                    Description  = $"{techUser} accepted the call",
                     Code         = stopRecord?.Code,
                     Name         = stopRecord?.Name,
                     Datetime     = DateTime.Now
@@ -2033,7 +2050,8 @@ namespace MachineStatusUpdate.Controllers
 
         // ══════════════════════════════════════════════════════════════════════
         // POST /Status/TechnicianFixComplete
-        // 技术员点击"已修复完成" → 创建RUN记录 + 通知生产端
+        // PIE bấm "已修复完成" → chỉ thông báo PROD bấm Run, KHÔNG tạo record RUN
+        // Thông tin kỹ thuật sẽ được patch vào STOP record qua PostRunEdit
         // ══════════════════════════════════════════════════════════════════════
         [HttpPost]
         [IgnoreAntiforgeryToken]
@@ -2045,34 +2063,10 @@ namespace MachineStatusUpdate.Controllers
             if (techResp == null)
                 return Json(new { success = false, message = "记录未找到" });
 
-            // 获取原始STOP记录以复制Code/Name
-            var stopRecord = await _context.SVN_Downtime_Infos_Devel.FindAsync(techResp.DowntimeId);
+            var title = $"✅ 设备 {techResp.MachineCode ?? "-"} 已修复完成，请按运行！";
+            var body  = $"技术员 [{techUser}] 已完成维修。工序: {techResp.Operation ?? "-"} | 请生产员按下运行按钮。";
 
-            // 创建新的RUN记录，从STOP复制所有字段
-            var runRecord = new SVN_Downtime_Info_Devel
-            {
-                State        = "RUN",
-                Operation    = techResp.Operation,
-                MachineCode  = techResp.MachineCode,
-                Location     = techResp.Location,
-                EmployeeCode = techResp.EmployeeCode,
-                EmployeeName = techResp.EmployeeName,
-                Reason       = techResp.Reason,
-                Effect       = techResp.Effect,
-                Station      = techResp.Station,
-                Description  = techResp.Description,
-                EstimateTime = techResp.EstimateTime,
-                Code         = stopRecord?.Code,
-                Name         = stopRecord?.Name,
-                Datetime     = DateTime.Now
-            };
-            _context.SVN_Downtime_Infos_Devel.Add(runRecord);
-            await _context.SaveChangesAsync();
-
-            var title = $"✅ 设备 {techResp.MachineCode ?? "-"} 已修复完成！";
-            var body  = $"技术员 [{techUser}] 已完成维修。工序: {techResp.Operation ?? "-"} | 设备已恢复正常运行。";
-
-            // ── 通知生产端 ──
+            // ── 通知生产端按 Run ──
             if (!string.IsNullOrWhiteSpace(techResp.OperatorUsername))
             {
                 await SaveNotificationAsync(
@@ -2095,7 +2089,7 @@ namespace MachineStatusUpdate.Controllers
                         machineCode = techResp.MachineCode ?? "",
                         operation   = techResp.Operation   ?? "",
                         techName    = techUser,
-                        message     = $"✅ 设备 {techResp.MachineCode} ({techResp.Operation}) 已维修完成并恢复正常运行。",
+                        message     = $"✅ 设备 {techResp.MachineCode} 已维修完成，请按运行按钮！",
                         datetime    = DateTime.Now.ToString("dd/MM/yyyy HH:mm")
                     });
             }
@@ -2113,12 +2107,13 @@ namespace MachineStatusUpdate.Controllers
                 techName          : techUser
             );
 
-            // ── 推送RUN卡片给技术员组（技术员看到设备已恢复） ──
-            await _hubContext.Clients.Group("TechnicianGroup").SendAsync("ReceiveRunNotification", new
+            // ── SignalR → Tech group (badge update) ──
+            await _hubContext.Clients.Group("TechnicianGroup").SendAsync("ReceiveFixCompleteAck", new
             {
-                machineCode = techResp.MachineCode ?? "",
-                operation   = techResp.Operation   ?? "",
-                datetime    = DateTime.Now.ToString("dd/MM/yyyy HH:mm")
+                techResponseId = dto.TechResponseId,
+                machineCode    = techResp.MachineCode ?? "",
+                operation      = techResp.Operation   ?? "",
+                datetime       = DateTime.Now.ToString("dd/MM/yyyy HH:mm")
             });
 
             return Json(new { success = true });
@@ -2133,6 +2128,119 @@ namespace MachineStatusUpdate.Controllers
         // 通知API — 添加到StatusController.cs中
         // ══════════════════════════════════════════════════════════════════════
         // 位置：粘贴到StatusController类中，靠近TechnicianRespond区域
+
+        // ══════════════════════════════════════════════════════════════════════
+        // GET /Status/GetStopRecord?techResponseId=xxx
+        // Lấy record STOP gốc qua TechResponse để PIE patch thông tin kỹ thuật
+        // ══════════════════════════════════════════════════════════════════════
+        [HttpGet]
+        public async Task<IActionResult> GetRunRecord(string machineNo)
+        {
+            if (string.IsNullOrWhiteSpace(machineNo))
+                return Json(new { success = false });
+
+            // Lấy TechResponse mới nhất của máy → tìm DowntimeId → STOP record
+            var techResp = await _context.SVN_Downtime_TechResponses
+                .Where(x => x.MachineCode != null && x.MachineCode.Trim() == machineNo.Trim())
+                .OrderByDescending(x => x.StopDatetime)
+                .FirstOrDefaultAsync();
+
+            if (techResp == null)
+                return Json(new { success = false });
+
+            var stopRecord = await _context.SVN_Downtime_Infos_Devel.FindAsync(techResp.DowntimeId);
+            if (stopRecord == null)
+                return Json(new { success = false });
+
+            return Json(new { success = true, data = new
+            {
+                stopRecord.Id,
+                stopRecord.State,
+                stopRecord.MachineCode,
+                stopRecord.Operation,
+                stopRecord.Reason,
+                stopRecord.Effect,
+                stopRecord.EstimateTime,
+                stopRecord.Description,
+                stopRecord.RootCause,
+                stopRecord.Action,
+                stopRecord.SpareParts
+            }});
+        }
+
+        // ── Overload: tìm theo techResponseId trực tiếp ──
+        [HttpGet]
+        public async Task<IActionResult> GetStopRecordByTechResponse(int techResponseId)
+        {
+            var techResp = await _context.SVN_Downtime_TechResponses.FindAsync(techResponseId);
+            if (techResp == null)
+                return Json(new { success = false });
+
+            var stopRecord = await _context.SVN_Downtime_Infos_Devel.FindAsync(techResp.DowntimeId);
+            if (stopRecord == null)
+                return Json(new { success = false });
+
+            return Json(new { success = true, data = new
+            {
+                stopRecord.Id,
+                stopRecord.Reason,
+                stopRecord.Effect,
+                stopRecord.EstimateTime,
+                stopRecord.Description,
+                stopRecord.RootCause,
+                stopRecord.Action,
+                stopRecord.SpareParts
+            }});
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
+        // POST /Status/PostRunEdit
+        // PROD / PIE bổ sung thông tin sau khi bấm Run
+        // Cho phép sửa: Description, RootCause, Action, SpareParts
+        // ══════════════════════════════════════════════════════════════════════
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> PostRunEdit([FromBody] PostRunEditDto dto)
+        {
+            var role = HttpContext.Session.GetString("UserRole") ?? "";
+            if (string.IsNullOrEmpty(role))
+                return Unauthorized();
+
+            var rec = await _context.SVN_Downtime_Infos_Devel.FindAsync(dto.Id);
+            if (rec == null)
+                return Json(new { success = false, message = "Record not found" });
+
+            // Technical điền đầy đủ sau khi fix
+            if (dto.Reason       != null) rec.Reason       = dto.Reason;
+            if (dto.Effect       != null) rec.Effect       = dto.Effect;
+            if (dto.RootCause    != null) rec.RootCause    = dto.RootCause;
+            if (dto.Action       != null) rec.Action       = dto.Action;
+            if (dto.SpareParts   != null) rec.SpareParts   = dto.SpareParts;
+
+            // Description: giữ của Prod, append thêm Tech
+            if (!string.IsNullOrWhiteSpace(dto.Description))
+            {
+                var prodDesc = string.IsNullOrWhiteSpace(rec.Description) ? "" : rec.Description.Trim();
+                rec.Description = string.IsNullOrWhiteSpace(prodDesc)
+                    ? $"Tech: {dto.Description.Trim()}"
+                    : $"Prod: {prodDesc} - Tech: {dto.Description.Trim()}";
+            }
+
+            await _context.SaveChangesAsync();
+            return Json(new { success = true });
+        }
+
+        public class PostRunEditDto
+        {
+            public int     Id           { get; set; }
+            public string? Reason       { get; set; }
+            public string? Effect       { get; set; }
+            public string? EstimateTime { get; set; }
+            public string? Description  { get; set; }
+            public string? RootCause    { get; set; }
+            public string? Action       { get; set; }
+            public string? SpareParts   { get; set; }
+        }
 
         // ── Helper: 保存通知到数据库 ──────────────────────────────────
         private async Task SaveNotificationAsync(
@@ -2341,14 +2449,18 @@ namespace MachineStatusUpdate.Controllers
 
         public class TechRespondDto
         {
-            public int     TechResponseId   { get; set; }   // SVN_Downtime_TechResponses中的Id
+            public int     TechResponseId   { get; set; }
             public string  Action           { get; set; } = "";
             public string? OperatorUsername { get; set; }
-            public string? MachineCode { get; set; }
-            
-            public string? RejectReason { get; set; }
+            public string? MachineCode      { get; set; }
+            public string? RejectReason     { get; set; }
             public string? TechEmployeeName { get; set; }
 
+            // Các field kỹ thuật PIE điền khi ACCEPT (PROD không điền)
+            public string? Reason           { get; set; }
+            public string? Effect           { get; set; }
+            public string? EstimateTime     { get; set; }
+            public string? Description      { get; set; }
         }
 
         // ── GET /Status/ProductionNotifications ──

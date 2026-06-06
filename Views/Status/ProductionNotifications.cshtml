@@ -183,7 +183,41 @@
         flex-shrink: 0;
     }
 
-    .pn-empty {
+    .pn-run-action {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border);
+    }
+    .btn-pn-run {
+        background: linear-gradient(135deg, #16a34a, #22c55e);
+        color: #fff;
+        border: none;
+        border-radius: 9px;
+        padding: 10px 28px;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        box-shadow: 0 3px 12px rgba(34,197,94,.35);
+        transition: all .18s;
+    }
+    .btn-pn-run:hover  { filter: brightness(1.08); transform: translateY(-1px); }
+    .btn-pn-run:active { transform: translateY(1px); }
+    .btn-pn-run:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+    .run-done-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        background: #dcfce7;
+        color: #166534;
+        border-radius: 9px;
+        font-size: 13px;
+        font-weight: 700;
+        border: 1px solid #bbf7d0;
+    }
         text-align: center;
         padding: 60px 20px;
         color: var(--muted);
@@ -462,6 +496,16 @@
                             <span>👨‍🔧 技术员: <strong>@n.TechName</strong></span>
                         }
                     </div>
+                    @if (isFix)
+                    {
+                        <div class="pn-run-action" id="run-action-@n.Id">
+                            <button class="btn-pn-run"
+                                    onclick="prodRunMachine(this, '@n.MachineCode', '@n.Operation', '@n.Id', '@n.TechName')"
+                                    title="确认设备已恢复，记录运行">
+                                ▶ 运行 (Run)
+                            </button>
+                        </div>
+                    }
                 </div>
             }
         }
@@ -843,5 +887,53 @@ window.scrollToProdCard = function(id) {
     window._pnRender = render;
     render();
 })();
+
+// ════ PROD bấm Run từ FIX_COMPLETE notification ════
+async function prodRunMachine(btn, machineCode, operation, notifId, techName) {
+    if (!machineCode) { alert('Không tìm thấy mã máy!'); return; }
+
+    btn.disabled  = true;
+    btn.innerHTML = '⏳ 处理中...';
+
+    try {
+        const fd = new FormData();
+        fd.append('State',       'RUN');
+        fd.append('MachineCode', machineCode);
+        fd.append('Operation',   operation || '');
+        fd.append('Action',      '');
+        fd.append('Description', techName ? `Repaired by ${techName}` : 'Repaired by technician');
+
+        // Lấy thông tin Employee từ STOP record gốc
+        try {
+            const stopRes  = await fetch(`/downtime/Status/GetLatestStopByMachine?machineNo=${encodeURIComponent(machineCode)}`);
+            const stopData = await stopRes.json();
+            if (stopData.exists) {
+                fd.append('EmployeeCode', stopData.data?.employeeCode || '');
+                fd.append('EmployeeName', stopData.data?.employeeName || '');
+                fd.append('Location',     stopData.data?.opValue      || '');
+            }
+        } catch (e) { console.warn('GetLatestStopByMachine failed:', e); }
+
+        const res  = await fetch('/downtime/Status/CreateDownTime', { method: 'POST', body: fd });
+        const data = await res.json();
+
+        if (data?.success) {
+            const actionDiv = document.getElementById('run-action-' + notifId);
+            if (actionDiv) {
+                actionDiv.innerHTML = '<span class="run-done-badge">▶ 已运行 / Machine is Running ✓</span>';
+            }
+            showProdToast('✅ 设备已标记为运行！', 'fix');
+        } else {
+            btn.disabled  = false;
+            btn.innerHTML = '▶ 运行 (Run)';
+            showProdToast('❌ ' + (data?.message || '运行失败'), 'reject');
+        }
+    } catch (err) {
+        console.error('prodRunMachine error:', err);
+        btn.disabled  = false;
+        btn.innerHTML = '▶ 运行 (Run)';
+        showProdToast('❌ 运行出错！', 'reject');
+    }
+}
 
 </script>

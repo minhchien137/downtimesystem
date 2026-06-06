@@ -1102,6 +1102,77 @@ let cntTotal = 0;
 let cntAccept = 0;
 let cntReject = 0;
 let _rejectCtx = null;
+let _pieRespCtx = null;
+
+function closePieResponseModal() {
+    document.getElementById('pieResponseModalOverlay').classList.remove('open');
+    _pieRespCtx = null;
+}
+
+async function submitPieResponse() {
+    if (!_pieRespCtx) return;
+
+    const reason = document.getElementById('pieRespReason').value.trim();
+    const effect = document.getElementById('pieRespEffect').value.trim();
+    if (!reason) {
+        document.getElementById('pieRespReason').style.borderColor = '#ef4444';
+        teShowToast('⚠ 请选择功能 / Please select Function!', true);
+        return;
+    }
+    if (!effect) {
+        document.getElementById('pieRespEffect').style.borderColor = '#ef4444';
+        teShowToast('⚠ 请选择影响程度 / Please select Effect!', true);
+        return;
+    }
+
+    const { btn, card, techResponseId, operatorUsername, machineCode, actionsDiv, techEmployeeName } = _pieRespCtx;
+    const estimateTime  = document.getElementById('pieRespEstimate').value.trim();
+    const description   = document.getElementById('pieRespDescription').value.trim();
+
+    closePieResponseModal();
+
+    const stopDt = parseDT(card.dataset.stopDatetime);
+    const mins   = minutesBetween(stopDt, new Date());
+    const responseTimeStr = mins !== null ? formatMinutes(mins) : null;
+
+    card.querySelectorAll('.btn-accept, .btn-reject, .btn-wait').forEach(b => b.disabled = true);
+    btn.innerHTML = '⏳ 发送中...';
+
+    try {
+        const res = await fetch(`${pathBase}/Status/TechnicianRespond`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                techResponseId : parseInt(techResponseId) || 0,
+                action         : 'ACCEPT',
+                operatorUsername,
+                machineCode,
+                techEmployeeName,
+                reason,
+                effect,
+                estimateTime,
+                description
+            })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            if (actionsDiv) {
+                actionsDiv.innerHTML = buildRespondedBadge('ACCEPT', null, null, false, responseTimeStr);
+            }
+            cntAccept++;
+            updateCounters();
+        } else {
+            card.querySelectorAll('.btn-accept, .btn-reject, .btn-wait').forEach(b => b.disabled = false);
+            btn.innerHTML = '✅ Response';
+            teShowToast('❌ Lỗi server', true);
+        }
+    } catch (err) {
+        console.error('submitPieResponse error:', err);
+        card.querySelectorAll('.btn-accept, .btn-reject, .btn-wait').forEach(b => b.disabled = false);
+        btn.innerHTML = '✅ Response';
+    }
+}
 let audioCtx = null;
 let audioUnlocked = false;
 
@@ -1331,18 +1402,6 @@ function renderStopCard(data, prepend = true) {
                 <div class="notif-field-label">👤 操作员</div>
                 <div class="notif-field-value">${data.employeeName || data.employeeCode || '-'} ${data.employeeCode ? '(' + data.employeeCode + ')' : ''}</div>
             </div>
-            <div class="notif-field">
-                <div class="notif-field-label">🔴 故障原因</div>
-                <div class="notif-field-value">${data.reason || '-'}</div>
-            </div>
-            <div class="notif-field">
-                <div class="notif-field-label">⚠ 影响程度</div>
-                <div class="notif-field-value">${effLabel}</div>
-            </div>
-            <div class="notif-field">
-                <div class="notif-field-label">⏱ 预估时间</div>
-                <div class="notif-field-value">${data.estimateTime || '-'}</div>
-            </div>
             ${data.station ? `<div class="notif-field"><div class="notif-field-label">🔩 工位</div><div class="notif-field-value">${data.station}</div></div>` : ''}
             ${data.description ? `<div class="notif-field" style="grid-column:1/-1;"><div class="notif-field-label">📝 详细描述</div><div class="notif-field-value">${data.description}</div></div>` : ''}
         </div>
@@ -1407,6 +1466,45 @@ async function respondToOperator(btn, action) {
     const machineCode      = card.dataset.machineCode      || '';
     const actionsDiv       = card.querySelector('.notif-actions');
 
+    // ACCEPT → submit thẳng, không hỏi gì
+    if (action === 'ACCEPT') {
+        const stopDt = parseDT(card.dataset.stopDatetime);
+        const nowDt  = new Date();
+        const mins   = minutesBetween(stopDt, nowDt);
+        const responseTimeStr = mins !== null ? formatMinutes(mins) : null;
+
+        card.querySelectorAll('.btn-accept, .btn-reject, .btn-wait').forEach(b => b.disabled = true);
+        btn.innerHTML = '⏳ 发送中...';
+
+        try {
+            const res = await fetch(`${pathBase}/Status/TechnicianRespond`, {
+                method : 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body   : JSON.stringify({
+                    techResponseId   : parseInt(techResponseId) || 0,
+                    action           : 'ACCEPT',
+                    operatorUsername,
+                    machineCode,
+                    techEmployeeName : empSelect ? empSelect.value : ''
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                if (actionsDiv) actionsDiv.innerHTML = buildRespondedBadge('ACCEPT', null, null, false, responseTimeStr);
+                cntAccept++;
+                updateCounters();
+            } else {
+                card.querySelectorAll('.btn-accept, .btn-reject, .btn-wait').forEach(b => b.disabled = false);
+                btn.innerHTML = '✅ Response';
+            }
+        } catch (err) {
+            console.error('respondToOperator ACCEPT error:', err);
+            card.querySelectorAll('.btn-accept, .btn-reject, .btn-wait').forEach(b => b.disabled = false);
+            btn.innerHTML = '✅ Response';
+        }
+        return;
+    }
+
     const stopDt = parseDT(card.dataset.stopDatetime);
     const nowDt  = new Date();
     const mins   = minutesBetween(stopDt, nowDt);
@@ -1424,7 +1522,7 @@ async function respondToOperator(btn, action) {
             action,
             operatorUsername,
             machineCode,
-            techEmployeeName : empSelect ? empSelect.value : ''  // ← THÊM
+            techEmployeeName : empSelect ? empSelect.value : ''
         })
 
         });
@@ -1599,6 +1697,18 @@ async function techFixComplete(btn) {
                 s.textContent = '🔧 已发送修复完成通知';
                 return s;
             })());
+
+            // ── PIE điền thông tin kỹ thuật vào STOP record gốc ──
+            const techRespId = card.dataset.techResponseId || '';
+            if (techRespId) {
+                try {
+                    const recRes  = await fetch(`${pathBase}/Status/GetStopRecordByTechResponse?techResponseId=${encodeURIComponent(techRespId)}`);
+                    const recData = await recRes.json();
+                    if (recData.success && recData.data) {
+                        openPostRunModal(recData.data.id, recData.data);
+                    }
+                } catch (e) { console.warn('GetStopRecord failed:', e); }
+            }
         } else {
             btn.disabled  = false;
             btn.innerHTML = '🔧 响应 — 已修复完成';
@@ -2163,5 +2273,166 @@ function teShowToast(msg, isError = false) {
     setTimeout(() => t.classList.remove('show'), 3000);
 }
 
+// ══════════════════════════════════════════
+//  POST-RUN EDIT MODAL — chỉ Technical
+// ══════════════════════════════════════════
+function openPostRunModal(recordId, existingData) {
+    document.getElementById('postRunRecordId').value    = recordId || '';
+    document.getElementById('postRunReason').value      = existingData?.reason      || '';
+    document.getElementById('postRunEffect').value      = existingData?.effect      || '';
+    document.getElementById('postRunDescription').value = '';
+    document.getElementById('postRunRootCause').value   = existingData?.rootCause   || '';
+    document.getElementById('postRunAction').value      = existingData?.action      || '';
+    document.getElementById('postRunSpareParts').value  = existingData?.spareParts  || '';
+    document.getElementById('postRunModalOverlay').style.display = 'flex';
+    setTimeout(() => document.getElementById('postRunReason').focus(), 120);
+}
+
+function closePostRunModal() {
+    document.getElementById('postRunModalOverlay').style.display = 'none';
+}
+
+async function submitPostRunEdit() {
+    const id = parseInt(document.getElementById('postRunRecordId').value) || 0;
+    if (!id) { closePostRunModal(); return; }
+
+    const reason = document.getElementById('postRunReason').value.trim();
+    const effect = document.getElementById('postRunEffect').value.trim();
+    if (!reason) {
+        document.getElementById('postRunReason').style.borderColor = '#ef4444';
+        teShowToast('⚠ 请选择原因 / Please select Reason!', true);
+        return;
+    }
+    if (!effect) {
+        document.getElementById('postRunEffect').style.borderColor = '#ef4444';
+        teShowToast('⚠ 请选择影响 / Please select Effect!', true);
+        return;
+    }
+
+    const btn = document.getElementById('postRunSaveBtn');
+    btn.disabled    = true;
+    btn.textContent = '⏳ 保存中...';
+
+    try {
+        const res  = await fetch(`${pathBase}/Status/PostRunEdit`, {
+            method  : 'POST',
+            headers : { 'Content-Type': 'application/json' },
+            body    : JSON.stringify({
+                id,
+                reason       : reason || null,
+                effect       : effect || null,
+                description  : document.getElementById('postRunDescription').value.trim() || null,
+                rootCause    : document.getElementById('postRunRootCause').value.trim()   || null,
+                action       : document.getElementById('postRunAction').value.trim()      || null,
+                spareParts   : document.getElementById('postRunSpareParts').value.trim()  || null,
+            })
+        });
+        const data = await res.json();
+        if (data.success) {
+            teShowToast('✅ 信息已保存！');
+            closePostRunModal();
+        } else {
+            teShowToast('❌ 保存失败！', true);
+        }
+    } catch (err) {
+        teShowToast('❌ 保存出错！', true);
+    } finally {
+        btn.disabled    = false;
+        btn.innerHTML   = '💾 保存 / Save';
+    }
+}
+
+document.getElementById('postRunModalOverlay')
+    ?.addEventListener('click', function(e) { if (e.target === this) closePostRunModal(); });
 
 </script>
+
+<!-- Post-Run Edit Modal -->
+<div id="postRunModalOverlay" style="
+    display:none;position:fixed;inset:0;z-index:9999;
+    background:rgba(0,0,0,.45);backdrop-filter:blur(2px);
+    align-items:center;justify-content:center">
+    <div style="
+        background:#fff;border-radius:14px;padding:28px 28px 22px;
+        max-width:500px;width:94%;box-shadow:0 20px 60px rgba(0,0,0,.22);
+        animation:postRunIn .18s ease">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+            <h2 style="margin:0;font-size:17px;font-weight:700;color:#111">
+                📝 补充信息 / Add Details
+            </h2>
+            <button onclick="closePostRunModal()"
+                    style="background:none;border:none;font-size:20px;cursor:pointer;color:#9ca3af;line-height:1">×</button>
+        </div>
+        <p style="margin:0 0 16px;font-size:13px;color:#6b7280">
+            After repair complete, please fill in the details below.<br>
+            维修完成后，请补充以下信息。
+        </p>
+        <input type="hidden" id="postRunRecordId" />
+        <div style="display:flex;flex-direction:column;gap:12px">
+            <div>
+                <label style="font-size:12.5px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px">
+                    原因 / Reason <span style="color:#ef4444">*</span>
+                </label>
+                <select id="postRunReason" style="width:100%;border:1.5px solid #e5e7eb;border-radius:8px;padding:9px 12px;font-size:14px;box-sizing:border-box;background:#fff">
+                    <option value="">-- 选择原因 (Select reason) --</option>
+                    @foreach (var r in (ViewBag.PieReasonOptions as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>()))
+                    {
+                        <option value="@r.Reason_Name">@r.Reason_Name (@r.Reason_Code)</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label style="font-size:12.5px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px">
+                    影响 / Effect <span style="color:#ef4444">*</span>
+                </label>
+                <select id="postRunEffect" style="width:100%;border:1.5px solid #e5e7eb;border-radius:8px;padding:9px 12px;font-size:14px;box-sizing:border-box;background:#fff">
+                    <option value="">-- 有没有影响 --</option>
+                    <option value="1">影响生产</option>
+                    <option value="2">不影响生产</option>
+                </select>
+            </div>
+            <div>
+                <label style="font-size:12.5px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px">
+                    异常描述 / Problem Description
+                    <span style="font-weight:400;font-size:11px;color:#9ca3af;margin-left:4px">(Prod đã nhập — Tech bổ sung thêm)</span>
+                </label>
+                <input type="text" id="postRunDescription" placeholder="Thêm mô tả kỹ thuật..."
+                       style="width:100%;border:1.5px solid #e5e7eb;border-radius:8px;padding:9px 12px;font-size:14px;box-sizing:border-box" />
+            </div>
+            <div>
+                <label style="font-size:12.5px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px">根本原因 / Root Cause</label>
+                <input type="text" id="postRunRootCause" placeholder="Enter root cause..."
+                       style="width:100%;border:1.5px solid #e5e7eb;border-radius:8px;padding:9px 12px;font-size:14px;box-sizing:border-box" />
+            </div>
+            <div>
+                <label style="font-size:12.5px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px">维修动作 / Action Taken</label>
+                <input type="text" id="postRunAction" placeholder="Enter action taken..."
+                       style="width:100%;border:1.5px solid #e5e7eb;border-radius:8px;padding:9px 12px;font-size:14px;box-sizing:border-box" />
+            </div>
+            <div>
+                <label style="font-size:12.5px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px">
+                    更换配件 / Spare Parts Used
+                    <span style="font-weight:400;font-size:11px;color:#9ca3af;margin-left:4px">(optional)</span>
+                </label>
+                <input type="text" id="postRunSpareParts" placeholder="Enter spare parts used (or leave blank)..."
+                       style="width:100%;border:1.5px solid #e5e7eb;border-radius:8px;padding:9px 12px;font-size:14px;box-sizing:border-box" />
+            </div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px">
+            <button onclick="closePostRunModal()"
+                    style="background:#f3f4f6;color:#374151;border:none;border-radius:9px;padding:9px 20px;font-size:14px;font-weight:600;cursor:pointer">
+                跳过 / Skip
+            </button>
+            <button id="postRunSaveBtn" onclick="submitPostRunEdit()"
+                    style="background:#22c55e;color:#fff;border:none;border-radius:9px;padding:9px 24px;font-size:14px;font-weight:700;cursor:pointer">
+                💾 保存 / Save
+            </button>
+        </div>
+    </div>
+</div>
+<style>
+@@keyframes postRunIn {
+    from { opacity:0;transform:scale(.95) translateY(-8px); }
+    to   { opacity:1;transform:scale(1)   translateY(0); }
+}
+</style>

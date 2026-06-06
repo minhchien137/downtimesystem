@@ -807,11 +807,12 @@
                 </div>
             </div>
 
-            <!-- ISS code / Reason -->
-            <div class="form-group">
+            <!-- ISS code / Reason — CHỈ PIE/Admin mới thấy và điền -->
+            <div class="form-group" id="fieldReason" @(_isProduction ? "style=display:none" : "")>
                 <label class="form-label" for="IssCode">功能 (Function)</label>
                 <div class="select-arrow-wrapper">
-                    <select id="IssCode" name="Reason" class="form-control" required>
+                    <select id="IssCode" name="Reason" class="form-control"
+                            @(_isProduction ? "" : "required")>
                         <option value="">-- 选择功能 (Select function) --</option>
                         @foreach (var r in (IEnumerable<dynamic>)ViewBag.ReasonOptions)
                         {
@@ -821,8 +822,8 @@
                 </div>
             </div>
 
-            <!-- Effect -->
-            <div class="form-group">
+            <!-- Effect — CHỈ PIE/Admin mới thấy -->
+            <div class="form-group" id="fieldEffect" @(_isProduction ? "style=display:none" : "")>
                 <label class="form-label">影响 / Effect</label>
                 <div class="select-arrow-wrapper">
                     <select id="Effect" name="Effect" class="form-control">
@@ -864,22 +865,22 @@
                        placeholder="输入工位... (Enter station...)" />
             </div>
 
-            <!-- Action -->
-            <div class="form-group">
+            <!-- Action — CHỈ PIE/Admin mới thấy -->
+            <div class="form-group" @(_isProduction ? "style=display:none" : "")>
                 <label class="form-label" for="Action">维修动作 / Action (Optional)</label>
                 <input id="Action" name="Action" class="form-control"
                        placeholder="输入维修动作... (Enter action taken...)" />
             </div>
 
-            <!-- Root Cause -->
-            <div class="form-group">
+            <!-- Root Cause — CHỈ PIE/Admin mới thấy -->
+            <div class="form-group" @(_isProduction ? "style=display:none" : "")>
                 <label class="form-label" for="RootCause">根本原因 / Root Cause (Optional)</label>
                 <input id="RootCause" name="RootCause" class="form-control"
                        placeholder="输入根本原因... (Enter root cause...)" />
             </div>
 
-            <!-- Spare Parts -->
-            <div class="form-group">
+            <!-- Spare Parts — CHỈ PIE/Admin mới thấy -->
+            <div class="form-group" @(_isProduction ? "style=display:none" : "")>
                 <label class="form-label" for="SpareParts">更换配件 / Spare parts use (For future)</label>
                 <input id="SpareParts" name="SpareParts" class="form-control"
                        placeholder="输入备注或详情... (Enter notes or details...)" />
@@ -936,6 +937,7 @@
 </div>
 
 <script>
+    "use strict";
     "use strict";
 
     const pathBase = '@Context.Request.PathBase'.replace(/\/$/, '');
@@ -1499,7 +1501,6 @@
             btnRun.title    = '请先选择设备编号 / Please select a machine first';
             btnRun.style.opacity = '0.5';
         }
-        setTimeout(() => machineTrigger?.focus(), 50);
     }
 
     /* ============ Load trạng thái operation ============ */
@@ -1982,7 +1983,6 @@
 
     /* ============ Init ============ */
     window.addEventListener('DOMContentLoaded', () => {
-        machineTrigger?.focus();
         updateDatetimeRange();
         if (opEl?.value) onOperationChanged();
     });
@@ -2273,7 +2273,6 @@
     });
 
     window.addEventListener('DOMContentLoaded', () => {
-        machineTrigger?.focus();
         updateDatetimeRange();
         if (opEl?.value) onOperationChanged();
     });
