@@ -532,8 +532,13 @@
                             <td>
                                 @if (!string.IsNullOrEmpty(item.Image))
                                 {
-                                    <a href="@Url.Content(item.Image)" target="_blank"
-                                       style="color:#0d6efd;text-decoration:none;">📷 查看</a>
+                                    <a href="@Url.Content(item.Image)" target="_blank">
+                                        <img src="@Url.Content(item.Image)"
+                                             style="height:52px;width:72px;object-fit:cover;border-radius:6px;border:1px solid #e5e7eb;cursor:pointer;transition:transform .15s;"
+                                             onmouseover="this.style.transform='scale(1.08)'"
+                                             onmouseout="this.style.transform='scale(1)'"
+                                             alt="image" />
+                                    </a>
                                 }
                                 else { <span>-</span> }
                             </td>

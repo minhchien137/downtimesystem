@@ -901,9 +901,10 @@ async function prodRunMachine(btn, machineCode, operation, notifId, techName) {
         fd.append('MachineCode', machineCode);
         fd.append('Operation',   operation || '');
         fd.append('Action',      '');
-        fd.append('Description', techName ? `Repaired by ${techName}` : 'Repaired by technician');
 
-        // Lấy thông tin Employee từ STOP record gốc
+        // Lấy thông tin từ STOP record gốc — Employee + các field kỹ thuật Tech đã điền
+        // Đồng thời lấy tên Tech thực sự từ TechResponse
+        let actualTechName = techName; // fallback
         try {
             const stopRes  = await fetch(`/downtime/Status/GetLatestStopByMachine?machineNo=${encodeURIComponent(machineCode)}`);
             const stopData = await stopRes.json();
@@ -911,8 +912,19 @@ async function prodRunMachine(btn, machineCode, operation, notifId, techName) {
                 fd.append('EmployeeCode', stopData.data?.employeeCode || '');
                 fd.append('EmployeeName', stopData.data?.employeeName || '');
                 fd.append('Location',     stopData.data?.opValue      || '');
+                fd.append('Reason',       stopData.data?.reason       || '');
+                fd.append('Effect',       stopData.data?.effect       || '');
+                fd.append('RootCause',    stopData.data?.rootCause    || '');
+                fd.append('SpareParts',   stopData.data?.spareParts   || '');
             }
+            // Lấy tên Tech PIE từ TechResponse (EmployeeName của RESPONSE record)
+            const techRes  = await fetch(`/downtime/Status/GetTechNameByMachine?machineNo=${encodeURIComponent(machineCode)}`);
+            const techData = await techRes.json();
+            if (techData.techName) actualTechName = techData.techName;
         } catch (e) { console.warn('GetLatestStopByMachine failed:', e); }
+
+        // Ghi đè Description với tên Tech đúng
+        fd.set('Description', actualTechName ? `Repaired by ${actualTechName}` : 'Repaired by technician');
 
         const res  = await fetch('/downtime/Status/CreateDownTime', { method: 'POST', body: fd });
         const data = await res.json();

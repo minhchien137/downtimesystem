@@ -87,4 +87,37 @@ namespace MachineStatusUpdate.Models
         public List<double> DowntimeMinutes { get; set; }
         public List<int> DowntimeCounts { get; set; }
     }
+
+    // ── MTTR theo máy ──
+    public class MttrByMachine
+    {
+        public string MachineCode        { get; set; }
+        public string Operation          { get; set; }
+        public double AvgRepairMinutes   { get; set; }
+        public string AvgRepairFormatted { get; set; }
+        public int    RepairCount        { get; set; }
+    }
+
+    // ── Top 5 máy hỏng nhiều nhất ──
+    public class Top5MachineData
+    {
+        public string       MachineCode    { get; set; }
+        public string       Operation      { get; set; }
+        public int          DowntimeCount  { get; set; }
+        public double       TotalMinutes   { get; set; }
+        public string       TotalFormatted { get; set; }
+        public List<double> DailyTrend     { get; set; } = new();
+        public List<string> TrendDates     { get; set; } = new();
+    }
+
+    // ── Response Time ──
+    public class ResponseTimeData
+    {
+        public List<string> Labels          { get; set; } = new();
+        public List<double> AvgResponseMins { get; set; } = new();
+        public List<double> MinResponseMins { get; set; } = new();
+        public List<double> MaxResponseMins { get; set; } = new();
+        public double       OverallAvgMins  { get; set; }
+        public int          TotalResponded  { get; set; }
+    }
 }

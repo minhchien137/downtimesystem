@@ -130,14 +130,16 @@ namespace MachineStatusUpdate.Controllers
                 .OrderByDescending(x => x.Datetime)
                 .Select(x => new
                 {
-                    svnCode      = (x.EmployeeCode ?? "").Trim(),   // field name frontend đang dùng
+                    svnCode      = (x.EmployeeCode ?? "").Trim(),
                     employeeCode = (x.EmployeeCode ?? "").Trim(),
                     employeeName = (x.EmployeeName ?? "").Trim(),
                     operation    = (x.Operation    ?? "").Trim(),
                     opValue      = (x.Location     ?? "").Trim(),
                     reason       = (x.Reason       ?? "").Trim(),
                     effect       = (x.Effect       ?? "").Trim(),
-                    description  = (x.Description  ?? "").Trim()
+                    description  = (x.Description  ?? "").Trim(),
+                    rootCause    = (x.RootCause    ?? "").Trim(),
+                    spareParts   = (x.SpareParts   ?? "").Trim()
                 })
                 .FirstOrDefaultAsync();
 
@@ -167,7 +169,7 @@ namespace MachineStatusUpdate.Controllers
             // 生产线 / Production Line
             var line = await _context.SVN_targets
                 .AsNoTracking()
-                .Where(x => x.Date_time == today && x.Operation != null && x.Operation != "" && x.Operation.Contains("(SM)"))
+                .Where(x => x.Date_time == today && x.Operation != null && x.Operation != "")
                 .Select(x => x.Operation)
                 .Distinct()
                 .OrderBy(x => x)
@@ -304,7 +306,7 @@ namespace MachineStatusUpdate.Controllers
                             };
 
                 // ----- 固定筛选：只取SM -----
-              //  query = query.Where(x => x.Operation != null && x.Operation.Contains("(SM)"));
+              //  
 
                 // ----- 原有筛选条件 -----
                 if (!string.IsNullOrWhiteSpace(operation))
@@ -494,7 +496,7 @@ namespace MachineStatusUpdate.Controllers
                                 Image        = d.Image
                             };
 
-                query = query.Where(x => x.Operation != null && x.Operation.Contains("(SM)"));
+                
 
                 if (!string.IsNullOrWhiteSpace(operation))
                 {
@@ -699,6 +701,40 @@ namespace MachineStatusUpdate.Controllers
             if (string.IsNullOrWhiteSpace(model.Description))
                 model.Description = string.Empty;
 
+            // RUN record
+            if ((model.State ?? "").Trim().ToUpper() == "RUN")
+            {
+                if (string.IsNullOrWhiteSpace(model.Action) || model.Action == "CreateDownTime")
+                    model.Action = null;
+
+                // Tìm STOP gốc để copy fields sang RUN
+                var latestStop = await _context.SVN_Downtime_Infos_Devel
+                    .Where(x => x.MachineCode == model.MachineCode
+                             && x.State != null
+                             && x.State.ToUpper() == "STOP")
+                    .OrderByDescending(x => x.Datetime)
+                    .FirstOrDefaultAsync();
+
+                if (latestStop != null)
+                {
+                    // RUN chỉ fill: Reason, Effect, Station, Action, SpareParts
+                    if (string.IsNullOrWhiteSpace(model.Reason))     model.Reason     = latestStop.Reason;
+                    if (string.IsNullOrWhiteSpace(model.Effect))     model.Effect     = latestStop.Effect;
+                    if (string.IsNullOrWhiteSpace(model.Station))    model.Station    = latestStop.Station;
+                    if (string.IsNullOrWhiteSpace(model.Action))     model.Action     = latestStop.Action;
+                    if (string.IsNullOrWhiteSpace(model.SpareParts)) model.SpareParts = latestStop.SpareParts;
+
+                    // Description RUN = TechDesc đã lưu tạm trong EstimateTime của STOP
+                    if (!string.IsNullOrWhiteSpace(latestStop.EstimateTime)
+                        && latestStop.EstimateTime.StartsWith("[TECHDESC]"))
+                    {
+                        model.Description = latestStop.EstimateTime.Substring(9).Trim();
+                        // Dọn sạch staging field
+                        latestStop.EstimateTime = null;
+                    }
+                }
+            }
+
             // ===== 2) 处理图片上传 =====
             string imagePath = string.Empty;
             if (imageFile != null && imageFile.Length > 0)
@@ -823,6 +859,7 @@ namespace MachineStatusUpdate.Controllers
                         description      = model.Description  ?? "",
                         station          = model.Station      ?? "",
                         estimateTime     = model.EstimateTime ?? "",
+                        image            = imagePath          ?? "",
                         datetime         = model.Datetime?.ToString("dd/MM/yyyy HH:mm") ?? "",
                         insertedId       = model.Id,
                         operatorUsername = HttpContext.Session.GetString("UserName") ?? ""
@@ -982,10 +1019,13 @@ namespace MachineStatusUpdate.Controllers
                     techUsername     = x.TechUsername  ?? "",
                     respondDatetime  = x.RespondDatetime.HasValue
                                     ? x.RespondDatetime.Value.ToString("dd/MM/yyyy HH:mm") : "",
+                    image            = _context.SVN_Downtime_Infos_Devel
+                                        .Where(d => d.Id == x.DowntimeId)
+                                        .Select(d => d.Image ?? "")
+                                        .FirstOrDefault() ?? "",
                     fixComplete      = x.TechAction != null && x.TechAction != "" &&
                                     _context.SVN_Notifications
                                         .Any(n => n.TechResponseId == x.Id && n.NotifType == "FIX_COMPLETE"),
-                    // ← THÊM DÒNG NÀY:
                     prodRun          = _context.SVN_Downtime_Infos_Devel
                                         .Any(r => r.MachineCode == x.MachineCode
                                                 && r.State == "RUN"
@@ -1003,7 +1043,7 @@ namespace MachineStatusUpdate.Controllers
             var today = DateTime.Now.ToString("yyyyMMdd");
             ViewBag.OperationOptions = await _context.SVN_targets
                 .AsNoTracking()
-                .Where(x => x.Date_time == today && x.Operation != null && x.Operation != "" && x.Operation.Contains("(SM)"))
+                .Where(x => x.Date_time == today && x.Operation != null && x.Operation != "")
                 .Select(x => x.Operation)
                 .Distinct()
                 .OrderBy(x => x)
@@ -1044,7 +1084,7 @@ namespace MachineStatusUpdate.Controllers
                 // ── Dropdown options ──
                 var allOperations = await _context.SVN_targets
                     .AsNoTracking()
-                    .Where(x => x.Operation != null && x.Operation != "" && x.Operation.Contains("(SM)"))
+                    .Where(x => x.Operation != null && x.Operation != "")
                     .Select(x => x.Operation).Distinct().OrderBy(x => x).ToListAsync();
 
                 var allReasons = await _context.SVN_Downtime_Reasons
@@ -1055,17 +1095,17 @@ namespace MachineStatusUpdate.Controllers
 
                 var allLocations = await _context.SVN_Downtime_Infos_Devel
                     .AsNoTracking()
-                    .Where(x => x.Location != null && x.Location != "" && x.Operation != null && x.Operation.Contains("(SM)"))
+                    .Where(x => x.Location != null && x.Location != "")
                     .Select(x => x.Location!).Distinct().OrderBy(x => x).ToListAsync();
 
                 var allMachines = await _context.SVN_Downtime_Infos_Devel
                     .AsNoTracking()
-                    .Where(x => x.MachineCode != null && x.MachineCode != "" && x.Operation != null && x.Operation.Contains("(SM)"))
+                    .Where(x => x.MachineCode != null && x.MachineCode != "")
                     .Select(x => x.MachineCode!).Distinct().OrderBy(x => x).ToListAsync();
 
                 var allStations = await _context.SVN_Downtime_Infos_Devel
                     .AsNoTracking()
-                    .Where(x => x.Station != null && x.Station != "" && x.Operation != null && x.Operation.Contains("(SM)"))
+                    .Where(x => x.Station != null && x.Station != "")
                     .Select(x => x.Station!).Distinct().OrderBy(x => x).ToListAsync();
 
                 ViewBag.OperationOptions = allOperations;
@@ -1087,8 +1127,58 @@ namespace MachineStatusUpdate.Controllers
                 ViewBag.DailyChartData = PrepareDailyDowntimeChartData(allData, fromDate, toDate);
                 ViewBag.AllData = allData;
                 ViewBag.AllDataWithPct = allDataPct;
-                ViewBag.MachineData = machineData;
+                ViewBag.MachineData      = machineData;
                 ViewBag.MachineChartData = PrepareMachineChartData(machineData);
+                ViewBag.MttrData         = await GetMttrByMachine(fromDate, toDate, operation, reason, location, machine, effect, station);
+                ViewBag.Top5Data         = await GetTop5Machines(fromDate, toDate, operation, location, machine);
+                ViewBag.ResponseTimeData = await GetResponseTimeData(fromDate, toDate, operation, machine);
+
+                // Tech response records cho EQ detail expand — kèm RunDatetime
+                var techRespQuery = _context.SVN_Downtime_TechResponses.AsQueryable();
+                if (!string.IsNullOrEmpty(fromDate) && DateTime.TryParse(fromDate, out var trFd))
+                    techRespQuery = techRespQuery.Where(x => x.StopDatetime.HasValue && x.StopDatetime.Value.Date >= trFd.Date);
+                if (!string.IsNullOrEmpty(toDate) && DateTime.TryParse(toDate, out var trTd))
+                    techRespQuery = techRespQuery.Where(x => x.StopDatetime.HasValue && x.StopDatetime.Value.Date <= trTd.Date);
+                if (!string.IsNullOrWhiteSpace(machine))
+                    techRespQuery = techRespQuery.Where(x => x.MachineCode == machine.Trim());
+
+                var rawResps = await techRespQuery
+                    .OrderByDescending(x => x.StopDatetime)
+                    .Select(x => new {
+                        x.MachineCode, x.Operation,
+                        x.StopDatetime, x.RespondDatetime,
+                        x.TechAction, x.TechUsername,
+                        x.DowntimeId
+                    })
+                    .ToListAsync();
+
+                // Lấy RUN records để tính repair time
+                var stopIds   = rawResps.Select(r => r.DowntimeId).Distinct().ToList();
+                var runTimes  = await _context.SVN_Downtime_Infos_Devel
+                    .Where(x => x.State != null && x.State.ToUpper() == "RUN"
+                             && rawResps.Select(r => r.MachineCode).Contains(x.MachineCode))
+                    .Select(x => new { x.MachineCode, x.Datetime })
+                    .ToListAsync();
+
+                var allTechResps = rawResps.Select(r => {
+                    // Tìm RUN record gần nhất sau StopDatetime của máy này
+                    var runDt = runTimes
+                        .Where(rn => rn.MachineCode == r.MachineCode
+                                  && rn.Datetime.HasValue
+                                  && r.StopDatetime.HasValue
+                                  && rn.Datetime > r.StopDatetime)
+                        .OrderBy(rn => rn.Datetime)
+                        .Select(rn => rn.Datetime)
+                        .FirstOrDefault();
+                    return new {
+                        r.MachineCode, r.Operation,
+                        r.StopDatetime, r.RespondDatetime,
+                        r.TechAction, r.TechUsername,
+                        RunDatetime = runDt
+                    };
+                }).Cast<dynamic>().ToList();
+
+                ViewBag.AllTechResponses = allTechResps;
                 ViewBag.CurrentPage = page;
                 ViewBag.PageSize = pageSize;
                 ViewBag.TotalRecords = totalRecords;
@@ -1149,7 +1239,7 @@ namespace MachineStatusUpdate.Controllers
                                 d.Datetime
                             };
 
-                query = query.Where(x => x.Operation != null && x.Operation.Contains("(SM)"));
+                
 
                 if (!string.IsNullOrWhiteSpace(operation))
                 { var op = operation.Trim(); query = query.Where(x => x.Operation != null && x.Operation.Contains(op)); }
@@ -1244,7 +1334,7 @@ namespace MachineStatusUpdate.Controllers
                             d.Datetime
                         };
 
-            query = query.Where(x => x.Operation != null && x.Operation.Contains("(SM)"));
+            
 
             if (!string.IsNullOrWhiteSpace(operation))
             { var _op = operation.Trim(); query = query.Where(x => x.Operation != null && x.Operation.Contains(_op)); }
@@ -1419,7 +1509,7 @@ namespace MachineStatusUpdate.Controllers
                             d.Datetime
                         };
 
-            query = query.Where(x => x.Operation != null && x.Operation.Contains("(SM)"));
+            
 
             if (!string.IsNullOrWhiteSpace(operation))
             { var _op = operation.Trim(); query = query.Where(x => x.Operation != null && x.Operation.Contains(_op)); }
@@ -1562,7 +1652,7 @@ namespace MachineStatusUpdate.Controllers
                             d.Datetime
                         };
 
-            query = query.Where(x => x.Operation != null && x.Operation.Contains("(SM)"));
+            
 
             if (!string.IsNullOrWhiteSpace(operation))
             { var _op = operation.Trim(); query = query.Where(x => x.Operation != null && x.Operation.Contains(_op)); }
@@ -2193,6 +2283,27 @@ namespace MachineStatusUpdate.Controllers
             }});
         }
 
+        // ── Lấy tên Tech PIE từ RESPONSE record mới nhất của máy ──
+        [HttpGet]
+        public async Task<IActionResult> GetTechNameByMachine(string machineNo)
+        {
+            if (string.IsNullOrWhiteSpace(machineNo))
+                return Json(new { techName = "" });
+
+            // Lấy TechResponse mới nhất → TechUsername là PIE employee name
+            var techResp = await _context.SVN_Downtime_TechResponses
+                .Where(x => x.MachineCode != null
+                         && x.MachineCode.Trim() == machineNo.Trim()
+                         && x.TechAction == "ACCEPT")
+                .OrderByDescending(x => x.RespondDatetime)
+                .Select(x => new { x.TechUsername, x.EmployeeName })
+                .FirstOrDefaultAsync();
+
+            // TechUsername là PIE employee name (vd: "Alex Jin")
+            var name = techResp?.TechUsername ?? techResp?.EmployeeName ?? "";
+            return Json(new { techName = name });
+        }
+
         // ══════════════════════════════════════════════════════════════════════
         // POST /Status/PostRunEdit
         // PROD / PIE bổ sung thông tin sau khi bấm Run
@@ -2202,29 +2313,25 @@ namespace MachineStatusUpdate.Controllers
         [IgnoreAntiforgeryToken]
         public async Task<IActionResult> PostRunEdit([FromBody] PostRunEditDto dto)
         {
-            var role = HttpContext.Session.GetString("UserRole") ?? "";
-            if (string.IsNullOrEmpty(role))
-                return Unauthorized();
+            if (dto == null)
+                return Json(new { success = false, message = "Invalid request body" });
 
-            var rec = await _context.SVN_Downtime_Infos_Devel.FindAsync(dto.Id);
-            if (rec == null)
-                return Json(new { success = false, message = "Record not found" });
+            var stopRecord = await _context.SVN_Downtime_Infos_Devel.FindAsync(dto.Id);
+            if (stopRecord == null)
+                return Json(new { success = false, message = $"Record #{dto.Id} not found" });
 
-            // Technical điền đầy đủ sau khi fix
-            if (dto.Reason       != null) rec.Reason       = dto.Reason;
-            if (dto.Effect       != null) rec.Effect       = dto.Effect;
-            if (dto.RootCause    != null) rec.RootCause    = dto.RootCause;
-            if (dto.Action       != null) rec.Action       = dto.Action;
-            if (dto.SpareParts   != null) rec.SpareParts   = dto.SpareParts;
+            // ── Patch STOP: tất cả trừ Description (giữ nguyên của Prod) ──
+            if (dto.Reason     != null) stopRecord.Reason     = dto.Reason;
+            if (dto.Effect     != null) stopRecord.Effect     = dto.Effect;
+            if (dto.RootCause  != null) stopRecord.RootCause  = dto.RootCause;
+            if (dto.Action     != null) stopRecord.Action     = dto.Action;
+            if (dto.SpareParts != null) stopRecord.SpareParts = dto.SpareParts;
+            // Description STOP: KHÔNG đụng vào
 
-            // Description: giữ của Prod, append thêm Tech
+            // Lưu Tech Description tạm vào EstimateTime (field ít dùng) để copy sang RUN sau
+            // Dùng prefix [TECHDESC] để phân biệt
             if (!string.IsNullOrWhiteSpace(dto.Description))
-            {
-                var prodDesc = string.IsNullOrWhiteSpace(rec.Description) ? "" : rec.Description.Trim();
-                rec.Description = string.IsNullOrWhiteSpace(prodDesc)
-                    ? $"Tech: {dto.Description.Trim()}"
-                    : $"Prod: {prodDesc} - Tech: {dto.Description.Trim()}";
-            }
+                stopRecord.EstimateTime = $"[TECHDESC]{dto.Description.Trim()}";
 
             await _context.SaveChangesAsync();
             return Json(new { success = true });
@@ -2840,7 +2947,6 @@ namespace MachineStatusUpdate.Controllers
                 return Unauthorized();
 
             var q = _context.SVN_Downtime_Infos_Devel
-                        .Where(x => x.Operation != null && x.Operation.Contains("(SM)"))
                         .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(state))
@@ -2979,6 +3085,107 @@ public class EmployeeDto
             public int Id { get; set; }
         }
 
+
+        // ── MTTR theo máy ──────────────────────────────────────────────
+        private async Task<List<MttrByMachine>> GetMttrByMachine(
+            string fromDate, string toDate,
+            string operation = "", string reason = "", string location = "",
+            string machine = "", string effect = "", string station = "")
+        {
+            var q = _context.SVN_Downtime_Infos_Devel.AsQueryable();
+            if (!string.IsNullOrWhiteSpace(operation)) { var _op = operation.Trim(); q = q.Where(x => x.Operation != null && x.Operation.Contains(_op)); }
+            if (!string.IsNullOrWhiteSpace(machine))   { var _mc = machine.Trim();   q = q.Where(x => x.MachineCode != null && x.MachineCode == _mc); }
+            if (!string.IsNullOrEmpty(fromDate) && DateTime.TryParse(fromDate, out var fd)) q = q.Where(x => x.Datetime.HasValue && x.Datetime.Value.Date >= fd.Date);
+            if (!string.IsNullOrEmpty(toDate)   && DateTime.TryParse(toDate,   out var td)) q = q.Where(x => x.Datetime.HasValue && x.Datetime.Value.Date <= td.Date);
+
+            var records = await q
+                .Where(x => x.MachineCode != null && x.Datetime.HasValue)
+                .OrderBy(x => x.MachineCode).ThenBy(x => x.Datetime)
+                .Select(x => new { x.MachineCode, x.Operation, x.State, x.Datetime })
+                .ToListAsync();
+
+            var result = new List<MttrByMachine>();
+            foreach (var g in records.Where(x => !string.IsNullOrEmpty(x.MachineCode)).GroupBy(x => new { x.MachineCode, x.Operation }))
+            {
+                var recs = g.OrderBy(x => x.Datetime).ToList();
+                var repairs = new List<double>();
+                for (int i = 0; i < recs.Count; i++)
+                {
+                    if (recs[i].State?.ToUpper() != "STOP") continue;
+                    for (int j = i + 1; j < recs.Count; j++)
+                    {
+                        if (recs[j].State?.ToUpper() == "RUN" && recs[j].Datetime.HasValue && recs[i].Datetime.HasValue)
+                            { repairs.Add((recs[j].Datetime.Value - recs[i].Datetime.Value).TotalMinutes); break; }
+                        if (recs[j].State?.ToUpper() == "STOP") break;
+                    }
+                }
+                if (!repairs.Any()) continue;
+                var avg = repairs.Average();
+                result.Add(new MttrByMachine { MachineCode = g.Key.MachineCode ?? "", Operation = g.Key.Operation ?? "", AvgRepairMinutes = Math.Round(avg, 1), AvgRepairFormatted = FormatMinutesToTime(avg), RepairCount = repairs.Count });
+            }
+            return result.OrderByDescending(x => x.AvgRepairMinutes).ToList();
+        }
+
+        // ── Top 5 máy hỏng nhiều nhất ─────────────────────────────────
+        private async Task<List<Top5MachineData>> GetTop5Machines(
+            string fromDate, string toDate,
+            string operation = "", string location = "", string machine = "")
+        {
+            var q = _context.SVN_Downtime_Infos_Devel
+                .Where(x => x.MachineCode != null && x.State != null && x.State.ToUpper() == "STOP").AsQueryable();
+            if (!string.IsNullOrWhiteSpace(operation)) { var _op = operation.Trim(); q = q.Where(x => x.Operation != null && x.Operation.Contains(_op)); }
+            if (!string.IsNullOrWhiteSpace(machine))   { var _mc = machine.Trim();   q = q.Where(x => x.MachineCode == _mc); }
+            if (!string.IsNullOrEmpty(fromDate) && DateTime.TryParse(fromDate, out var fd)) q = q.Where(x => x.Datetime.HasValue && x.Datetime.Value.Date >= fd.Date);
+            if (!string.IsNullOrEmpty(toDate)   && DateTime.TryParse(toDate,   out var td)) q = q.Where(x => x.Datetime.HasValue && x.Datetime.Value.Date <= td.Date);
+
+            var stops = await q.Select(x => new { x.MachineCode, x.Operation, x.Datetime }).ToListAsync();
+            var today = DateTime.Now.Date;
+            var days7 = Enumerable.Range(0, 7).Select(i => today.AddDays(-6 + i)).ToList();
+
+            return stops.GroupBy(x => x.MachineCode)
+                .Select(g => new { MC = g.Key ?? "", Op = g.First().Operation ?? "", Count = g.Count(), Items = g.ToList() })
+                .OrderByDescending(x => x.Count).Take(5)
+                .Select(m => new Top5MachineData
+                {
+                    MachineCode   = m.MC,
+                    Operation     = m.Op,
+                    DowntimeCount = m.Count,
+                    TotalMinutes  = 0,
+                    TotalFormatted = "-",
+                    DailyTrend    = days7.Select(d => (double)m.Items.Count(r => r.Datetime.HasValue && r.Datetime.Value.Date == d)).ToList(),
+                    TrendDates    = days7.Select(d => d.ToString("dd/MM")).ToList()
+                }).ToList();
+        }
+
+        // ── Response Time ──────────────────────────────────────────────
+        private async Task<ResponseTimeData> GetResponseTimeData(
+            string fromDate, string toDate, string operation = "", string machine = "")
+        {
+            var q = _context.SVN_Downtime_TechResponses
+                .Where(x => x.RespondDatetime.HasValue && x.StopDatetime.HasValue && x.TechAction == "ACCEPT");
+            if (!string.IsNullOrEmpty(fromDate) && DateTime.TryParse(fromDate, out var fd)) q = q.Where(x => x.StopDatetime.Value.Date >= fd.Date);
+            if (!string.IsNullOrEmpty(toDate)   && DateTime.TryParse(toDate,   out var td)) q = q.Where(x => x.StopDatetime.Value.Date <= td.Date);
+            if (!string.IsNullOrWhiteSpace(operation)) { var _op = operation.Trim(); q = q.Where(x => x.Operation != null && x.Operation.Contains(_op)); }
+            if (!string.IsNullOrWhiteSpace(machine))   { var _mc = machine.Trim();   q = q.Where(x => x.MachineCode == _mc); }
+
+            var records = await q.Select(x => new { x.MachineCode, x.StopDatetime, x.RespondDatetime }).ToListAsync();
+            if (!records.Any()) return new ResponseTimeData();
+
+            var result = new ResponseTimeData();
+            foreach (var g in records.Where(x => x.MachineCode != null).GroupBy(x => x.MachineCode).OrderBy(g => g.Key))
+            {
+                var times = g.Select(r => (r.RespondDatetime!.Value - r.StopDatetime!.Value).TotalMinutes).Where(t => t >= 0 && t < 1440).ToList();
+                if (!times.Any()) continue;
+                result.Labels.Add(g.Key ?? "");
+                result.AvgResponseMins.Add(Math.Round(times.Average(), 1));
+                result.MinResponseMins.Add(Math.Round(times.Min(), 1));
+                result.MaxResponseMins.Add(Math.Round(times.Max(), 1));
+            }
+            var all = records.Select(r => (r.RespondDatetime!.Value - r.StopDatetime!.Value).TotalMinutes).Where(t => t >= 0 && t < 1440).ToList();
+            result.OverallAvgMins = all.Any() ? Math.Round(all.Average(), 1) : 0;
+            result.TotalResponded = records.Count;
+            return result;
+        }
 
         // Helper classes
         private class DowntimeRecord

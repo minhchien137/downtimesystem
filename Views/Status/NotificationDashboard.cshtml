@@ -1404,6 +1404,17 @@ function renderStopCard(data, prepend = true) {
             </div>
             ${data.station ? `<div class="notif-field"><div class="notif-field-label">🔩 工位</div><div class="notif-field-value">${data.station}</div></div>` : ''}
             ${data.description ? `<div class="notif-field" style="grid-column:1/-1;"><div class="notif-field-label">📝 详细描述</div><div class="notif-field-value">${data.description}</div></div>` : ''}
+            ${data.image ? `<div class="notif-field" style="grid-column:1/-1;">
+                <div class="notif-field-label">🖼 图片</div>
+                <div style="margin-top:4px;">
+                    <a href="${data.image}" target="_blank">
+                        <img src="${data.image}" alt="Error image"
+                             style="max-height:100px;max-width:220px;border-radius:7px;border:1.5px solid var(--border);object-fit:cover;cursor:pointer;transition:transform .15s;"
+                             onmouseover="this.style.transform='scale(1.04)'"
+                             onmouseout="this.style.transform='scale(1)'" />
+                    </a>
+                </div>
+            </div>` : ''}
         </div>
         <div class="notif-actions">${actionsHtml}</div>
     `;
@@ -2327,6 +2338,10 @@ async function submitPostRunEdit() {
                 spareParts   : document.getElementById('postRunSpareParts').value.trim()  || null,
             })
         });
+        if (!res.ok) {
+            teShowToast(`❌ HTTP ${res.status}: ${res.statusText}`, true);
+            return;
+        }
         const data = await res.json();
         if (data.success) {
             teShowToast('✅ 信息已保存！');
