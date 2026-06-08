@@ -1,6 +1,6 @@
 @model List<MachineStatusUpdate.Models.SVN_Notification>
 @{
-    ViewData["Title"] = "📬 我的通知";
+    ViewData["Title"] = "📬 Production Notifications";
     var username = Context.Session.GetString("UserName") ?? "";
 }
 
@@ -374,8 +374,8 @@
 
 <div class="pn-header">
     <div>
-        <h1>📬 我的通知 / My Notifications</h1>
-        <div class="sub">今日收到的技术员响应通知 · Technician responses received today</div>
+        <h1>📬 Production Notifications</h1>
+        <div class="sub">All notifications of Production</div>
     </div>
     <span style="background:#1e40af;color:#fff;padding:6px 14px;border-radius:99px;font-size:13px;font-weight:600;">
         👤 @username
@@ -396,28 +396,28 @@
         <div class="pn-sum-card">
             <div class="pn-sum-icon">📋</div>
             <div>
-                <div class="pn-sum-label">总通知</div>
+                <div class="pn-sum-label">Total Notifications</div>
                 <div class="pn-sum-val val-total">@total</div>
             </div>
         </div>
         <div class="pn-sum-card">
             <div class="pn-sum-icon">✅</div>
             <div>
-                <div class="pn-sum-label">已接受</div>
+                <div class="pn-sum-label">Accepted</div>
                 <div class="pn-sum-val val-accept">@accepts</div>
             </div>
         </div>
         <div class="pn-sum-card">
             <div class="pn-sum-icon">⏳</div>
             <div>
-                <div class="pn-sum-label">等待中</div>
+                <div class="pn-sum-label">Response</div>
                 <div class="pn-sum-val val-wait">@waits</div>
             </div>
         </div>
         <div class="pn-sum-card">
             <div class="pn-sum-icon">🔧</div>
             <div>
-                <div class="pn-sum-label">已修复</div>
+                <div class="pn-sum-label">Fixed</div>
                 <div class="pn-sum-val val-fix">@fixes</div>
             </div>
         </div>
@@ -425,21 +425,21 @@
 
     <!-- Date filter bar -->
     <div class="pn-date-filter">
-        <label>📅 日期筛选 / Date:</label>
+        <label>📅 Date:</label>
         <input type="date" id="filterFrom">
         <span style="color:#6b7280;font-size:13px;">—</span>
         <input type="date" id="filterTo">
-        <button class="pn-filter-btn apply" onclick="applyDateFilter()">🔍 筛选</button>
-        <button class="pn-filter-btn clear" onclick="clearDateFilter()">✕ 清除</button>
+        <button class="pn-filter-btn apply" onclick="applyDateFilter()">🔍 Filter</button>
+        <button class="pn-filter-btn clear" onclick="clearDateFilter()">✕ Clear</button>
         <span id="dateFilterInfo" style="font-size:12px;color:#6b7280;margin-left:4px;"></span>
     </div>
 
     <!-- Filter tabs -->
     <div class="pn-tabs">
-        <button class="pn-tab active" onclick="setFilter('ALL', this)">全部 All (@total)</button>
-        <button class="pn-tab" onclick="setFilter('ACCEPT', this)">✅ 已接受 (@accepts)</button>
-        <button class="pn-tab" onclick="setFilter('WAIT', this)">⏳ 等待中 (@waits)</button>
-        <button class="pn-tab" onclick="setFilter('FIX_COMPLETE', this)">🔧 已修复 (@fixes)</button>
+        <button class="pn-tab active" onclick="setFilter('ALL', this)">All (@total)</button>
+        <button class="pn-tab" onclick="setFilter('ACCEPT', this)">✅ Accepted (@accepts)</button>
+        <button class="pn-tab" onclick="setFilter('WAIT', this)">⏳ Response (@waits)</button>
+        <button class="pn-tab" onclick="setFilter('FIX_COMPLETE', this)">🔧 Fixed (@fixes)</button>
     </div>
 
     <!-- Notification cards -->
@@ -448,9 +448,9 @@
         {
             <div class="pn-empty">
                 <span class="empty-icon">📭</span>
-                今日暂无通知。<br>
+                No notifications available for today.<br>
                 <small style="font-size:13px;margin-top:6px;display:block;">
-                    当技术员响应您的停机呼叫时，通知将显示在此处。
+                    When technicians respond to your downtime calls, notifications will appear here.
                 </small>
             </div>
         }
@@ -478,12 +478,12 @@
                                   : isRun     ? "badge-run"
                                   : "badge-stop";
 
-                string icon = isFix     ? "🔧 已修复完成"
+                string icon = isFix     ? "🔧 Fixed"
                             : isCallDRI ? "🏢 Call Relevant Dept"
-                            : isAccept  ? "✅ 技术员已接受"
-                            : isWait    ? "⏳ 技术员等待中"
-                            : isRun     ? "▶ 设备已运行"
-                            : "🛑 停机通知";
+                            : isAccept  ? "✅ Accepted"
+                            : isWait    ? "⏳ Waiting"
+                            : isRun     ? "▶ Running"
+                            : "🛑 Downtime Notification";
 
                 string dataFilter = isFix     ? "FIX_COMPLETE"
                                   : isCallDRI ? "CALL_DRI"
@@ -530,14 +530,14 @@
                         <div class="pn-run-action" id="run-action-@n.Id">
                             @if (alreadyRun)
                             {
-                                <span class="run-done-badge">▶ 已运行 / Machine is Running ✓</span>
+                                <span class="run-done-badge">▶ Running / Machine is Running ✓</span>
                             }
                             else
                             {
                                 <button class="btn-pn-run"
                                         onclick="prodRunMachine(this, '@n.MachineCode', '@n.Operation', '@n.Id', '@n.TechName')"
                                         title="确认设备已恢复，记录运行">
-                                    ▶ 运行 (Run)
+                                    ▶ Running (Run)
                                 </button>
                             }
                         </div>

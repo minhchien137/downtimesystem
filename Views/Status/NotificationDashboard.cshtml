@@ -1,5 +1,5 @@
 @{
-    ViewData["Title"] = "🔔 技术员看板 – 实时通知";
+    ViewData["Title"] = "🔔 Technical Dashboard";
 }
 
 <style>
@@ -863,23 +863,23 @@
 
 <div class="dash-header">
     <div>
-        <h1>🔧 技术员看板</h1>
-        <div class="sub">实时停机通知 / 故障响应</div>
+        <h1>🔧 Technical Dashboard</h1>
+        <div class="sub">Real-time Downtime Notifications / Fault Responses</div>
     </div>
     <span class="conn-badge connecting" id="connBadge">
         <span class="conn-dot"></span>
-        <span id="connText">连接中...</span>
+        <span id="connText">Connecting...</span>
     </span>
 </div>
 
 <!-- ── Tab navigation ── -->
 <div class="tech-tabs">
     <button class="tech-tab-btn active" onclick="switchTab('notif', this)">
-        🔔 通知列表
+        🔔 Notification List
         <span id="tabNotifBadge" style="display:none;background:#ef4444;color:#fff;font-size:10px;font-weight:700;border-radius:99px;padding:1px 7px;"></span>
     </button>
     <button class="tech-tab-btn" onclick="switchTab('edit', this)">
-        📝 填写记录 / Edit Records
+        📝 Edit Records
     </button>
 </div>
 
@@ -887,8 +887,8 @@
 
     <!-- Audio permission banner -->
     <div class="audio-banner" id="audioBanner">
-        🔇 浏览器已阻止自动播放声音。
-        <button onclick="unlockAudio()">开启声音 (Enable Sound)</button>
+        🔇 Browser has blocked automatic sound playback.
+        <button onclick="unlockAudio()">Enable Sound</button>
     </div>
 
     <!-- Summary counters -->
@@ -896,28 +896,28 @@
         <div class="summary-card">
             <div class="summary-icon">🛑</div>
             <div>
-                <div class="summary-label">今日停机</div>
+                <div class="summary-label">Downtime</div>
                 <div class="summary-value stop" id="cntStop">0</div>
             </div>
         </div>
         <div class="summary-card">
             <div class="summary-icon">▶️</div>
             <div>
-                <div class="summary-label">已恢复运行</div>
+                <div class="summary-label">Running</div>
                 <div class="summary-value run" id="cntRun">0</div>
             </div>
         </div>
         <div class="summary-card">
             <div class="summary-icon">✅</div>
             <div>
-                <div class="summary-label">已接受</div>
+                <div class="summary-label">Accepted</div>
                 <div class="summary-value accept" id="cntAccept">0</div>
             </div>
         </div>
         <div class="summary-card">
             <div class="summary-icon">📋</div>
             <div>
-                <div class="summary-label">总通知数</div>
+                <div class="summary-label">Notifications</div>
                 <div class="summary-value total" id="cntTotal">0</div>
             </div>
         </div>
@@ -927,20 +927,20 @@
     <div class="te-wrap active" id="tabNotif">
         <!-- Toolbar -->
         <div class="toolbar">
-            <div class="toolbar-title">📬 通知列表</div>
+            <div class="toolbar-title">📬 Notification List</div>
             <input type="date" id="notifDateFilter" class="notif-date-filter" onchange="reloadByDate()" title="筛选日期">
-            <button class="btn-today" onclick="setToday()">📅 今天</button>
-            <button class="btn-sound" id="btnSound" onclick="toggleSound()">🔔 声音: 开</button>
-            <button class="btn-clear" onclick="clearAll()">🗑 清空已完成</button>
+            <button class="btn-today" onclick="setToday()">📅 Today</button>
+            <button class="btn-sound" id="btnSound" onclick="toggleSound()">🔔 Sound: On</button>
+            <button class="btn-clear" onclick="clearAll()">🗑 Clear Completed</button>
         </div>
 
         <!-- Notification list -->
         <div class="notif-list" id="notifList">
             <div class="notif-empty" id="emptyState">
                 <span class="empty-icon">🟢</span>
-                等待通知中...<br>
+                Waiting for notifications...<br>
                 <small style="font-size:13px;margin-top:6px;display:block;">
-                    当操作员按下 <strong>呼叫技术员</strong> 时，通知会立即显示在此处。
+                    When operators press <strong>Call Technician</strong>, notifications will appear here.
                 </small>
             </div>
         </div>
@@ -949,14 +949,14 @@
     <!-- ══ TAB: Edit Records ══ -->
     <div class="te-wrap" id="tabEdit">
         <div class="te-toolbar">
-            <input type="text" class="te-search" id="teSearch" placeholder="🔍 查找机器、工序…" oninput="teFilterTable()">
+            <input type="text" class="te-search" id="teSearch" placeholder="🔍 Find Machine, Process..." oninput="teFilterTable()">
             <select class="te-filter-select" id="teStateFilter" onchange="teLoadRecords(1)">
-                <option value="">所有状态</option>
+                <option value="">All States</option>
                 <option value="STOP">STOP</option>
                 <option value="RUN">RUN</option>
                 <option value="RESPONSE">RESPONSE</option>
             </select>
-            <button class="btn-te-refresh" onclick="teLoadRecords(1)">🔄 刷新</button>
+            <button class="btn-te-refresh" onclick="teLoadRecords(1)">🔄 Refresh</button>
             <span style="font-size:12px;color:#6b7280;margin-left:auto;" id="teRecordCount"></span>
         </div>
 
@@ -965,20 +965,20 @@
                 <thead>
                     <tr>
                         <th>ID</th>
-                        <th>状态</th>
-                        <th>工序</th>
-                        <th>机器</th>
-                        <th>员工</th>
-                        <th>工站</th>
-                        <th>操作</th>
-                        <th>根本原因</th>
-                        <th>备件</th>
-                        <th>时间</th>
-                        <th>编辑</th>
+                        <th>Status</th>
+                        <th>Process</th>
+                        <th>Machine</th>
+                        <th>Employee</th>
+                        <th>Workstation</th>
+                        <th>Action</th>
+                        <th>Root Cause</th>
+                        <th>Spare Parts</th>
+                        <th>Time</th>
+                        <th>Edit</th>
                     </tr>
                 </thead>
                 <tbody id="teTableBody">
-                    <tr><td colspan="11" class="te-empty">⏳ 正在加载...</td></tr>
+                    <tr><td colspan="11" class="te-empty">⏳ Loading...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -996,8 +996,8 @@
     <div class="te-modal">
         <div class="te-modal-header">
             <div>
-                <h3>📝 技术更新</h3>
-                <div class="te-modal-sub" id="teModalSub">仅可修改技术员相关字段</div>
+                <h3>📝 Technical Update</h3>
+                <div class="te-modal-sub" id="teModalSub">Only technician-related fields can be modified</div>
             </div>
             <button class="te-modal-close" onclick="closeTeModal()">×</button>
         </div>
@@ -1008,26 +1008,26 @@
             <!-- 4 trường Tech được phép sửa -->
             <div class="te-form-grid">
                 <div class="te-form-group">
-                    <label>🔩 工位 / Station</label>
-                    <input type="text" id="teFieldStation" placeholder="Nhập station...">
+                    <label>🔩 Station</label>
+                    <input type="text" id="teFieldStation" placeholder="Enter station...">
                 </div>
                 <div class="te-form-group">
-                    <label>⚙️ 维修动作 / Action</label>
-                    <input type="text" id="teFieldAction" placeholder="Nhập action taken...">
+                    <label>⚙️ Action</label>
+                    <input type="text" id="teFieldAction" placeholder="Enter action taken...">
                 </div>
                 <div class="te-form-group">
-                    <label>🔍 根本原因 / Root Cause</label>
-                    <input type="text" id="teFieldRootCause" placeholder="Nhập root cause...">
+                    <label>🔍 Root Cause</label>
+                    <input type="text" id="teFieldRootCause" placeholder="Enter root cause...">
                 </div>
                 <div class="te-form-group">
-                    <label>🔧 更换配件 / Spare Parts</label>
-                    <input type="text" id="teFieldSpareParts" placeholder="Nhập spare parts...">
+                    <label>🔧 Spare Parts</label>
+                    <input type="text" id="teFieldSpareParts" placeholder="Enter spare parts...">
                 </div>
             </div>
         </div>
         <div class="te-modal-footer">
-            <button class="btn-te-cancel" onclick="closeTeModal()">Hủy</button>
-            <button class="btn-te-save" id="teSaveBtn" onclick="teSaveRecord()">💾 Lưu</button>
+            <button class="btn-te-cancel" onclick="closeTeModal()">Cancel</button>
+            <button class="btn-te-save" id="teSaveBtn" onclick="teSaveRecord()">💾 Save</button>
         </div>
     </div>
 </div>
@@ -1083,16 +1083,16 @@ body.flashing {
 <!-- ===== Reject Reason Modal ===== -->
 <div class="reject-modal-overlay" id="rejectModalOverlay">
     <div class="reject-modal">
-        <h3>❌ 拒绝维修请求</h3>
-        <p class="modal-sub">设备: <strong id="rejectModalMachine">—</strong> · 产线：: <strong id="rejectModalOp">—</strong></p>
+        <h3>❌ Reject Maintenance Request</h3>
+        <p class="modal-sub">Device: <strong id="rejectModalMachine">—</strong> · Line: <strong id="rejectModalOp">—</strong></p>
         <textarea id="rejectReasonInput"
-                  placeholder="请输入拒绝理由... (必填)"
+                  placeholder="Please enter rejection reason... (Required)"
                   maxlength="300"
                   oninput="onRejectInput(this)"></textarea>
-        <div class="char-hint" id="rejectCharHint">0 / 300 字符</div>
+        <div class="char-hint" id="rejectCharHint">0 / 300 characters</div>
         <div class="modal-footer">
-            <button class="btn-modal-cancel" onclick="closeRejectModal()">取消</button>
-            <button class="btn-modal-submit" id="rejectSubmitBtn" onclick="submitReject()">❌ 确认拒绝</button>
+            <button class="btn-modal-cancel" onclick="closeRejectModal()">Cancel</button>
+            <button class="btn-modal-submit" id="rejectSubmitBtn" onclick="submitReject()">❌ Confirm Rejection</button>
         </div>
     </div>
 </div>
@@ -1127,12 +1127,12 @@ async function submitPieResponse() {
     const effect = document.getElementById('pieRespEffect').value.trim();
     if (!reason) {
         document.getElementById('pieRespReason').style.borderColor = '#ef4444';
-        teShowToast('⚠ 请选择功能 / Please select Function!', true);
+        teShowToast('⚠ Please select Function!', true);
         return;
     }
     if (!effect) {
         document.getElementById('pieRespEffect').style.borderColor = '#ef4444';
-        teShowToast('⚠ 请选择影响程度 / Please select Effect!', true);
+        teShowToast('⚠ Please select Effect!', true);
         return;
     }
 
@@ -1147,7 +1147,7 @@ async function submitPieResponse() {
     const responseTimeStr = mins !== null ? formatMinutes(mins) : null;
 
     card.querySelectorAll('.btn-accept, .btn-reject, .btn-wait').forEach(b => b.disabled = true);
-    btn.innerHTML = '⏳ 发送中...';
+    btn.innerHTML = '⏳ Sending...';
 
     try {
         const res = await fetch(`${pathBase}/Status/TechnicianRespond`, {
@@ -1176,7 +1176,7 @@ async function submitPieResponse() {
         } else {
             card.querySelectorAll('.btn-accept, .btn-reject, .btn-wait').forEach(b => b.disabled = false);
             btn.innerHTML = '✅ Response';
-            teShowToast('❌ Lỗi server', true);
+            teShowToast('❌ Server error', true);
         }
     } catch (err) {
         console.error('submitPieResponse error:', err);
@@ -1220,7 +1220,7 @@ function unlockAudio() {
 function toggleSound() {
     soundEnabled = !soundEnabled;
     document.getElementById('btnSound').textContent =
-        soundEnabled ? '🔔 声音: 开' : '🔕 声音: 关';
+        soundEnabled ? '🔔 Sound: On' : '🔕 Sound: Off';
 }
 
 /* ===== Âm thanh STOP: còi báo động to, 5 tiếng bip nhanh ===== */
@@ -1314,7 +1314,7 @@ function startTitleFlash(machineName) {
     if (titleFlashInterval) clearInterval(titleFlashInterval);
     let show = true;
     titleFlashInterval = setInterval(() => {
-        document.title = show ? `🛑 停机: ${machineName}` : originalTitle;
+        document.title = show ? `🛑 Stop: ${machineName}` : originalTitle;
         show = !show;
     }, 700);
     // Dừng sau 15 giây
@@ -1352,8 +1352,8 @@ function minutesBetween(start, end) {
 
 function formatMinutes(mins) {
     if (mins === null || mins === undefined || isNaN(mins)) return '-';
-    if (mins < 1) return '< 1 分钟';
-    if (mins < 60) return `${mins} 分钟`;
+    if (mins < 1) return '< 1 minute';
+    if (mins < 60) return `${mins} minutes`;
     const h = Math.floor(mins / 60);
     const m = mins % 60;
     return m > 0 ? `${h}h ${m}m` : `${h}h`;
@@ -1363,8 +1363,8 @@ function formatMinutes(mins) {
 function renderStopCard(data, prepend = true) {
     if (emptyState) { emptyState.remove(); emptyState = null; }
 
-    const effLabel = data.effect === '1' ? '影响生产'
-                   : data.effect === '2' ? '不影响生产'
+    const effLabel = data.effect === '1' ? 'Affects Production'
+                   : data.effect === '2' ? 'Does Not Affect Production'
                    : (data.effect || '-');
 
     const card = document.createElement('div');
@@ -1393,31 +1393,31 @@ function renderStopCard(data, prepend = true) {
         ? buildRespondedBadge(data.techAction, data.techUsername, data.respondDatetime, !!data.fixComplete, responseTimeStr, !!data.prodRun)
         : `<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
             <select class="pie-emp-select" style="border:1.5px solid #e5e7eb;border-radius:8px;padding:8px 12px;font-size:13px;outline:none;min-width:200px;cursor:pointer;">
-            <option value="">-- 选择PIE员工 (Select PIE) --</option>
+            <option value="">-- Select Technician --</option>
             ${pieOptions}
             </select>
             <button class="btn-accept" onclick="respondToOperator(this,'ACCEPT')">✅ Response</button>
-            <button class="btn-reject" onclick="openRejectModal(this)">❌ 拒绝 / Reject</button>
+            <button class="btn-reject" onclick="openRejectModal(this)">❌ Reject</button>
             <button class="btn-not-ef" onclick="pieNotEF(this)" title="Not E&F problem — call relevant department">🏢 Not E&F</button>
         </div>`;
 
     card.innerHTML = `
-        <button class="notif-dismiss" onclick="deleteCard(this)" title="删除通知 / Delete">🗑</button>
+        <button class="notif-dismiss" onclick="deleteCard(this)" title="Delete">🗑</button>
         <div class="notif-top">
-            <span class="notif-badge badge-stop">🛑 停机 / 呼叫</span>
+            <span class="notif-badge badge-stop">🛑 Stop / Call</span>
             <span class="notif-time">${data.datetime || new Date().toLocaleString('zh-CN')}</span>
         </div>
-        <div class="notif-machine">${data.machineCode || '(无设备代码)'}</div>
+        <div class="notif-machine">${data.machineCode || '(no machine code)'}</div>
         <div class="notif-op">📍 ${data.operation || '-'} ${data.location ? '· ' + data.location : ''}</div>
         <div class="notif-grid">
             <div class="notif-field">
-                <div class="notif-field-label">👤 操作员</div>
+                <div class="notif-field-label">👤 Employee</div>
                 <div class="notif-field-value">${data.employeeName || data.employeeCode || '-'} ${data.employeeCode ? '(' + data.employeeCode + ')' : ''}</div>
             </div>
-            ${data.station ? `<div class="notif-field"><div class="notif-field-label">🔩 工位</div><div class="notif-field-value">${data.station}</div></div>` : ''}
-            ${data.description ? `<div class="notif-field" style="grid-column:1/-1;"><div class="notif-field-label">📝 详细描述</div><div class="notif-field-value">${data.description}</div></div>` : ''}
+            ${data.station ? `<div class="notif-field"><div class="notif-field-label">🔩 Station</div><div class="notif-field-value">${data.station}</div></div>` : ''}
+            ${data.description ? `<div class="notif-field" style="grid-column:1/-1;"><div class="notif-field-label">📝 Description</div><div class="notif-field-value">${data.description}</div></div>` : ''}
             ${data.image ? `<div class="notif-field" style="grid-column:1/-1;">
-                <div class="notif-field-label">🖼 图片</div>
+                <div class="notif-field-label">🖼 Image</div>
                 <div style="margin-top:4px;">
                     <a href="${data.image}" target="_blank">
                         <img src="${data.image}" alt="Error image"
@@ -1445,21 +1445,21 @@ function renderStopCard(data, prepend = true) {
 function buildRespondedBadge(action, techUser, respondTime, fixComplete = false, responseTimeStr = null, prodRun = false) {
     // ── REJECT ──
     if (action === 'REJECT') {
-        return `<span class="responded-badge rejected">❌ 已拒绝${techUser ? '，由 ' + techUser : ''}${respondTime ? ' · ' + respondTime : ''}</span>`;
+        return `<span class="responded-badge rejected">❌ Rejected${techUser ? ' by ' + techUser : ''}${respondTime ? ' · ' + respondTime : ''}</span>`;
     }
 
     // ── ACCEPT ──
-    const badge = `<span class="responded-badge accepted">✅ 已接受${techUser ? ' 由 ' + techUser : ''}${respondTime ? ' · ' + respondTime : ''}</span>`;
+    const badge = `<span class="responded-badge accepted">✅ Accepted${techUser ? ' by ' + techUser : ''}${respondTime ? ' · ' + respondTime : ''}</span>`;
     const respTimeBadge = responseTimeStr
-        ? `<span class="response-time-badge">⚡ 响应时间: ${responseTimeStr}</span>`
+        ? `<span class="response-time-badge">⚡ Response Time: ${responseTimeStr}</span>`
         : '';
     let responseBtn;
     if (fixComplete) {
-        responseBtn = `<span class="responded-badge fix-done">🔧 已发送修复完成通知</span>`;
+        responseBtn = `<span class="responded-badge fix-done">🔧 Fix Complete Notification Sent</span>`;
     } else if (prodRun) {
-        responseBtn = `<span class="responded-badge" style="background:#dbeafe;color:#1e40af;">▶ 生产已Run — 无需操作</span>`;
+        responseBtn = `<span class="responded-badge" style="background:#dbeafe;color:#1e40af;">▶ Production Running — No Action Required</span>`;
     } else {
-        responseBtn = `<button class="btn-fix-complete" onclick="techFixComplete(this)">🔧 响应 — 已修复完成</button>`;
+        responseBtn = `<button class="btn-fix-complete" onclick="techFixComplete(this)">🔧 Respond — Fix Complete</button>`;
     }
 
     return `<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">${badge}${respTimeBadge}${responseBtn}</div>`;
@@ -1476,7 +1476,7 @@ async function respondToOperator(btn, action) {
         empSelect.style.borderColor = '#ef4444';
         empSelect.style.boxShadow = '0 0 0 3px rgba(239,68,68,0.2)';
         empSelect.focus();
-        teShowToast('⚠ 请先选择PIE员工！', true);
+        teShowToast('⚠ Please select a technician first!', true);
         return;
     }
     if (empSelect) {
@@ -1497,7 +1497,7 @@ async function respondToOperator(btn, action) {
         const responseTimeStr = mins !== null ? formatMinutes(mins) : null;
 
         card.querySelectorAll('.btn-accept, .btn-reject, .btn-wait').forEach(b => b.disabled = true);
-        btn.innerHTML = '⏳ 发送中...';
+        btn.innerHTML = '⏳ Sending...';
 
         try {
             const res = await fetch(`${pathBase}/Status/TechnicianRespond`, {
@@ -1534,7 +1534,7 @@ async function respondToOperator(btn, action) {
     const responseTimeStr = mins !== null ? formatMinutes(mins) : null;
 
     card.querySelectorAll('.btn-accept, .btn-reject, .btn-wait').forEach(b => b.disabled = true);
-    btn.innerHTML = '⏳ 发送中...';
+    btn.innerHTML = '⏳ Sending...';
 
     try {
         const res = await fetch(`${pathBase}/Status/TechnicianRespond`, {
@@ -1632,7 +1632,7 @@ async function submitReject() {
 
     const submitBtn = document.getElementById('rejectSubmitBtn');
     submitBtn.disabled   = true;
-    submitBtn.textContent = '⏳ Đang gửi...';
+    submitBtn.textContent = '⏳ Sending...';
 
     const stopDt = parseDT(_rejectCtx.stopDatetime);
     const mins   = minutesBetween(stopDt, new Date());
@@ -1659,9 +1659,9 @@ async function submitReject() {
                 if (actionsDiv) {
                     actionsDiv.innerHTML = `
                         <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
-                            <span class="responded-badge rejected">❌ 已拒绝</span>
-                            ${responseTimeStr ? `<span class="response-time-badge">⚡ 时间: ${responseTimeStr}</span>` : ''}
-                            <span style="font-size:12px;color:#6b7280;font-style:italic;">理由: ${reason}</span>
+                            <span class="responded-badge rejected">❌ Rejected</span>
+                            ${responseTimeStr ? `<span class="response-time-badge">⚡ Time: ${responseTimeStr}</span>` : ''}
+                            <span style="font-size:12px;color:#6b7280;font-style:italic;">Reason: ${reason}</span>
                         </div>`;
                 }
             }
@@ -1670,13 +1670,13 @@ async function submitReject() {
             closeRejectModal();
         } else {
             submitBtn.disabled   = false;
-            submitBtn.textContent = '❌ 确认拒绝';
+            submitBtn.textContent = '❌ Confirm Reject';
             submitBtn.classList.add('active');
         }
     } catch (err) {
         console.error('submitReject error:', err);
         submitBtn.disabled   = false;
-        submitBtn.textContent = '❌ 确认拒绝';
+        submitBtn.textContent = '❌ Confirm Reject';
         submitBtn.classList.add('active');
     }
 }
@@ -1741,7 +1741,7 @@ async function techFixComplete(btn) {
     const actionsDiv       = card.querySelector('.notif-actions');
 
     btn.disabled  = true;
-    btn.innerHTML = '⏳ 发送中...';
+    btn.innerHTML = '⏳ Sending...';
 
     try {
         const res = await fetch(`${pathBase}/Status/TechnicianFixComplete`, {
@@ -1756,7 +1756,7 @@ async function techFixComplete(btn) {
             btn.replaceWith((() => {
                 const s = document.createElement('span');
                 s.className   = 'responded-badge fix-done';
-                s.textContent = '🔧 已发送修复完成通知';
+                s.textContent = '🔧 Fix Complete Notification Sent';
                 return s;
             })());
 
@@ -1773,12 +1773,12 @@ async function techFixComplete(btn) {
             }
         } else {
             btn.disabled  = false;
-            btn.innerHTML = '🔧 响应 — 已修复完成';
+            btn.innerHTML = '🔧 Respond — Fix Complete';
         }
     } catch (err) {
         console.error('techFixComplete error:', err);
         btn.disabled  = false;
-        btn.innerHTML = '🔧 响应 — 已修复完成';
+        btn.innerHTML = '🔧 Respond — Fix Complete';
     }
 }
 
@@ -1789,14 +1789,14 @@ function renderRunCard(data) {
     const card = document.createElement('div');
     card.className = 'notif-card run-card';
     card.innerHTML = `
-        <button class="notif-dismiss" onclick="deleteCard(this)" title="删除通知 / Delete">🗑</button>
+        <button class="notif-dismiss" onclick="deleteCard(this)" title="Delete Notification">🗑</button>
         <div class="notif-top">
-            <span class="notif-badge badge-run">▶ 恢复运行</span>
+            <span class="notif-badge badge-run">▶ Resume Operation</span>
             <span class="notif-time">${data.datetime || new Date().toLocaleString('zh-CN')}</span>
         </div>
         <div class="notif-machine">${data.machineCode || '-'}</div>
         <div class="notif-op">📍 ${data.operation || '-'}</div>
-        <div style="font-size:13px;color:#166534;margin-top:6px;">✅ 设备已恢复正常运行。</div>
+        <div style="font-size:13px;color:#166534;margin-top:6px;">✅ Device has returned to normal operation.</div>
     `;
 
     notifList.insertBefore(card, notifList.firstChild);
@@ -1826,7 +1826,7 @@ async function deleteCard(btn) {
     const isPending  = !card.querySelector('.responded-badge, .fix-done') && !card.classList.contains('run-card');
 
     if (isPending) {
-        const ok = confirm('⚠️ 此通知尚未处理！确定要删除吗？\nThis notification is not handled yet. Delete anyway?');
+        const ok = confirm('⚠️ This notification is not handled yet. Delete anyway?');
         if (!ok) return;
     }
 
@@ -1849,7 +1849,7 @@ async function deleteCard(btn) {
     if (techRespId) saveDismissedId(techRespId);
 
     // Gọi API xóa notification khỏi SVN_Notifications (server-side)
-   // Gọi API xóa notification khỏi SVN_Notifications (server-side)
+ 
 if (techRespId) {
     try {
         await fetch(`${pathBase}/Status/DeleteTechNotification`, {
@@ -1867,7 +1867,7 @@ if (techRespId) {
         // Nếu bell list trống → hiện empty state
         if (!document.querySelector('#bellList .bell-notif-item')) {
             const bellList = document.getElementById('bellList');
-            if (bellList) bellList.innerHTML = '<div class="bell-drop-empty" id="bellEmpty">暂无通知。</div>';
+            if (bellList) bellList.innerHTML = '<div class="bell-drop-empty" id="bellEmpty">No notifications.</div>';
             const bellBadge = document.getElementById('bellBadge');
             if (bellBadge) bellBadge.style.display = 'none';
         }
@@ -1884,7 +1884,7 @@ function showEmptyState() {
     const empty = document.createElement('div');
     empty.className = 'notif-empty';
     empty.id = 'emptyState';
-    empty.innerHTML = `<span class="empty-icon">🟢</span>等待通知中...<br><small style="font-size:13px;margin-top:6px;display:block;">当操作员按下 <strong>呼叫技术员</strong> 时，通知会立即显示在此处。</small>`;
+    empty.innerHTML = `<span class="empty-icon">🟢</span>Waiting for notifications...<br><small style="font-size:13px;margin-top:6px;display:block;">When the operator presses <strong>Call Technician</strong>, notifications will appear here.</small>`;
     notifList.appendChild(empty);
 }
 
@@ -1932,8 +1932,8 @@ connection.on("ReceiveStopNotification", (data) => {
     flashScreen();
     startTitleFlash(data.machineCode || '停机');
     showBrowserNotif(
-        `🛑 停机: ${data.machineCode}`,
-        `工序: ${data.operation}\n操作员: ${data.employeeName || data.employeeCode}\n原因: ${data.reason}`
+        `🛑 Stop Notification: ${data.machineCode}`,
+        `Operation: ${data.operation}\nEmployee: ${data.employeeName || data.employeeCode}\nReason: ${data.reason}`
     );
 });
 
@@ -1944,7 +1944,7 @@ connection.on("ReceiveRunNotification", (data) => {
     updateCounters();
     renderRunCard(data);
     playRunSound();
-    showBrowserNotif(`▶ 恢复运行: ${data.machineCode}`, `设备已重新运行\n${data.operation}`);
+    showBrowserNotif(`▶ Resume Operation: ${data.machineCode}`, `Device has resumed operation\n${data.operation}`);
 
     // Nếu Prod đã nhấn Run → disable nút "已修复完成" trên card tương ứng
     if (data.machineCode) {
@@ -1955,7 +1955,7 @@ connection.on("ReceiveRunNotification", (data) => {
                     const badge = document.createElement('span');
                     badge.className = 'responded-badge';
                     badge.style.cssText = 'background:#dbeafe;color:#1e40af;';
-                    badge.textContent = '▶ 生产已Run — 无需操作';
+                    badge.textContent = '▶ Production Resumed — No Action Needed';
                     fixBtn.replaceWith(badge);
                 }
             }
@@ -2089,7 +2089,7 @@ async function reloadByDate() {
     const tmp = document.createElement('div');
     tmp.className = 'notif-empty';
     tmp.id = 'emptyState';
-    tmp.innerHTML = `<span class="empty-icon">⏳</span>正在加载...`;
+    tmp.innerHTML = `<span class="empty-icon">⏳</span>Loading...`;
     notifList.appendChild(tmp);
     emptyState = tmp;
     await loadPendingFromDB();
@@ -2117,7 +2117,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const banner = document.getElementById('audioBanner');
     banner.style.display = 'flex';
     banner.querySelector('span').textContent =
-        '⚠ 请点击右侧按钮以启用报警声音。只需操作一次！';
+        '⚠ Please click the button on the right to enable alert sounds. This only needs to be done once!';
 
     document.addEventListener('click', () => {
         ensureAudioCtx();
@@ -2163,7 +2163,7 @@ async function teLoadRecords(page) {
     const url = `${pathBase}/Status/TechGetRecords?page=${tePage}&pageSize=${tePageSize}&state=${encodeURIComponent(state)}&fromDate=${fromDate}`;
 
     document.getElementById('teTableBody').innerHTML =
-        '<tr><td colspan="11" class="te-empty">⏳ Đang tải...</td></tr>';
+        '<tr><td colspan="11" class="te-empty">⏳ Loading...</td></tr>';
 
     try {
         const res  = await fetch(url);
@@ -2180,14 +2180,14 @@ async function teLoadRecords(page) {
 
     } catch (e) {
         document.getElementById('teTableBody').innerHTML =
-            '<tr><td colspan="11" class="te-empty" style="color:#ef4444;">❌ Lỗi tải dữ liệu</td></tr>';
+            '<tr><td colspan="11" class="te-empty" style="color:#ef4444;">❌ Error loading data</td></tr>';
     }
 }
 
 function teRenderTable(rows) {
     const tbody = document.getElementById('teTableBody');
     if (!rows || rows.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="11" class="te-empty">📭 Không có dữ liệu</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" class="te-empty">📭 No data available</td></tr>';
         return;
     }
 
@@ -2210,7 +2210,7 @@ function teRenderTable(rows) {
             <td style="color:${r.spareParts ? '#0369a1' : '#9ca3af'};">${truncate(r.spareParts, 15)}</td>
             <td style="font-size:12px;color:#6b7280;">${dt}</td>
             <td>
-                <button class="btn-te-edit" onclick='teOpenModal(${JSON.stringify(r)})'>✏️ Sửa</button>
+                <button class="btn-te-edit" onclick='teOpenModal(${JSON.stringify(r)})'>✏️ Edit</button>
             </td>
         </tr>`;
     }).join('');
@@ -2263,13 +2263,13 @@ function teOpenModal(record) {
     // Thông tin read-only
     document.getElementById('teModalInfo').innerHTML = `
         <div><div class="info-label">ID</div><div class="info-val">#${record.id}</div></div>
-        <div><div class="info-label">Trạng thái</div><div class="info-val">${record.state || '-'}</div></div>
-        <div><div class="info-label">Máy</div><div class="info-val">${record.machineCode || '-'}</div></div>
-        <div><div class="info-label">Nhân viên</div><div class="info-val">${record.employeeName || record.employeeCode || '-'}</div></div>
-        <div style="grid-column:1/-1;"><div class="info-label">Công đoạn</div><div class="info-val">${record.operation || '-'}</div></div>
+        <div><div class="info-label">Status</div><div class="info-val">${record.state || '-'}</div></div>
+        <div><div class="info-label">Machine</div><div class="info-val">${record.machineCode || '-'}</div></div>
+        <div><div class="info-label">Employee</div><div class="info-val">${record.employeeName || record.employeeCode || '-'}</div></div>
+        <div style="grid-column:1/-1;"><div class="info-label">Process</div><div class="info-val">${record.operation || '-'}</div></div>
     `;
     document.getElementById('teModalSub').textContent =
-        `Máy: ${record.machineCode || '-'} · ${record.state || ''} · #${record.id}`;
+        `Machine: ${record.machineCode || '-'} · ${record.state || ''} · #${record.id}`;
 
     // Fill 4 trường
     document.getElementById('teFieldStation').value   = record.station   || '';
@@ -2291,7 +2291,7 @@ async function teSaveRecord() {
 
     const btn = document.getElementById('teSaveBtn');
     btn.disabled  = true;
-    btn.textContent = '⏳ Đang lưu...';
+    btn.textContent = '⏳ Saving...';
 
     try {
         const res = await fetch(`${pathBase}/Status/TechUpdateRecord`, {
@@ -2309,16 +2309,16 @@ async function teSaveRecord() {
 
         if (data.success) {
             closeTeModal();
-            teShowToast('✅ Lưu thành công!');
-            teLoadRecords(tePage); // Reload bảng
+            teShowToast('✅ Saved successfully!');
+            teLoadRecords(tePage); // Reload table
         } else {
-            teShowToast('❌ ' + (data.message || 'Lỗi lưu'), true);
+            teShowToast('❌ ' + (data.message || 'Error saving'), true);
         }
     } catch (e) {
-        teShowToast('❌ Lỗi kết nối', true);
+        teShowToast('❌ Connection error', true);
     } finally {
         btn.disabled    = false;
-        btn.textContent = '💾 Lưu';
+        btn.textContent = '💾 Save';
     }
 }
 
@@ -2362,18 +2362,18 @@ async function submitPostRunEdit() {
     const effect = document.getElementById('postRunEffect').value.trim();
     if (!reason) {
         document.getElementById('postRunReason').style.borderColor = '#ef4444';
-        teShowToast('⚠ 请选择原因 / Please select Reason!', true);
+        teShowToast('⚠ Please select Reason!', true);
         return;
     }
     if (!effect) {
         document.getElementById('postRunEffect').style.borderColor = '#ef4444';
-        teShowToast('⚠ 请选择影响 / Please select Effect!', true);
+        teShowToast('⚠ Please select Effect!', true);
         return;
     }
 
     const btn = document.getElementById('postRunSaveBtn');
     btn.disabled    = true;
-    btn.textContent = '⏳ 保存中...';
+    btn.textContent = '⏳ Saving...';
 
     try {
         const res  = await fetch(`${pathBase}/Status/PostRunEdit`, {
@@ -2395,16 +2395,16 @@ async function submitPostRunEdit() {
         }
         const data = await res.json();
         if (data.success) {
-            teShowToast('✅ 信息已保存！');
+            teShowToast('✅ Information saved successfully!');
             closePostRunModal();
         } else {
-            teShowToast('❌ 保存失败！', true);
+            teShowToast('❌ Failed to save information!', true);
         }
     } catch (err) {
-        teShowToast('❌ 保存出错！', true);
+        teShowToast('❌ Error occurred while saving!', true);
     } finally {
         btn.disabled    = false;
-        btn.innerHTML   = '💾 保存 / Save';
+        btn.innerHTML   = '💾 Save / 保存';
     }
 }
 
@@ -2424,23 +2424,22 @@ document.getElementById('postRunModalOverlay')
         animation:postRunIn .18s ease">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
             <h2 style="margin:0;font-size:17px;font-weight:700;color:#111">
-                📝 补充信息 / Add Details
+                📝 Add Details
             </h2>
             <button onclick="closePostRunModal()"
                     style="background:none;border:none;font-size:20px;cursor:pointer;color:#9ca3af;line-height:1">×</button>
         </div>
         <p style="margin:0 0 16px;font-size:13px;color:#6b7280">
             After repair complete, please fill in the details below.<br>
-            维修完成后，请补充以下信息。
         </p>
         <input type="hidden" id="postRunRecordId" />
         <div style="display:flex;flex-direction:column;gap:12px">
             <div>
                 <label style="font-size:12.5px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px">
-                    原因 / Reason <span style="color:#ef4444">*</span>
+                    Reason <span style="color:#ef4444">*</span>
                 </label>
                 <select id="postRunReason" style="width:100%;border:1.5px solid #e5e7eb;border-radius:8px;padding:9px 12px;font-size:14px;box-sizing:border-box;background:#fff">
-                    <option value="">-- 选择原因 (Select reason) --</option>
+                    <option value="">-- Select reason --</option>
                     @foreach (var r in (ViewBag.PieReasonOptions as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>()))
                     {
                         <option value="@r.Reason_Name">@r.Reason_Name (@r.Reason_Code)</option>
@@ -2449,35 +2448,35 @@ document.getElementById('postRunModalOverlay')
             </div>
             <div>
                 <label style="font-size:12.5px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px">
-                    影响 / Effect <span style="color:#ef4444">*</span>
+                    Effect <span style="color:#ef4444">*</span>
                 </label>
                 <select id="postRunEffect" style="width:100%;border:1.5px solid #e5e7eb;border-radius:8px;padding:9px 12px;font-size:14px;box-sizing:border-box;background:#fff">
-                    <option value="">-- 有没有影响 --</option>
-                    <option value="1">影响生产</option>
-                    <option value="2">不影响生产</option>
+                    <option value="">-- Select effect --</option>
+                    <option value="1">Affects Production</option>
+                    <option value="2">Does Not Affect Production</option>
                 </select>
             </div>
             <div>
                 <label style="font-size:12.5px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px">
-                    异常描述 / Problem Description
+                    Problem Description
                     <span style="font-weight:400;font-size:11px;color:#9ca3af;margin-left:4px">(Prod đã nhập — Tech bổ sung thêm)</span>
                 </label>
-                <input type="text" id="postRunDescription" placeholder="Thêm mô tả kỹ thuật..."
+                <input type="text" id="postRunDescription" placeholder="Enter technical description..."
                        style="width:100%;border:1.5px solid #e5e7eb;border-radius:8px;padding:9px 12px;font-size:14px;box-sizing:border-box" />
             </div>
             <div>
-                <label style="font-size:12.5px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px">根本原因 / Root Cause</label>
+                <label style="font-size:12.5px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px">Root Cause</label>
                 <input type="text" id="postRunRootCause" placeholder="Enter root cause..."
                        style="width:100%;border:1.5px solid #e5e7eb;border-radius:8px;padding:9px 12px;font-size:14px;box-sizing:border-box" />
             </div>
             <div>
-                <label style="font-size:12.5px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px">维修动作 / Action Taken</label>
+                <label style="font-size:12.5px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px">Action Taken</label>
                 <input type="text" id="postRunAction" placeholder="Enter action taken..."
                        style="width:100%;border:1.5px solid #e5e7eb;border-radius:8px;padding:9px 12px;font-size:14px;box-sizing:border-box" />
             </div>
             <div>
                 <label style="font-size:12.5px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px">
-                    更换配件 / Spare Parts Used
+                    Spare Parts Used
                     <span style="font-weight:400;font-size:11px;color:#9ca3af;margin-left:4px">(optional)</span>
                 </label>
                 <input type="text" id="postRunSpareParts" placeholder="Enter spare parts used (or leave blank)..."
@@ -2487,11 +2486,11 @@ document.getElementById('postRunModalOverlay')
         <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px">
             <button onclick="closePostRunModal()"
                     style="background:#f3f4f6;color:#374151;border:none;border-radius:9px;padding:9px 20px;font-size:14px;font-weight:600;cursor:pointer">
-                跳过 / Skip
+                Skip
             </button>
             <button id="postRunSaveBtn" onclick="submitPostRunEdit()"
                     style="background:#22c55e;color:#fff;border:none;border-radius:9px;padding:9px 24px;font-size:14px;font-weight:700;cursor:pointer">
-                💾 保存 / Save
+                💾 Save
             </button>
         </div>
     </div>

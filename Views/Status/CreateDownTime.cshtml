@@ -617,8 +617,8 @@
 
 <div class="status-form-container">
     <div class="form-header">
-        <h1 class="form-title">录入停机时间 / Downtime Input</h1>
-        <div class="form-sub">系统用于管理生产过程中的设备停机情况。/ The system manages machine downtime in production.</div>
+        <h1 class="form-title">Downtime Input</h1>
+        <div class="form-sub">System for managing machine downtime in production.</div>
     </div>
 
     <form id="downtimeForm" asp-controller="Status" asp-action="CreateDownTime" method="post"
@@ -630,7 +630,7 @@
 
             <!-- ===== Employee ID — Searchable Dropdown ===== -->
             <div class="form-group">
-                <label class="form-label">员工工号 / Employee ID no.</label>
+                <label class="form-label">Employee ID no.</label>
                 <div class="select-search-wrapper">
                     <!-- ✅ FIX: id đúng là EmployeeCode và EmployeeName -->
                     <input type="hidden" id="EmployeeCode" name="EmployeeCode" />
@@ -644,7 +644,7 @@
                          aria-expanded="false"
                          aria-controls="empDropdown">
                         <span class="select-search-trigger-text" id="empTriggerText">
-                            -- 选择员工 (Select employee) --
+                            -- Select employee --
                         </span>
                     </div>
                     <div class="select-search-dropdown" id="empDropdown" role="listbox">
@@ -656,7 +656,7 @@
                                 <line x1="21" y1="21" x2="16.65" y2="16.65"/>
                             </svg>
                             <input type="text" id="empSearchInput"
-                                   placeholder="搜索姓名... (Search name...)"
+                                   placeholder="Search name... (Search name...)"
                                    oninput="filterEmpOptions(this.value)"
                                    onkeydown="handleEmpSearchKey(event)"
                                    autocomplete="off"
@@ -664,7 +664,7 @@
                         </div>
                         <div class="select-search-list" id="empOptionList">
                             <div class="select-search-option placeholder-opt" data-value="" data-label="">
-                                -- 选择员工 (Select employee) --
+                                -- Select employee --
                             </div>
                             @foreach (var emp in employees)
                             {
@@ -684,7 +684,7 @@
 
              <!-- Operation / Location dropdown -->
             <div class="form-group">
-                <label class="form-label">操作 / Location</label>
+                <label class="form-label">Location</label>
                 <input type="hidden" id="OperationValue" name="Location" />
                 <div class="select-search-wrapper">
                     <div class="select-search-trigger" id="opTrigger"
@@ -693,7 +693,7 @@
                         onkeydown="handleOpTriggerKey(event)"
                         role="combobox" aria-haspopup="listbox" aria-expanded="false">
                         <span class="select-search-trigger-text" id="opTriggerText">
-                            -- 选择工序 (Select Location) --
+                            -- Select Location --
                         </span>
                     </div>
                     <div class="select-search-dropdown" id="opDropdown" role="listbox">
@@ -705,14 +705,14 @@
                                 <line x1="21" y1="21" x2="16.65" y2="16.65"/>
                             </svg>
                             <input type="text" id="opSearchInput"
-                                placeholder="搜索工序... (Search location...)"
+                                placeholder="Search location... (Search location...)"
                                 oninput="filterOpOptions(this.value)"
                                 onkeydown="handleOpSearchKey(event)"
                                 autocomplete="off" />
                         </div>
                         <div class="select-search-list" id="opOptionList">
                             <div class="select-search-option placeholder-opt" data-value="" data-label="">
-                                -- 选择工序 (Select Location) --
+                                -- Select Location --
                             </div>
                             @foreach (var op in smOps)
                             {
@@ -727,7 +727,7 @@
 
             <!-- Machine/Fixture dropdown -->
             <div class="form-group">
-                <label class="form-label">设备、模治具编号 / Machine/Fixture no.</label>
+                <label class="form-label">Machine/Fixture no.</label>
                 <input type="hidden" id="MachineNo" name="MachineCode" />
                 <div class="select-search-wrapper">
                     <div class="select-search-trigger" id="machineTrigger"
@@ -739,7 +739,7 @@
                         aria-expanded="false"
                         aria-controls="machineDropdown">
                         <span class="select-search-trigger-text" id="machineTriggerText">
-                            -- 选择设备编号 (Select machine/fixture no.) --
+                            -- Select machine/fixture no. --
                         </span>
                     </div>
                     <div class="select-search-dropdown" id="machineDropdown" role="listbox">
@@ -751,7 +751,7 @@
                                 <line x1="21" y1="21" x2="16.65" y2="16.65"/>
                             </svg>
                             <input type="text" id="machineSearchInput"
-                                placeholder="搜索设备... (Search machine...)"
+                                placeholder="Search machine... (Search machine...)"
                                 oninput="filterMachineOptions(this.value)"
                                 onkeydown="handleMachineSearchKey(event)"
                                 autocomplete="off"
@@ -759,7 +759,7 @@
                         </div>
                         <div class="select-search-list" id="machineOptionList">
                             <div class="select-search-option placeholder-opt" data-value="" data-label="">
-                                -- 选择设备编号 (Select machine/fixture no.) --
+                                -- Select machine/fixture no. --
                             </div>
                             @{ var smeqs = (ViewBag.SMEQs as IEnumerable<dynamic>) ?? Enumerable.Empty<dynamic>(); }
                             @foreach (var eq in smeqs)
@@ -781,10 +781,10 @@
 
             <!-- Production Line dropdown -->
             <div class="form-group">
-                <label class="form-label">生产线 / Operation</label>
+                <label class="form-label">Operation</label>
                 <div class="select-arrow-wrapper">
                     <select id="Operation" name="Operation" class="form-control" required>
-                        <option value="">-- 选择生产线 (Select Operation) --</option>
+                        <option value="">-- Select Operation --</option>
                         @foreach (var op in ops)
                         {
                             var opDesc = op switch
@@ -809,11 +809,11 @@
 
             <!-- ISS code / Reason — CHỈ PIE/Admin mới thấy và điền -->
             <div class="form-group" id="fieldReason" @(_isProduction ? "style=display:none" : "")>
-                <label class="form-label" for="IssCode">功能 (Function)</label>
+                <label class="form-label" for="IssCode">Reason</label>
                 <div class="select-arrow-wrapper">
                     <select id="IssCode" name="Reason" class="form-control"
                             @(_isProduction ? "" : "required")>
-                        <option value="">-- 选择功能 (Select function) --</option>
+                        <option value="">-- Select reason --</option>
                         @foreach (var r in (IEnumerable<dynamic>)ViewBag.ReasonOptions)
                         {
                             <option value="@r.Reason_Name">@r.Reason_Name (@r.Reason_Code)</option>
@@ -824,19 +824,19 @@
 
             <!-- Effect — CHỈ PIE/Admin mới thấy -->
             <div class="form-group" id="fieldEffect" @(_isProduction ? "style=display:none" : "")>
-                <label class="form-label">影响 / Effect</label>
+                <label class="form-label">Effect</label>
                 <div class="select-arrow-wrapper">
                     <select id="Effect" name="Effect" class="form-control">
-                        <option value="" selected>-- 有没有影响 / Is there any effect? --</option>
-                        <option value="1">影响生产</option>
-                        <option value="2">不影响生产</option>
+                        <option value="" selected>-- Is there any effect? --</option>
+                        <option value="1">Affects Production</option>
+                        <option value="2">Does Not Affect Production</option>
                     </select>
                 </div>
             </div>
 
             <!-- Time — hidden from UI -->
             <div class="form-group time-group-hidden">
-                <label id="timeLabel" class="form-label" for="Datetime">时间 (Time)</label>
+                <label id="timeLabel" class="form-label" for="Datetime">Time</label>
                 <input asp-for="Datetime" type="datetime-local" class="form-control" id="Datetime" required
                        value="@(Model?.Datetime?.ToString("yyyy-MM-ddTHH:mm") ?? DateTime.Now.ToString("yyyy-MM-ddTHH:mm"))" />
                 <span asp-validation-for="Datetime" class="text-danger"></span>
@@ -844,7 +844,7 @@
 
             <!-- Estimated time (optional) — hidden -->
             <div class="form-group" style="display:none;">
-                <label class="form-label" for="EstimateTime">预计时间 (Estimated time) - 可选 (Optional)</label>
+                <label class="form-label" for="EstimateTime">Estimated time (Optional)</label>
                 <input asp-for="EstimateTime" type="time" class="form-control" id="EstimateTime" name="EstimateTime"
                        step="60" placeholder="hh:mm" />
                 <span asp-validation-for="EstimateTime" class="text-danger"></span>
@@ -852,48 +852,48 @@
 
             <!-- Problem Description -->
             <div class="form-group">
-                <label class="form-label" for="Description">异常描述 / Problem Description (Optional)</label>
+                <label class="form-label" for="Description">Description (Optional)</label>
                 <input asp-for="Description" id="Description" name="Description" class="form-control"
-                       placeholder="输入问题描述... Enter a problem description..." />
+                       placeholder="Enter a problem description..." />
                 <span asp-validation-for="Description" class="text-danger"></span>
             </div>
 
             <!-- Station -->
             <div class="form-group">
-                <label class="form-label" for="Station">工位 / Station (Optional)</label>
+                <label class="form-label" for="Station">Station (Optional)</label>
                 <input id="Station" name="Station" class="form-control"
-                       placeholder="输入工位... (Enter station...)" />
+                       placeholder="Enter station..." />
             </div>
 
             <!-- Action — CHỈ PIE/Admin mới thấy -->
             <div class="form-group" @(_isProduction ? "style=display:none" : "")>
-                <label class="form-label" for="Action">维修动作 / Action (Optional)</label>
+                <label class="form-label" for="Action">Action (Optional)</label>
                 <input id="Action" name="Action" class="form-control"
-                       placeholder="输入维修动作... (Enter action taken...)" />
+                       placeholder="Enter action taken..." />
             </div>
 
             <!-- Root Cause — CHỈ PIE/Admin mới thấy -->
             <div class="form-group" @(_isProduction ? "style=display:none" : "")>
-                <label class="form-label" for="RootCause">根本原因 / Root Cause (Optional)</label>
+                <label class="form-label" for="RootCause">Root Cause (Optional)</label>
                 <input id="RootCause" name="RootCause" class="form-control"
-                       placeholder="输入根本原因... (Enter root cause...)" />
+                       placeholder="Enter root cause..." />
             </div>
 
             <!-- Spare Parts — CHỈ PIE/Admin mới thấy -->
             <div class="form-group" @(_isProduction ? "style=display:none" : "")>
-                <label class="form-label" for="SpareParts">更换配件 / Spare parts use (For future)</label>
+                <label class="form-label" for="SpareParts">Spare parts use (For future)</label>
                 <input id="SpareParts" name="SpareParts" class="form-control"
-                       placeholder="输入备注或详情... (Enter notes or details...)" />
+                       placeholder="Enter notes or details..." />
             </div>
 
             <!-- Image (optional) -->
             <div class="form-group full-width">
-                <label class="form-label">图片 (Image) - 可选 (optional)</label>
+                <label class="form-label">Image (Optional)</label>
                 <div class="image-upload-container">
                     <div class="image-upload-area" id="imageUploadAreaDT"
                          onclick="document.getElementById('imageInputDT').click()">
-                        <div class="upload-text">点击选择图片 (Click to select image)</div>
-                        <div class="upload-hint">支持格式: JPG, PNG, GIF, BMP (最大 5MB)</div>
+                        <div class="upload-text">Click to select image</div>
+                        <div class="upload-hint">Supported formats: JPG, PNG, GIF, BMP (Max 5MB)</div>
                     </div>
                     <input type="file" id="imageInputDT" name="imageFile" accept="image/*" />
                     <div id="imagePreviewDT" style="display:none;">
@@ -901,7 +901,7 @@
                         <div class="file-info" id="fileInfoDT"></div>
                         <div class="image-actions">
                             <button type="button" class="btn tiny-btn" onclick="removeImageDT()">
-                                删除图片 (Remove image)
+                                Remove image
                             </button>
                         </div>
                     </div>
@@ -915,20 +915,20 @@
             @if (_showCall)
             {
                 <button type="button" id="btnCall" class="btn-call">
-                    ☎️ @(_isProduction ? "Call to PIE" : "Response")
+                    ☎️ @(_isProduction ? "Call" : "Response")
                 </button>
             }
             @if (_showResponse)
             {
                 <button type="button" id="btnStop" class="btn-response">
-                    🔔 响应 (Response)
+                    🔔 Response
                 </button>
             }
             @if (_showRun)
             {
                 <button type="button" id="btnRun" class="btn-run" disabled style="opacity:0.5;"
-                        title="请先选择设备并等待技术员接受 / Select machine and wait for technician to accept">
-                    ▶ 运行 (Run)
+                        title="Please select a machine and wait for the technician to accept">
+                    ▶ Run
                 </button>
             }
         </div>

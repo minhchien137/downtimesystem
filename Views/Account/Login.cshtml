@@ -7,7 +7,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>登录 / Login — Sigma Worldwide</title>
+    <title>Login Downtime System</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
@@ -307,7 +307,7 @@
             <div class="brand-mark">SIGMA WORLDWIDE</div>
             <h1 class="brand-title">Machine<br>Downtime<br>System</h1>
             <p class="brand-subtitle">
-                系统用于管理生产过程中的设备停机情况。<br>
+              The system is used to manage equipment downtime during the production process.<br>
                 The system manages machine downtime in production.
             </p>
         </div>
@@ -316,8 +316,8 @@
     <!-- ───────── RIGHT PANEL ───────── -->
     <div class="panel-right">
         <div class="login-box">
-            <h2 class="login-heading">登录 / Sign in</h2>
-            <p class="login-sub">请输入您的凭据 / Enter your credentials to continue</p>
+            <h2 class="login-heading">Sign in</h2>
+            <p class="login-sub">Please enter your credentials to continue</p>
 
             @if (!string.IsNullOrEmpty(ViewBag.Error as string))
             {
@@ -330,7 +330,7 @@
                 @Html.AntiForgeryToken()
 
                 <div class="field">
-                    <label>用户名 / Username</label>
+                    <label>Username</label>
                     <div class="input-wrap">
                         <input type="text" name="username" placeholder="Enter username..." autocomplete="username" required />
                         <span class="icon">👤</span>
@@ -338,7 +338,7 @@
                 </div>
 
             <div class="field">
-                <label>密码 / Password</label>
+                <label>Password</label>
                 <div class="input-wrap">
                     <input type="password" name="password" id="passwordInput" placeholder="Enter password..." autocomplete="current-password" required />
                     <span class="icon" id="togglePassword" onclick="togglePwd()"
@@ -346,10 +346,10 @@
                 </div>
             </div>
 
-                <button type="submit" class="btn-login">登录 / LOGIN →</button>
+                <button type="submit" class="btn-login">Login →</button>
             </form>
 
-            <p class="footer-note">© @DateTime.Now.Year Sigma Worldwide · Machine Status Update</p>
+            <p class="footer-note">© @DateTime.Now.Year Sigma Worldwide · Downtime System</p>
         </div>
     </div>
 

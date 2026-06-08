@@ -265,7 +265,7 @@
                     </div>
                     <div class="col-md-2">
                         <label class="form-label fw-bold mb-1">
-                            <i class="fas fa-exclamation-triangle text-danger"></i> Fault Code
+                            <i class="fas fa-exclamation-triangle text-danger"></i> Reason
                         </label>
                         <select class="form-select form-select-sm" name="reason">
                             <option value="">-- All Faults --</option>
@@ -405,7 +405,7 @@
             <div class="row">
                 <div class="col-md-4">
                     <div class="chart-container">
-                        <h4 class="mb-2"><i class="fas fa-chart-bar"></i> Downtime by Line (minutes)</h4>
+                        <h4 class="mb-2"><i class="fas fa-chart-bar"></i> Downtime by Line </h4>
                         <canvas id="operationChart"></canvas>
                     </div>
                 </div>
@@ -489,7 +489,7 @@
                             scales: {
                                 x: { title: { display: true, text: 'Date' } },
                                 y: { position: 'left', title: { display: true, text: 'Minutes' } },
-                                y1: { position: 'right', title: { display: true, text: 'Count' }, grid: { drawOnChartArea: false } }
+                                y1: { position: 'right', title: { display: true, text: 'Count' }, grid: { drawOnChartArea: false }, ticks: { stepSize: 1, precision: 0 } }
                             },
                             animation: { duration: 2000, easing: 'easeOutQuart' }
                         }
@@ -512,7 +512,7 @@
                         <div class="col-md-6">
                             <div class="chart-container" style="height:360px">
                                 <div class="d-flex align-items-center justify-content-between mb-2">
-                                    <h4 class="mb-0">⚡ Response Time (All Machines)</h4>
+                                    <h4 class="mb-0">⚡ Response Time by Technician</h4>
                                     <div style="font-size:12px;color:#6c757d">
                                         Avg: <strong style="color:#0d6efd">@responseTimeData.OverallAvgMins min</strong>
                                         &nbsp;|&nbsp; <strong>@responseTimeData.TotalResponded</strong> times
@@ -566,7 +566,7 @@
                             plugins: { legend: { display: true, position: 'top' },
                                 tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.parsed.y} min` }}
                             },
-                            scales: { y: { beginAtZero: true, title: { display: true, text: 'Minutes' } }, x: { ticks: { maxRotation: 40 } } },
+                            scales: { y: { beginAtZero: true, title: { display: true, text: 'Minutes' } }, x: { title: { display: true, text: 'Technician' }, ticks: { maxRotation: 40 } } },
                             animation: { duration: 1500 }
                         }
                     });
@@ -660,7 +660,7 @@
                     {
                         <!-- Summary table By Line -->
                         <div class="operation-section mb-3">
-                            <h5 class="mb-2"><i class="fas fa-table"></i> Summary — Downtime vs Running Time by Line</h5>
+                            <h5 class="mb-2"><i class="fas fa-table"></i> Summary — Downtime by Line</h5>
                             <div class="table-responsive">
                                 <table class="table table-bordered table-hover table-sm" style="font-size:13px">
                                     <thead class="table-dark">
@@ -669,28 +669,26 @@
                                             <th>Line</th>
                                             <th class="text-center">Downtime Count</th>
                                             <th class="text-center">Downtime Duration</th>
-                                            <th class="text-center">Running Time</th>
-                                            <th class="text-center">Downtime %</th>
                                             <th>% Bar</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @{ int lineIdx = 0; }
+                                        @{ int lineIdx = 0;
+                                           var maxDT = allDataPct.Any() ? allDataPct.Max(x => x.TotalDowntimeMinutes) : 1;
+                                           var tDT   = allDataPct.Sum(x => x.TotalDowntimeMinutes); }
                                         @foreach (var op in allDataPct)
                                         {
                                             lineIdx++;
-                                            var pctColor = op.DowntimePct >= 15 ? "danger" : op.DowntimePct >= 8 ? "warning" : "success";
+                                            var barPct = maxDT > 0 ? op.TotalDowntimeMinutes / maxDT * 100 : 0;
                                             <tr>
                                                 <td class="text-center">@lineIdx</td>
                                                 <td><strong>@op.Operation</strong></td>
                                                 <td class="text-center"><span class="badge bg-secondary">@op.TotalDowntimeCount</span></td>
                                                 <td class="text-center"><strong>@op.TotalDowntimeFormatted</strong><br/><small class="text-muted">@Math.Round(op.TotalDowntimeMinutes,1) min</small></td>
-                                                <td class="text-center">@op.RunningTimeFormatted<br/><small class="text-muted">@Math.Round(op.RunningTimeMinutes,1) min</small></td>
-                                                <td class="text-center"><span class="badge bg-@pctColor fs-6">@op.DowntimePct%</span></td>
                                                 <td>
                                                     <div class="progress" style="height:20px">
-                                                        <div class="progress-bar bg-@pctColor" style="width:@(Math.Min(op.DowntimePct,100))%">
-                                                            @op.DowntimePct%
+                                                        <div class="progress-bar bg-danger" style="width:@(Math.Min(barPct,100))%">
+                                                            @op.TotalDowntimeFormatted
                                                         </div>
                                                     </div>
                                                 </td>
@@ -701,10 +699,7 @@
                                         <tr>
                                             <td colspan="2" class="text-end">Total:</td>
                                             <td class="text-center">@allDataPct.Sum(x => x.TotalDowntimeCount)</td>
-                                            <td class="text-center">@{ var tDT = allDataPct.Sum(x=>x.TotalDowntimeMinutes); var tRun = allDataPct.Sum(x=>x.RunningTimeMinutes); }
-                                                @((int)(tDT/60))h @((int)(tDT%60))min</td>
-                                            <td class="text-center">@((int)(tRun/60))h @((int)(tRun%60))min</td>
-                                            <td class="text-center">@(tRun > 0 ? Math.Round(tDT/tRun*100,1) : 0)%</td>
+                                            <td class="text-center">@((int)(tDT/60))h @((int)(tDT%60))min</td>
                                             <td></td>
                                         </tr>
                                     </tfoot>
@@ -728,118 +723,127 @@
                                             <div class="col-md-5 text-end d-flex align-items-center justify-content-end gap-2">
                                                 <span class="badge bg-light text-dark"><i class="fas fa-stopwatch"></i> @operation.TotalDowntimeFormatted</span>
                                                 <span class="badge bg-light text-dark"><i class="fas fa-list"></i> @operation.TotalDowntimeCount times</span>
-                                                @{
-                                                    var opPct = allDataPct?.FirstOrDefault(x => x.Operation == operation.Operation);
-                                                    if (opPct != null)
-                                                    {
-                                                        var pc = opPct.DowntimePct >= 15 ? "danger" : opPct.DowntimePct >= 8 ? "warning" : "success";
-                                                        <span class="badge bg-@pc">Downtime / Running @opPct.DowntimePct%</span>
-                                                    }
-                                                }
                                                 <span id="arrow_@lineId" style="transition:.2s;display:inline-block;">▼</span>
                                             </div>
                                         </div>
                                     </div>
 
                                     <div id="@lineId" style="display:none;">
-                                        <table class="table table-hover error-table mt-2">
-                                            <thead>
-                                                <tr>
-                                                    <th width="4%">#</th>
-                                                    <th width="13%">Fault Code</th>
-                                                    <th width="28%">Fault Name</th>
-                                                    <th width="9%" class="text-center">Times</th>
-                                                    <th width="14%" class="text-center">Total Duration</th>
-                                                    <th width="12%" class="text-center">% of Line Downtime</th>
-                                                    <th>% Bar</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @{ int idx = 0; }
-                                                @foreach (var error in operation.ErrorDetails)
-                                                {
-                                                    idx++;
-                                                    var pct = operation.TotalDowntimeMinutes > 0
-                                                        ? error.TotalDowntimeMinutes / operation.TotalDowntimeMinutes * 100 : 0;
-                                                    <tr>
-                                                        <td class="text-center">@idx</td>
-                                                        <td><span class="badge bg-info">@error.ISS_Code</span></td>
-                                                        <td>@error.ErrorName</td>
-                                                        <td class="text-center"><span class="badge bg-secondary">@error.DowntimeCount</span></td>
-                                                        <td class="text-center">
-                                                            <strong>@error.TotalDowntimeFormatted</strong><br/>
-                                                            <small class="text-muted">@Math.Round(error.TotalDowntimeMinutes,1) min</small>
-                                                        </td>
-                                                        <td class="text-center fw-bold">@Math.Round(pct,1)%</td>
-                                                        <td>
-                                                            <div class="progress progress-bar-custom">
-                                                                <div class="progress-bar" style="width:@pct%">@Math.Round(pct,1)%</div>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                }
-                                            </tbody>
-                                            <tfoot>
-                                                <tr class="table-info fw-bold">
-                                                    <td colspan="3" class="text-end">Total:</td>
-                                                    <td class="text-center">@operation.TotalDowntimeCount</td>
-                                                    <td class="text-center">@operation.TotalDowntimeFormatted</td>
-                                                    <td class="text-center">100%</td>
-                                                    <td></td>
-                                                </tr>
-                                            </tfoot>
-                                        </table>
-
-                                        <!-- Response time breakdown for this line -->
                                         @{
-                                            var lineResps = (ViewBag.AllTechResponses as List<dynamic>)
-                                                ?.Where(r => (string)r.Operation == operation.Operation && r.RespondDatetime != null).ToList();
+                                            var lineMachines = (ViewBag.MachineData as List<MachineStatusUpdate.Models.DowntimeReportByMachine>)
+                                                ?.Where(m => m.Operation == operation.Operation)
+                                                .OrderByDescending(m => m.TotalDowntimeMinutes)
+                                                .ToList();
+                                            var allTechResps2 = ViewBag.AllTechResponses as List<dynamic>;
                                         }
-                                        @if (lineResps != null && lineResps.Any())
+                                        @if (lineMachines != null && lineMachines.Any())
                                         {
-                                            <div class="mt-3 p-3" style="background:#f0f9ff;border-radius:8px;border:1px solid #bae6fd;">
-                                                <h6 class="mb-2" style="color:#0369a1;">
-                                                    <i class="fas fa-bolt"></i> Downtime Breakdown
-                                                </h6>
-                                                <table class="table table-sm table-bordered" style="font-size:12px;">
-                                                    <thead style="background:#e0f2fe;">
-                                                        <tr>
-                                                            <th>#</th>
-                                                            <th>Machine</th>
-                                                            <th>Stop Time</th>
-                                                            <th class="text-center" style="color:#6366f1;">⚡ Response Time</th>
-                                                            <th class="text-center" style="color:#0369a1;">🔧 Repair Time</th>
-                                                            <th class="text-center" style="color:#dc2626;">⏱ Total DT</th>
-                                                            <th>Technician</th>
+                                            <table class="table table-hover error-table mt-2">
+                                                <thead>
+                                                    <tr>
+                                                        <th width="4%">#</th>
+                                                        <th width="33%">Machine No.</th>
+                                                        <th width="9%" class="text-center">Times</th>
+                                                        <th width="16%" class="text-center">Total Duration</th>
+                                                        <th width="10%" class="text-center">% of Line</th>
+                                                        <th>% Bar</th>
+                                                        <th width="5%" class="text-center">Detail</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @{ int mIdx = 0; }
+                                                    @foreach (var mc in lineMachines)
+                                                    {
+                                                        mIdx++;
+                                                        var mPct = operation.TotalDowntimeMinutes > 0
+                                                            ? mc.TotalDowntimeMinutes / operation.TotalDowntimeMinutes * 100 : 0;
+                                                        var mcRowId = $"mc_{operation.Operation.Replace(" ","_").Replace("-","_")}_{mc.MachineCode.Replace(" ","_").Replace("-","_").Replace(".","_")}";
+
+                                                        // Lấy breakdown data cho máy này
+                                                        var mcResps = allTechResps2?
+                                                            .Where(r => (string)r.MachineCode == mc.MachineCode
+                                                                     && r.RespondDatetime != null).ToList();
+
+                                                        <tr style="cursor:pointer;" onclick="toggleEqDetail('@mcRowId')" title="Click to view breakdown">
+                                                            <td class="text-center">@mIdx</td>
+                                                            <td><strong>@mc.MachineCode</strong></td>
+                                                            <td class="text-center"><span class="badge bg-secondary">@mc.DowntimeCount</span></td>
+                                                            <td class="text-center">
+                                                                <strong>@mc.TotalDowntimeFormatted</strong><br/>
+                                                                <small class="text-muted">@Math.Round(mc.TotalDowntimeMinutes,1) min</small>
+                                                            </td>
+                                                            <td class="text-center fw-bold">@Math.Round(mPct,1)%</td>
+                                                            <td>
+                                                                <div class="progress progress-bar-custom">
+                                                                    <div class="progress-bar bg-danger" style="width:@mPct%">@Math.Round(mPct,1)%</div>
+                                                                </div>
+                                                            </td>
+                                                            <td class="text-center">
+                                                                <span id="arrow_@mcRowId" style="transition:.2s;display:inline-block;font-size:12px;">▶</span>
+                                                            </td>
                                                         </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        @{ int lrIdx = 0; }
-                                                        @foreach (var r in lineResps)
+
+                                                        @if (mcResps != null && mcResps.Any())
                                                         {
-                                                            lrIdx++;
-                                                            var ls = (DateTime?)r.StopDatetime;
-                                                            var lr = (DateTime?)r.RespondDatetime;
-                                                            var ln = (DateTime?)r.RunDatetime;
-                                                            double lResp   = (ls.HasValue && lr.HasValue) ? (lr.Value - ls.Value).TotalMinutes : 0;
-                                                            double lRepair = (lr.HasValue && ln.HasValue) ? (ln.Value - lr.Value).TotalMinutes : 0;
-                                                            double lTotal  = (ls.HasValue && ln.HasValue) ? (ln.Value - ls.Value).TotalMinutes : lResp;
-                                                            var lRespC  = lResp   <= 5  ? "success" : lResp   <= 15 ? "warning" : "danger";
-                                                            var lRepairC = lRepair <= 15 ? "success" : lRepair <= 60 ? "warning" : "danger";
-                                                            var lTotalC = lTotal  <= 20 ? "success" : lTotal  <= 60 ? "warning" : "danger";
-                                                            <tr>
-                                                                <td>@lrIdx</td>
-                                                                <td style="font-size:11px;">@(r.MachineCode ?? "-")</td>
-                                                                <td>@(ls?.ToString("dd/MM HH:mm") ?? "-")</td>
-                                                                <td class="text-center"><span class="badge bg-@lRespC">@(lResp>0?$"{(int)lResp}m {(int)((lResp%1)*60)}s":"-")</span></td>
-                                                                <td class="text-center"><span class="badge bg-@lRepairC">@(lRepair>0?$"{(int)lRepair}m {(int)((lRepair%1)*60)}s":"-")</span></td>
-                                                                <td class="text-center"><span class="badge bg-@lTotalC">@(lTotal>0?$"{(int)(lTotal/60)}h {(int)(lTotal%60)}m":"-")</span></td>
-                                                                <td>@(r.TechUsername ?? "-")</td>
+                                                            <tr id="@mcRowId" style="display:none;">
+                                                                <td colspan="7" style="padding:0;background:#f0f9ff;border-top:none;">
+                                                                    <div class="p-3">
+                                                                        <h6 class="mb-2" style="color:#0369a1;font-size:12px;">
+                                                                            <i class="fas fa-bolt"></i> Downtime Breakdown — @mc.MachineCode
+                                                                        </h6>
+                                                                        <table class="table table-sm table-bordered mb-0" style="font-size:12px;">
+                                                                            <thead style="background:#e0f2fe;">
+                                                                                <tr>
+                                                                                    <th>#</th>
+                                                                                    <th>Stop Time</th>
+                                                                                    <th class="text-center" style="color:#6366f1;">⚡ Response Time</th>
+                                                                                    <th class="text-center" style="color:#0369a1;">🔧 Repair Time</th>
+                                                                                    <th class="text-center" style="color:#dc2626;">⏱ Total DT</th>
+                                                                                    <th>Technician</th>
+                                                                                </tr>
+                                                                            </thead>
+                                                                            <tbody>
+                                                                                @{ int bIdx = 0; }
+                                                                                @foreach (var r in mcResps)
+                                                                                {
+                                                                                    bIdx++;
+                                                                                    var ls = (DateTime?)r.StopDatetime;
+                                                                                    var lr = (DateTime?)r.RespondDatetime;
+                                                                                    var ln = (DateTime?)r.RunDatetime;
+                                                                                    double lResp   = (ls.HasValue && lr.HasValue) ? (lr.Value - ls.Value).TotalMinutes : 0;
+                                                                                    double lRepair = (lr.HasValue && ln.HasValue) ? (ln.Value - lr.Value).TotalMinutes : 0;
+                                                                                    double lTotal  = (ls.HasValue && ln.HasValue) ? (ln.Value - ls.Value).TotalMinutes : lResp;
+                                                                                    var lRespC   = lResp   <= 5  ? "success" : lResp   <= 15 ? "warning" : "danger";
+                                                                                    var lRepairC = lRepair <= 15 ? "success" : lRepair <= 60 ? "warning" : "danger";
+                                                                                    var lTotalC  = lTotal  <= 20 ? "success" : lTotal  <= 60 ? "warning" : "danger";
+                                                                                    <tr>
+                                                                                        <td>@bIdx</td>
+                                                                                        <td>@(ls?.ToString("dd/MM HH:mm") ?? "-")</td>
+                                                                                        <td class="text-center"><span class="badge bg-@lRespC">@(lResp>0?$"{(int)lResp}m {(int)((lResp%1)*60)}s":"-")</span></td>
+                                                                                        <td class="text-center"><span class="badge bg-@lRepairC">@(lRepair>0?$"{(int)lRepair}m {(int)((lRepair%1)*60)}s":"-")</span></td>
+                                                                                        <td class="text-center"><span class="badge bg-@lTotalC">@(lTotal>0?$"{(int)(lTotal/60)}h {(int)(lTotal%60)}m":"-")</span></td>
+                                                                                        <td>@(r.TechUsername ?? "-")</td>
+                                                                                    </tr>
+                                                                                }
+                                                                            </tbody>
+                                                                        </table>
+                                                                    </div>
+                                                                </td>
                                                             </tr>
                                                         }
-                                                    </tbody>
-                                                </table>
-                                            </div>
+                                                    }
+                                                </tbody>
+                                                <tfoot>
+                                                    <tr class="table-info fw-bold">
+                                                        <td colspan="2" class="text-end">Total:</td>
+                                                        <td class="text-center">@operation.TotalDowntimeCount</td>
+                                                        <td class="text-center">@operation.TotalDowntimeFormatted</td>
+                                                        <td class="text-center">100%</td>
+                                                        <td></td>
+                                                        <td></td>
+                                                    </tr>
+                                                </tfoot>
+                                            </table>
                                         }
                                     </div>
                                 </div>
@@ -962,66 +966,17 @@
                                 </div>
 
                                 <div id="@mId" style="display:none;">
-                                    <!-- Fault summary table -->
-                                    <table class="table table-hover error-table mt-2">
-                                        <thead>
-                                            <tr>
-                                                <th width="4%">#</th>
-                                                <th width="13%">Fault Code</th>
-                                                <th width="28%">Fault Name</th>
-                                                <th width="9%" class="text-center">Times</th>
-                                                <th width="14%" class="text-center">Total Duration</th>
-                                                <th width="10%" class="text-center">%</th>
-                                                <th>% Bar</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @{ int ri = 0; }
-                                            @foreach (var rd in m.ReasonDetails)
-                                            {
-                                                ri++;
-                                                var rPct = m.TotalDowntimeMinutes > 0 ? rd.TotalDowntimeMinutes / m.TotalDowntimeMinutes * 100 : 0;
-                                                <tr>
-                                                    <td class="text-center">@ri</td>
-                                                    <td><span class="badge bg-info">@rd.ReasonCode</span></td>
-                                                    <td>@rd.ReasonName</td>
-                                                    <td class="text-center"><span class="badge bg-secondary">@rd.DowntimeCount</span></td>
-                                                    <td class="text-center">
-                                                        <strong>@rd.TotalDowntimeFormatted</strong><br/>
-                                                        <small class="text-muted">@Math.Round(rd.TotalDowntimeMinutes,1) min</small>
-                                                    </td>
-                                                    <td class="text-center fw-bold">@Math.Round(rPct,1)%</td>
-                                                    <td>
-                                                        <div class="progress progress-bar-custom">
-                                                            <div class="progress-bar bg-success" style="width:@rPct%">@Math.Round(rPct,1)%</div>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            }
-                                        </tbody>
-                                        <tfoot>
-                                            <tr class="table-success fw-bold">
-                                                <td colspan="3" class="text-end">Total:</td>
-                                                <td class="text-center">@m.DowntimeCount</td>
-                                                <td class="text-center">@m.TotalDowntimeFormatted</td>
-                                                <td class="text-center">100%</td>
-                                                <td></td>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
-
-                                    <!-- Response time detail from TechResponses -->
-                                    <div class="mt-3 p-3" style="background:#f0f9ff;border-radius:8px;border:1px solid #bae6fd;">
-                                        <h6 class="mb-2" style="color:#0369a1;">
-                                            <i class="fas fa-bolt"></i> Downtime Breakdown
-                                        </h6>
-                                        @{
-                                            var techResps = ViewBag.AllTechResponses as List<dynamic>;
-                                            var mResps = techResps?.Where(r => (string)r.MachineCode == m.MachineCode && r.RespondDatetime != null).ToList();
-                                        }
-                                        @if (mResps != null && mResps.Any())
-                                        {
-                                            <table class="table table-sm table-bordered" style="font-size:12px;">
+                                    @{
+                                        var techResps = ViewBag.AllTechResponses as List<dynamic>;
+                                        var mResps = techResps?.Where(r => (string)r.MachineCode == m.MachineCode && r.RespondDatetime != null).ToList();
+                                    }
+                                    @if (mResps != null && mResps.Any())
+                                    {
+                                        <div class="mt-2 p-3" style="background:#f0f9ff;border-radius:8px;border:1px solid #bae6fd;">
+                                            <h6 class="mb-2" style="color:#0369a1;font-size:12px;">
+                                                <i class="fas fa-bolt"></i> Downtime Breakdown — @m.MachineCode
+                                            </h6>
+                                            <table class="table table-sm table-bordered mb-0" style="font-size:12px;">
                                                 <thead style="background:#e0f2fe;">
                                                     <tr>
                                                         <th>#</th>
@@ -1039,15 +994,15 @@
                                                     @foreach (var r in mResps)
                                                     {
                                                         rIdx++;
-                                                        var stopDt   = (DateTime?)r.StopDatetime;
-                                                        var respDt   = (DateTime?)r.RespondDatetime;
-                                                        var runDt    = (DateTime?)r.RunDatetime;
+                                                        var stopDt    = (DateTime?)r.StopDatetime;
+                                                        var respDt    = (DateTime?)r.RespondDatetime;
+                                                        var runDt     = (DateTime?)r.RunDatetime;
                                                         double respMins   = (stopDt.HasValue && respDt.HasValue) ? (respDt.Value - stopDt.Value).TotalMinutes : 0;
                                                         double repairMins = (respDt.HasValue && runDt.HasValue)  ? (runDt.Value  - respDt.Value).TotalMinutes  : 0;
                                                         double totalMins  = (stopDt.HasValue && runDt.HasValue)  ? (runDt.Value  - stopDt.Value).TotalMinutes  : respMins;
-                                                        var respColor  = respMins  <= 5  ? "success" : respMins  <= 15 ? "warning" : "danger";
+                                                        var respColor   = respMins   <= 5  ? "success" : respMins   <= 15 ? "warning" : "danger";
                                                         var repairColor = repairMins <= 15 ? "success" : repairMins <= 60 ? "warning" : "danger";
-                                                        var totalColor = totalMins <= 20 ? "success" : totalMins <= 60 ? "warning" : "danger";
+                                                        var totalColor  = totalMins  <= 20 ? "success" : totalMins  <= 60 ? "warning" : "danger";
                                                         <tr>
                                                             <td class="text-center">@rIdx</td>
                                                             <td>@(stopDt?.ToString("dd/MM HH:mm") ?? "-")</td>
@@ -1071,9 +1026,9 @@
                                                         <td colspan="3" class="text-end">Avg:</td>
                                                         <td class="text-center">
                                                             @{
-                                                                var avgResp = mResps.Select(r => { var s=(DateTime?)r.StopDatetime; var rr=(DateTime?)r.RespondDatetime; return (s.HasValue&&rr.HasValue)?(rr.Value-s.Value).TotalMinutes:0; }).Where(x=>x>0).ToList();
+                                                                var avgResp   = mResps.Select(r => { var s=(DateTime?)r.StopDatetime; var rr=(DateTime?)r.RespondDatetime; return (s.HasValue&&rr.HasValue)?(rr.Value-s.Value).TotalMinutes:0; }).Where(x=>x>0).ToList();
                                                                 var avgRepair = mResps.Select(r => { var rr=(DateTime?)r.RespondDatetime; var rn=(DateTime?)r.RunDatetime; return (rr.HasValue&&rn.HasValue)?(rn.Value-rr.Value).TotalMinutes:0; }).Where(x=>x>0).ToList();
-                                                                var avgTotal = mResps.Select(r => { var s=(DateTime?)r.StopDatetime; var rn=(DateTime?)r.RunDatetime; return (s.HasValue&&rn.HasValue)?(rn.Value-s.Value).TotalMinutes:0; }).Where(x=>x>0).ToList();
+                                                                var avgTotal  = mResps.Select(r => { var s=(DateTime?)r.StopDatetime; var rn=(DateTime?)r.RunDatetime; return (s.HasValue&&rn.HasValue)?(rn.Value-s.Value).TotalMinutes:0; }).Where(x=>x>0).ToList();
                                                             }
                                                             <span class="badge bg-primary">@Math.Round(avgResp.Any()?avgResp.Average():0,1) min</span>
                                                         </td>
@@ -1084,12 +1039,12 @@
                                                     </tr>
                                                 </tfoot>
                                             </table>
-                                        }
-                                        else
-                                        {
-                                            <div class="text-muted" style="font-size:13px;"><i class="fas fa-info-circle"></i> No response records found.</div>
-                                        }
-                                    </div>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="text-muted p-2" style="font-size:13px;"><i class="fas fa-info-circle"></i> No response records found.</div>
+                                    }
                                 </div>
                             </div>
                         }
@@ -1098,6 +1053,106 @@
                     {
                         <div class="alert alert-info"><i class="fas fa-info-circle"></i> No machine downtime data for the selected period.</div>
                     }
+                </div>
+            </div>
+
+            <!-- ══ DETAIL RECORDS TABLE ══ -->
+            <div class="operation-section mt-4" id="detailRecordsSection">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h5 class="mb-0">📋 Detail Records</h5>
+                    <div class="d-flex gap-2 align-items-center">
+                        <input type="text" id="detailSearch" class="form-control form-control-sm" style="width:200px" placeholder="🔍 Search..." oninput="filterDetailTable()">
+                        <span id="detailCount" class="text-muted" style="font-size:12px;white-space:nowrap;"></span>
+                    </div>
+                </div>
+
+                <div class="table-responsive" style="max-height:500px;overflow-y:auto;">
+                    <table class="table table-sm table-bordered" id="detailTable" style="font-size:12px;min-width:1800px;">
+                        <thead style="position:sticky;top:0;z-index:2;">
+                            <tr style="background:#1E8449;color:#fff;">
+                                <th onclick="sortDetailTable(0)" style="cursor:pointer;white-space:nowrap;min-width:140px;">Datetime ⇅</th>
+                                <th onclick="sortDetailTable(1)" style="cursor:pointer;min-width:120px;">Operation ⇅</th>
+                                <th onclick="sortDetailTable(2)" style="cursor:pointer;min-width:180px;">Machine ⇅</th>
+                                <th onclick="sortDetailTable(3)" style="cursor:pointer;min-width:90px;">Location ⇅</th>
+                                <th onclick="sortDetailTable(4)" style="cursor:pointer;min-width:120px;">Reason ⇅</th>
+                                <th style="min-width:90px;">Station</th>
+                                <th style="min-width:160px;">Problem Description</th>
+                                <th style="min-width:140px;">Root Cause</th>
+                                <th onclick="sortDetailTable(8)" style="cursor:pointer;white-space:nowrap;min-width:120px;">Start Time ⇅</th>
+                                <th style="white-space:nowrap;min-width:120px;">Response Time</th>
+                                <th style="white-space:nowrap;min-width:120px;">End Time</th>
+                                <th class="text-center" onclick="sortDetailTable(11)" style="cursor:pointer;white-space:nowrap;min-width:90px;">Response Time Duration (min) ⇅</th>
+                                <th class="text-center" onclick="sortDetailTable(12)" style="cursor:pointer;white-space:nowrap;min-width:80px;">Downtime (min) ⇅</th>
+                                <th style="min-width:140px;">Action</th>
+                                <th style="min-width:110px;">Spare Parts</th>
+                                <th onclick="sortDetailTable(15)" style="cursor:pointer;min-width:120px;">Employee ⇅</th>
+                                <th class="text-center" style="min-width:80px;">Effect</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detailTableBody">
+                        @if (machineData != null)
+                        {
+                            var techRespsFull = ViewBag.AllTechResponses as List<dynamic>;
+                            int dSeq = 0;
+                            foreach (var m in machineData)
+                            {
+                                var mRespsDetail = techRespsFull?
+                                    .Where(rr => (string)rr.MachineCode == m.MachineCode)
+                                    .OrderBy(rr => (DateTime?)rr.StopDatetime)
+                                    .ToList();
+
+                                if (mRespsDetail == null || !mRespsDetail.Any()) continue;
+
+                                foreach (var rr in mRespsDetail)
+                                {
+                                    dSeq++;
+                                    var stopDt  = (DateTime?)rr.StopDatetime;
+                                    var respDt  = (DateTime?)rr.RespondDatetime;
+                                    var runDt   = (DateTime?)rr.RunDatetime;
+                                    double respMin  = (stopDt.HasValue && respDt.HasValue) ? (respDt.Value - stopDt.Value).TotalMinutes : 0;
+                                    double dtMin    = (stopDt.HasValue && runDt.HasValue)  ? (runDt.Value  - stopDt.Value).TotalMinutes  : 0;
+                                    var rColor = respMin <= 5 ? "success" : respMin <= 15 ? "warning" : "danger";
+                                    var dColor = dtMin  <= 20 ? "success" : dtMin  <= 60 ? "warning" : "danger";
+                                    bool alt = dSeq % 2 == 0;
+                                    <tr style="@(alt ? "background:#f0fdf4;" : "")">
+                                        <td style="white-space:nowrap;">@(stopDt?.ToString("dd/MM/yyyy HH:mm") ?? "-")</td>
+                                        <td>@(rr.Operation ?? "-")</td>
+                                        <td style="font-weight:600;">@(rr.MachineCode ?? "-")</td>
+                                        <td>@(rr.Location ?? "-")</td>
+                                        <td>@(rr.Reason ?? "-")</td>
+                                        <td>@(rr.Station ?? "-")</td>
+                                        <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="@(rr.Description ?? "")">@(rr.Description ?? "-")</td>
+                                        <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="@(rr.RootCause ?? "")">@(rr.RootCause ?? "-")</td>
+                                        <td style="white-space:nowrap;">@(stopDt?.ToString("dd/MM HH:mm") ?? "-")</td>
+                                        <td style="white-space:nowrap;">@(respDt?.ToString("dd/MM HH:mm") ?? "-")</td>
+                                        <td style="white-space:nowrap;">@(runDt?.ToString("dd/MM HH:mm") ?? "-")</td>
+                                        <td class="text-center">
+                                            @if (respMin > 0) { <span class="badge bg-@rColor">@Math.Round(respMin,1)</span> }
+                                            else { <span>-</span> }
+                                        </td>
+                                        <td class="text-center">
+                                            @if (dtMin > 0) { <span class="badge bg-@dColor">@Math.Round(dtMin,1)</span> }
+                                            else { <span class="text-muted">-</span> }
+                                        </td>
+                                        <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="@(rr.Action ?? "")">@(rr.Action ?? "-")</td>
+                                        <td>@(rr.SpareParts ?? "-")</td>
+                                        <td>@(rr.EmployeeName ?? "-")</td>
+                                        <td class="text-center">
+                                            @if ((string)(rr.Effect ?? "") == "Affects Production") {
+                                                <span class="badge bg-danger">Yes</span>
+                                            } else if ((string)(rr.Effect ?? "") == "No Effect") {
+                                                <span class="badge bg-success">No</span>
+                                            } else { <span>-</span> }
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        }
+                        </tbody>
+                    </table>
+                </div>
+                <div id="detailNoResult" style="display:none;text-align:center;padding:20px;color:#6b7280;">
+                    No records match the filter.
                 </div>
             </div>
         }
@@ -1249,7 +1304,62 @@ function toggleEqDetail(id) {
     const arrow = document.getElementById('arrow_' + id);
     if (!el) return;
     const open = el.style.display === 'none' || el.style.display === '';
-    el.style.display    = open ? 'block' : 'none';
-    if (arrow) arrow.style.transform = open ? 'rotate(180deg)' : 'rotate(0deg)';
+    el.style.display = open ? (el.tagName === 'TR' ? 'table-row' : 'block') : 'none';
+    if (arrow) arrow.style.transform = open ? 'rotate(90deg)' : 'rotate(0deg)';
 }
+
+// ── Detail table filter ──
+function filterDetailTable() {
+    const globalQ = (document.getElementById('detailSearch')?.value || '').toLowerCase();
+    const colFilters = Array.from(document.querySelectorAll('.detail-col-filter'))
+        .map(el => ({ col: parseInt(el.dataset.col), val: el.value.toLowerCase() }))
+        .filter(f => f.val);
+
+    const rows = document.querySelectorAll('#detailTableBody tr');
+    let shown = 0;
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        const text  = Array.from(cells).map(c => c.textContent.toLowerCase()).join(' ');
+
+        let visible = !globalQ || text.includes(globalQ);
+        if (visible && colFilters.length) {
+            visible = colFilters.every(f => {
+                const cell = cells[f.col];
+                return cell && cell.textContent.toLowerCase().includes(f.val);
+            });
+        }
+        row.style.display = visible ? '' : 'none';
+        if (visible) shown++;
+    });
+
+    const cnt = document.getElementById('detailCount');
+    if (cnt) cnt.textContent = `${shown} / ${rows.length} records`;
+    const noResult = document.getElementById('detailNoResult');
+    if (noResult) noResult.style.display = shown === 0 ? 'block' : 'none';
+}
+
+// ── Detail table sort ──
+let _sortCol = -1, _sortAsc = true;
+function sortDetailTable(col) {
+    if (_sortCol === col) _sortAsc = !_sortAsc;
+    else { _sortCol = col; _sortAsc = true; }
+
+    const tbody = document.getElementById('detailTableBody');
+    const rows  = Array.from(tbody.querySelectorAll('tr'));
+    rows.sort((a, b) => {
+        const aT = a.querySelectorAll('td')[col]?.textContent.trim() || '';
+        const bT = b.querySelectorAll('td')[col]?.textContent.trim() || '';
+        const aN = parseFloat(aT), bN = parseFloat(bT);
+        const cmp = (!isNaN(aN) && !isNaN(bN)) ? aN - bN : aT.localeCompare(bT);
+        return _sortAsc ? cmp : -cmp;
+    });
+    rows.forEach(r => tbody.appendChild(r));
+}
+
+// Init count
+document.addEventListener('DOMContentLoaded', () => {
+    const rows = document.querySelectorAll('#detailTableBody tr');
+    const cnt  = document.getElementById('detailCount');
+    if (cnt) cnt.textContent = `${rows.length} / ${rows.length} records`;
+});
 </script>

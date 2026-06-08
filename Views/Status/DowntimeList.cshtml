@@ -1,6 +1,6 @@
 @model IEnumerable<MachineStatusUpdate.Models.SVN_Downtime_Info_Devel>
 @{
-    ViewData["Title"] = "停机时间列表 (Downtime List)";
+    ViewData["Title"] = "Downtime List";
     var ops = (IEnumerable<string>)ViewBag.OperationOptions ?? Enumerable.Empty<string>();
 
     string qOp       = ViewBag.Operation   as string ?? "";
@@ -68,10 +68,7 @@
         align-items: end;
     }
 
-    /* Desktop: Hàng 1 — date(160px) date(160px) op loc machine station */
     .filter-row-1 { grid-template-columns: 160px 160px 1fr 1fr 1fr 1fr; }
-
-    /* Desktop: Hàng 2 — employee reason effect | buttons */
     .filter-row-2 { grid-template-columns: 1fr 1fr 1fr auto; }
 
     .filter-group {
@@ -130,7 +127,6 @@
         color: #1d4ed8;
     }
 
-    /* Buttons desktop — nằm trong grid hàng 2 */
     .filter-actions-desktop {
         display: flex;
         gap: 8px;
@@ -138,7 +134,6 @@
         flex-wrap: wrap;
     }
 
-    /* Buttons mobile — nằm ngoài grid, ẩn trên desktop */
     .filter-actions-mobile { display: none; }
 
     /* ===== Buttons ===== */
@@ -301,9 +296,7 @@
         h2 { font-size: 17px; margin-bottom: 10px; }
         .filter-card { padding: 10px 12px; }
 
-        /* Mobile: 2 cột */
         .filter-row-1 { grid-template-columns: 1fr 1fr !important; }
-        /* Hàng 2 chỉ còn 3 dropdowns, bỏ cột buttons */
         .filter-row-2 { grid-template-columns: 1fr 1fr !important; }
 
         .filter-row { gap: 6px; margin-bottom: 6px; }
@@ -312,7 +305,6 @@
         .filter-group .form-control,
         .filter-group select { height: 30px; font-size: 11.5px; }
 
-        /* Ẩn buttons desktop, hiện buttons mobile */
         .filter-actions-desktop { display: none !important; }
         .filter-actions-mobile {
             display: flex !important;
@@ -331,29 +323,29 @@
 </style>
 
 <div class="container">
-    <h2>📋 停机时间列表 (Downtime List)</h2>
+    <h2>📋 Downtime List</h2>
 
     <!-- ===== Filter card ===== -->
     <div class="filter-card">
-        <div class="filter-card-title">🔍 筛选条件 (Filter)</div>
+        <div class="filter-card-title">🔍 Filter</div>
         <form method="get" asp-action="DowntimeList">
 
-            <!-- Hàng 1: From | To | Operation | Location | Machine | Station -->
+            <!-- Row 1: From | To | Operation | Location | Machine | Station -->
             <div class="filter-row filter-row-1">
                 <div class="filter-group">
-                    <label>从 (From date)</label>
+                    <label>From Date</label>
                     <input type="date" name="fromDate" value="@qFrom"
                            class="form-control @(!string.IsNullOrEmpty(qFrom) ? "active-filter" : "")" />
                 </div>
                 <div class="filter-group">
-                    <label>到 (To date)</label>
+                    <label>To Date</label>
                     <input type="date" name="toDate" value="@qTo"
                            class="form-control @(!string.IsNullOrEmpty(qTo) ? "active-filter" : "")" />
                 </div>
                 <div class="filter-group">
-                    <label>生产线 (Operation)</label>
+                    <label>Operation</label>
                     <select name="operation" class="@(!string.IsNullOrEmpty(qOp) ? "active-filter" : "")">
-                        <option value="">-- 全部 --</option>
+                        <option value="">-- All --</option>
                         @foreach (var op in ops)
                         {
                             <option value="@op" selected="@(op == qOp ? "selected" : null)">@op</option>
@@ -361,9 +353,9 @@
                     </select>
                 </div>
                 <div class="filter-group">
-                    <label>位置 (Location)</label>
+                    <label>Location</label>
                     <select name="location" class="@(!string.IsNullOrEmpty(qLocation) ? "active-filter" : "")">
-                        <option value="">-- 全部 --</option>
+                        <option value="">-- All --</option>
                         @foreach (var loc in locationOpts)
                         {
                             <option value="@loc" selected="@(loc == qLocation ? "selected" : null)">@loc</option>
@@ -371,9 +363,9 @@
                     </select>
                 </div>
                 <div class="filter-group">
-                    <label>设备 (Machine)</label>
+                    <label>Machine</label>
                     <select name="machine" class="@(!string.IsNullOrEmpty(qMachine) ? "active-filter" : "")">
-                        <option value="">-- 全部 --</option>
+                        <option value="">-- All --</option>
                         @foreach (var m in machineOpts)
                         {
                             <option value="@m" selected="@(m == qMachine ? "selected" : null)">@m</option>
@@ -381,9 +373,9 @@
                     </select>
                 </div>
                 <div class="filter-group">
-                    <label>工位 (Station)</label>
+                    <label>Station</label>
                     <select name="station" class="@(!string.IsNullOrEmpty(qStation) ? "active-filter" : "")">
-                        <option value="">-- 全部 --</option>
+                        <option value="">-- All --</option>
                         @foreach (var st in stationOpts)
                         {
                             <option value="@st" selected="@(st == qStation ? "selected" : null)">@st</option>
@@ -392,12 +384,12 @@
                 </div>
             </div>
 
-            <!-- Hàng 2: Employee | Reason | Effect | Buttons (desktop) -->
+            <!-- Row 2: Employee | Reason | Effect | Buttons (desktop) -->
             <div class="filter-row filter-row-2">
                 <div class="filter-group">
-                    <label>员工 (Employee)</label>
+                    <label>Employee</label>
                     <select name="employee" class="@(!string.IsNullOrEmpty(qEmployee) ? "active-filter" : "")">
-                        <option value="">-- 全部 --</option>
+                        <option value="">-- All --</option>
                         @foreach (var emp in employeeOpts)
                         {
                             <option value="@emp" selected="@(emp == qEmployee ? "selected" : null)">@emp</option>
@@ -405,9 +397,9 @@
                     </select>
                 </div>
                 <div class="filter-group">
-                    <label>原因 (Reason)</label>
+                    <label>Reason</label>
                     <select name="reason" class="@(!string.IsNullOrEmpty(qReason) ? "active-filter" : "")">
-                        <option value="">-- 全部 --</option>
+                        <option value="">-- All --</option>
                         @foreach (var r in reasonOpts)
                         {
                             <option value="@r" selected="@(r == qReason ? "selected" : null)">@r</option>
@@ -415,9 +407,9 @@
                     </select>
                 </div>
                 <div class="filter-group">
-                    <label>影响 (Effect)</label>
+                    <label>Effect</label>
                     <select name="effect" class="@(!string.IsNullOrEmpty(qEffect) ? "active-filter" : "")">
-                        <option value="">-- 全部 --</option>
+                        <option value="">-- All --</option>
                         @foreach (var ef in effectOpts)
                         {
                             <option value="@ef" selected="@(ef == qEffect ? "selected" : null)">@ef</option>
@@ -425,10 +417,10 @@
                     </select>
                 </div>
 
-                <!-- Buttons: chỉ hiện trên desktop -->
+                <!-- Buttons: desktop only -->
                 <div class="filter-actions-desktop">
                     <button type="submit" class="btn btn-primary">
-                        🔍 筛选
+                        🔍 Filter
                         @{
                             int activeCount = new[] { qOp, qFrom, qTo, qStation, qMachine, qLocation, qEmployee, qReason, qEffect }
                                 .Count(x => !string.IsNullOrEmpty(x));
@@ -438,7 +430,7 @@
                             }
                         }
                     </button>
-                    <a class="btn btn-secondary" href="@Url.Action("DowntimeList", "Status")">🔄 清除</a>
+                    <a class="btn btn-secondary" href="@Url.Action("DowntimeList", "Status")">🔄 Clear</a>
                     <a class="btn btn-success"
                        href="@Url.Action("ExportDowntimeListToExcel", "Status", new {
                            operation = qOp, fromDate = qFrom, toDate = qTo,
@@ -448,10 +440,10 @@
                 </div>
             </div>
 
-            <!-- Buttons: chỉ hiện trên mobile, nằm ngoài grid -->
+            <!-- Buttons: mobile only -->
             <div class="filter-actions-mobile">
                 <button type="submit" class="btn btn-primary">
-                    🔍 筛选
+                    🔍 Filter
                     @{
                         int activeCountMobile = new[] { qOp, qFrom, qTo, qStation, qMachine, qLocation, qEmployee, qReason, qEffect }
                             .Count(x => !string.IsNullOrEmpty(x));
@@ -461,7 +453,7 @@
                         }
                     }
                 </button>
-                <a class="btn btn-secondary" href="@Url.Action("DowntimeList", "Status")">🔄 清除</a>
+                <a class="btn btn-secondary" href="@Url.Action("DowntimeList", "Status")">🔄 Clear</a>
                 <a class="btn btn-success"
                    href="@Url.Action("ExportDowntimeListToExcel", "Status", new {
                        operation = qOp, fromDate = qFrom, toDate = qTo,
@@ -478,29 +470,29 @@
         <table>
             <thead>
                 <tr>
-                    <th>生产线 (Operation)</th>
-                    <th>设备 (Machine)</th>
-                    <th>位置 (Location)</th>
-                    <th>原因 (Reason)</th>
-                    <th>影响 (Effect)</th>
-                    <th>工位 (Station)</th>
-                    <th style="display:none;">预计时间 (Estimate)</th>
-                    <th>状态 (State)</th>
-                    <th>动作 (Action)</th>
-                    <th>图片 (Image)</th>
-                    <th>描述 (Description)</th>
-                    <th>根本原因 (Root Cause)</th>
-                    <th>配件 (Spare Parts)</th>
-                    <th>员工工号 (Emp.Code)</th>
-                    <th>员工姓名 (Emp.Name)</th>
-                    <th>时间 (Datetime)</th>
+                    <th>Operation</th>
+                    <th>Machine</th>
+                    <th>Location</th>
+                    <th>Reason</th>
+                    <th>Effect</th>
+                    <th>Station</th>
+                    <th style="display:none;">Estimate Time</th>
+                    <th>State</th>
+                    <th>Action</th>
+                    <th>Image</th>
+                    <th>Description</th>
+                    <th>Root Cause</th>
+                    <th>Spare Parts</th>
+                    <th>Employee Name</th>
+                    @* <th>Emp. Name</th> *@
+                    <th>Datetime</th>
                 </tr>
             </thead>
             <tbody>
                 @if (!Model.Any())
                 {
                     <tr>
-                        <td colspan="16" class="no-data">🗂 无数据 (No data)</td>
+                        <td colspan="16" class="no-data">🗂 No data</td>
                     </tr>
                 }
                 else
@@ -520,7 +512,7 @@
                             <td>
                                 @if (!string.IsNullOrEmpty(item.Effect))
                                 {
-                                    string effLabel = item.Effect == "1" ? "影响生产" : item.Effect == "2" ? "不影响生产" : item.Effect;
+                                    string effLabel = item.Effect == "1" ? "Affects Production" : item.Effect == "2" ? "No Effect" : item.Effect;
                                     <span>@effLabel</span>
                                 }
                                 else { <span>-</span> }
@@ -546,7 +538,7 @@
                             <td style="max-width:180px;">@(item.RootCause ?? "-")</td>
                             <td>@(item.SpareParts ?? "-")</td>
                             <td>@(item.EmployeeCode ?? "-")</td>
-                            <td>@(item.EmployeeName ?? "-")</td>
+                            @* <td>@(item.EmployeeName ?? "-")</td> *@
                             <td style="white-space:nowrap;">@(item.Datetime?.ToString("dd/MM/yyyy HH:mm") ?? "-")</td>
                         </tr>
                     }
@@ -559,7 +551,7 @@
     <div class="card-view">
         @if (!Model.Any())
         {
-            <div class="no-data">🗂 无数据 (No data)</div>
+            <div class="no-data">🗂 No data</div>
         }
         else
         {
@@ -569,7 +561,7 @@
                 bool isResponse = string.Equals(item.State, "RESPONSE", StringComparison.OrdinalIgnoreCase);
                 bool isReject   = string.Equals(item.State, "REJECT",   StringComparison.OrdinalIgnoreCase);
                 string badgeCss = isStop ? "badge-stop" : isResponse ? "badge-response" : isReject ? "badge-reject" : "badge-run";
-                string effLabel = item.Effect == "1" ? "影响生产" : item.Effect == "2" ? "不影响生产" : (item.Effect ?? "-");
+                string effLabel = item.Effect == "1" ? "Affects Production" : item.Effect == "2" ? "No Effect" : (item.Effect ?? "-");
 
                 <div class="downtime-card">
                     <div class="card-header">
@@ -580,83 +572,83 @@
                         <span class="badge @badgeCss">@item.State</span>
                     </div>
 
-                    <div class="card-section-title">基本信息 (Basic Info)</div>
+                    <div class="card-section-title">Basic Info</div>
                     <div class="card-row">
-                        <span class="card-label">生产线 (Operation):</span>
+                        <span class="card-label">Operation:</span>
                         <span class="card-value">@item.Operation</span>
                     </div>
                     <div class="card-row">
-                        <span class="card-label">设备 (Machine):</span>
+                        <span class="card-label">Machine:</span>
                         <span class="card-value">@(item.MachineCode ?? "-")</span>
                     </div>
                     <div class="card-row">
-                        <span class="card-label">位置 (Location):</span>
+                        <span class="card-label">Location:</span>
                         <span class="card-value">@(item.Location ?? "-")</span>
                     </div>
                     <div class="card-row">
-                        <span class="card-label">工位 (Station):</span>
+                        <span class="card-label">Station:</span>
                         <span class="card-value">@(item.Station ?? "-")</span>
                     </div>
 
-                    <div class="card-section-title">问题 (Problem)</div>
+                    <div class="card-section-title">Problem</div>
                     <div class="card-row">
-                        <span class="card-label">原因 (Reason):</span>
+                        <span class="card-label">Reason:</span>
                         <span class="card-value">@(item.Reason ?? "-")</span>
                     </div>
                     <div class="card-row">
-                        <span class="card-label">影响 (Effect):</span>
+                        <span class="card-label">Effect:</span>
                         <span class="card-value">@effLabel</span>
                     </div>
                     <div class="card-row">
-                        <span class="card-label" style="display:none;">预计时间 (Estimate):</span>
+                        <span class="card-label" style="display:none;">Estimate Time:</span>
                         <span class="card-value" style="display:none;">@(string.IsNullOrEmpty(item.EstimateTime) ? "-" : item.EstimateTime)</span>
                     </div>
                     @if (!string.IsNullOrEmpty(item.Description))
                     {
                         <div class="card-row">
-                            <span class="card-label">描述 (Desc):</span>
+                            <span class="card-label">Description:</span>
                             <span class="card-value">@item.Description</span>
                         </div>
                     }
 
-                    <div class="card-section-title">处理 (Resolution)</div>
+                    <div class="card-section-title">Resolution</div>
                     <div class="card-row">
-                        <span class="card-label">动作 (Action):</span>
+                        <span class="card-label">Action:</span>
                         <span class="card-value">@(item.Action ?? "-")</span>
                     </div>
                     <div class="card-row">
-                        <span class="card-label">根本原因 (Root Cause):</span>
+                        <span class="card-label">Root Cause:</span>
                         <span class="card-value">@(item.RootCause ?? "-")</span>
                     </div>
                     <div class="card-row">
-                        <span class="card-label">配件 (Spare Parts):</span>
+                        <span class="card-label">Spare Parts:</span>
                         <span class="card-value">@(item.SpareParts ?? "-")</span>
                     </div>
 
-                    <div class="card-section-title">员工 (Employee)</div>
+                    <div class="card-section-title">Employee</div>
                     <div class="card-row">
-                        <span class="card-label">工号 (Code):</span>
+                        <span class="card-label">Emp. Code:</span>
                         <span class="card-value">@(item.EmployeeCode ?? "-")</span>
                     </div>
                     <div class="card-row">
-                        <span class="card-label">姓名 (Name):</span>
+                        <span class="card-label">Emp. Name:</span>
                         <span class="card-value">@(item.EmployeeName ?? "-")</span>
                     </div>
 
-                    <div class="card-section-title">时间 (Time)</div>
+                    <div class="card-section-title">Time</div>
                     <div class="card-row">
-                        <span class="card-label">时间 (Datetime):</span>
+                        <span class="card-label">Datetime:</span>
                         <span class="card-value">@(item.Datetime?.ToString("dd/MM/yyyy HH:mm") ?? "-")</span>
                     </div>
 
                     @if (!string.IsNullOrEmpty(item.Image))
                     {
-                        <div class="card-section-title">图片 (Image)</div>
+                        <div class="card-section-title">Image</div>
                         <div class="card-row">
                             <span class="card-label"></span>
                             <span class="card-value">
                                 <a href="@Url.Content(item.Image)" target="_blank"
-                                   style="color:#0d6efd;text-decoration:none;">📷 查看图片 (View)</a>
+                                   style="color:#0d6efd;text-decoration:none;">📷 View Image</a>
                             </span>
                         </div>
                     }
@@ -677,10 +669,10 @@
                        station = qStation, machine = qMachine, location = qLocation,
                        employee = qEmployee, reason = qReason, effect = qEffect,
                        page = currentPage - 1, pageSize = ViewBag.PageSize })">
-                    ← 上一页 (Prev)
+                    ← Previous
                 </a>
             }
-            <span class="page-info">第 @currentPage 页 / 共 @totalPages 页</span>
+            <span class="page-info">Page @currentPage / @totalPages</span>
             @if (hasNext)
             {
                 <a class="btn btn-secondary btn-sm"
@@ -689,7 +681,7 @@
                        station = qStation, machine = qMachine, location = qLocation,
                        employee = qEmployee, reason = qReason, effect = qEffect,
                        page = currentPage + 1, pageSize = ViewBag.PageSize })">
-                    下一页 (Next) →
+                    Next →
                 </a>
             }
         </div>

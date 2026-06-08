@@ -1401,8 +1401,31 @@ namespace MachineStatusUpdate.Controllers
                     })
                     .ToListAsync();
 
+                // Lấy STOP records để join thêm Location, Reason, Station, etc.
+                var downIds = rawResps.Select(r => r.DowntimeId).Distinct().ToList();
+                var stopDetails = await _context.SVN_Downtime_Infos_Devel
+                    .Where(x => downIds.Contains(x.Id))
+                    .Select(x => new {
+                        x.Id, x.Location, x.Reason, x.Station,
+                        x.Description, x.RootCause, x.Action,
+                        x.SpareParts, x.Effect, x.Image,
+                        x.EmployeeName, x.EmployeeCode
+                    })
+                    .ToListAsync();
+
+                // Lookup EnglishName từ SM_EmployInfos theo EmployeeCode
+                var empCodes = stopDetails.Select(s => s.EmployeeCode).Where(c => c != null).Distinct().ToList();
+                var empEnglishNames = await _context.SM_EmployInfos
+                    .AsNoTracking()
+                    .Where(e => empCodes.Contains(e.EmployeeID))
+                    .ToDictionaryAsync(e => e.EmployeeID ?? "", e => e.EnglishName ?? "");
+
+                // Join reason names
+                var reasonNames = await _context.SVN_Downtime_Reasons
+                    .AsNoTracking()
+                    .ToDictionaryAsync(r => r.Reason_Code, r => r.Reason_Name);
+
                 // Lấy RUN records để tính repair time
-                var stopIds   = rawResps.Select(r => r.DowntimeId).Distinct().ToList();
                 var runTimes  = await _context.SVN_Downtime_Infos_Devel
                     .Where(x => x.State != null && x.State.ToUpper() == "RUN"
                              && rawResps.Select(r => r.MachineCode).Contains(x.MachineCode))
@@ -1410,7 +1433,6 @@ namespace MachineStatusUpdate.Controllers
                     .ToListAsync();
 
                 var allTechResps = rawResps.Select(r => {
-                    // Tìm RUN record gần nhất sau StopDatetime của máy này
                     var runDt = runTimes
                         .Where(rn => rn.MachineCode == r.MachineCode
                                   && rn.Datetime.HasValue
@@ -1419,11 +1441,28 @@ namespace MachineStatusUpdate.Controllers
                         .OrderBy(rn => rn.Datetime)
                         .Select(rn => rn.Datetime)
                         .FirstOrDefault();
+
+                    var stop = stopDetails.FirstOrDefault(s => s.Id == r.DowntimeId);
+                    var reasonName = stop?.Reason != null && reasonNames.TryGetValue(stop.Reason, out var rn2) ? rn2 : (stop?.Reason ?? "");
+                    var effStr = stop?.Effect == "1" ? "Affects Production" : stop?.Effect == "2" ? "No Effect" : "-";
+
                     return new {
                         r.MachineCode, r.Operation,
                         r.StopDatetime, r.RespondDatetime,
                         r.TechAction, r.TechUsername,
-                        RunDatetime = runDt
+                        RunDatetime  = runDt,
+                        Location     = stop?.Location    ?? "",
+                        Reason       = reasonName,
+                        Station      = stop?.Station     ?? "",
+                        Description  = stop?.Description ?? "",
+                        RootCause    = stop?.RootCause   ?? "",
+                        Action       = stop?.Action      ?? "",
+                        SpareParts   = stop?.SpareParts  ?? "",
+                        Effect       = effStr,
+                        Image        = stop?.Image       ?? "",
+                        EmployeeName = (stop?.EmployeeCode != null && empEnglishNames.TryGetValue(stop.EmployeeCode, out var engName) && !string.IsNullOrEmpty(engName))
+                                       ? engName
+                                       : (stop?.EmployeeName ?? stop?.EmployeeCode ?? "")
                     };
                 }).Cast<dynamic>().ToList();
 
@@ -1503,21 +1542,26 @@ namespace MachineStatusUpdate.Controllers
                     query = query.Where(x => x.Datetime.HasValue && x.Datetime.Value.Date <= to.Date);
 
                 var allRecords = query.ToList();
-                var downtimeByDate = new Dictionary<DateTime, (double Minutes, int Count)>();
+                var downtimeMinutesByDate = new Dictionary<DateTime, double>();
+                // Count = tất cả STOP records trong ngày (không cần đợi RUN)
+                var countByDate = allRecords
+                    .Where(x => x.State?.Trim().ToUpper() == "STOP" && x.Datetime.HasValue)
+                    .GroupBy(x => x.Datetime!.Value.Date)
+                    .ToDictionary(g => g.Key, g => g.Count());
 
-                // ── 按设备号+工序分组 ──
+                // Tính downtime minutes: chỉ STOP→RUN pairs
                 var grouped = allRecords
                     .Where(x => !string.IsNullOrEmpty(x.Operation) && !string.IsNullOrEmpty(x.MachineCode))
-                    .GroupBy(x => new { x.MachineCode, x.Operation });   // ← 更改
+                    .GroupBy(x => new { x.MachineCode, x.Operation });
 
                 foreach (var group in grouped)
                 {
                     var records = group.OrderBy(x => x.Datetime).ToList();
 
                     for (int i = 0; i < records.Count; i++)
-{
-    var current = records[i];
-    if (current.State?.Trim().ToUpper() != "STOP" || !current.Datetime.HasValue) continue;
+                    {
+                        var current = records[i];
+                        if (current.State?.Trim().ToUpper() != "STOP" || !current.Datetime.HasValue) continue;
 
                         for (int j = i + 1; j < records.Count; j++)
                         {
@@ -1527,27 +1571,24 @@ namespace MachineStatusUpdate.Controllers
 
                             if (nextState == "RUN")
                             {
-                                var downtimeMinutes = (next.Datetime.Value - current.Datetime.Value).TotalMinutes;
+                                var mins = (next.Datetime.Value - current.Datetime.Value).TotalMinutes;
                                 var dateKey = current.Datetime.Value.Date;
-
-                                if (downtimeByDate.ContainsKey(dateKey))
-                                    downtimeByDate[dateKey] = (downtimeByDate[dateKey].Minutes + downtimeMinutes,
-                                                               downtimeByDate[dateKey].Count + 1);
-                                else
-                                    downtimeByDate[dateKey] = (downtimeMinutes, 1);
+                                downtimeMinutesByDate[dateKey] = (downtimeMinutesByDate.TryGetValue(dateKey, out var existing) ? existing : 0) + mins;
                                 break;
                             }
-                            else if (nextState == "STOP") break;
+                            // Skip RESPONSE/REJECT, tiếp tục tìm RUN
+                            else if (nextState == "STOP") break; // Gặp STOP mới → dừng tìm
                         }
-    
                     }
                 }
 
-                foreach (var date in downtimeByDate.Keys.OrderBy(d => d))
+                // Gộp tất cả ngày có STOP hoặc có downtime
+                var allDates = countByDate.Keys.Union(downtimeMinutesByDate.Keys).OrderBy(d => d);
+                foreach (var date in allDates)
                 {
                     dailyData.Dates.Add(date.ToString("dd/MM"));
-                    dailyData.DowntimeMinutes.Add(Math.Round(downtimeByDate[date].Minutes, 2));
-                    dailyData.DowntimeCounts.Add(downtimeByDate[date].Count);
+                    dailyData.DowntimeMinutes.Add(Math.Round(downtimeMinutesByDate.TryGetValue(date, out var mins2) ? mins2 : 0, 2));
+                    dailyData.DowntimeCounts.Add(countByDate.TryGetValue(date, out var cnt) ? cnt : 0);
                 }
             }
             catch (Exception ex)
@@ -1682,10 +1723,10 @@ namespace MachineStatusUpdate.Controllers
         /* 将分钟转换为时间字符串 */
         private string FormatMinutesToTime(double minutes)
         {
-            if (minutes < 0) return "0小时 0分钟";
+            if (minutes < 0) return "0h 0m";
             int hours = (int)(minutes / 60);
             int mins  = (int)(minutes % 60);
-            return $"{hours}小时 {mins}分钟";
+            return $"{hours}h {mins}m";
         }
 
         /* 按工序准备图表数据 */
@@ -2022,200 +2063,335 @@ namespace MachineStatusUpdate.Controllers
 
         [HttpGet]
         public async Task<IActionResult> ExportDowntimeReportToExcel(
-    string fromDate = "",
-    string toDate = "",
-    string operation = "",
-    string reason = "",
-    string location = "",
-    string machine = "",
-    string effect = "",
-    string station = "")
+    string fromDate = "", string toDate = "", string operation = "",
+    string reason = "", string location = "", string machine = "",
+    string effect = "", string station = "")
         {
             try
             {
-                var reportData = await GetDowntimeReportDataWithPct(fromDate, toDate, operation, reason, location, machine, effect, station);
-                var machineData = await GetDowntimeReportByMachine(fromDate, toDate, operation, reason, location, machine, effect, station);
+                var reportData   = await GetDowntimeReportDataWithPct(fromDate, toDate, operation, reason, location, machine, effect, station);
+                var machineData  = await GetDowntimeReportByMachine(fromDate, toDate, operation, reason, location, machine, effect, station);
 
-                using (var workbook = new XLWorkbook())
-                {
-                    // ══════════ Sheet 1: 按工序 ══════════
-                    var ws = workbook.Worksheets.Add("按工序统计");
-                    var currentRow = 1;
+                // ── Raw detail records for Sheet 3 ──
+                var rawQuery = from d in _context.SVN_Downtime_Infos_Devel
+                               join rsn in _context.SVN_Downtime_Reasons on d.Reason equals rsn.Reason_Code into reasons
+                               from rsn in reasons.DefaultIfEmpty()
+                               where d.State != null && d.State.ToUpper() == "STOP"
+                               select new { d, ReasonName = rsn != null ? rsn.Reason_Name : "" };
 
-                    ws.Style.Font.FontName = "Times New Roman";
-                    ws.Style.Font.FontSize = 11;
+                if (!string.IsNullOrEmpty(fromDate) && DateTime.TryParse(fromDate, out var rfd))
+                    rawQuery = rawQuery.Where(x => x.d.Datetime.HasValue && x.d.Datetime.Value.Date >= rfd.Date);
+                if (!string.IsNullOrEmpty(toDate) && DateTime.TryParse(toDate, out var rtd))
+                    rawQuery = rawQuery.Where(x => x.d.Datetime.HasValue && x.d.Datetime.Value.Date <= rtd.Date);
+                if (!string.IsNullOrWhiteSpace(machine))   rawQuery = rawQuery.Where(x => x.d.MachineCode == machine.Trim());
+                if (!string.IsNullOrWhiteSpace(operation)) { var _op = operation.Trim(); rawQuery = rawQuery.Where(x => x.d.Operation != null && x.d.Operation.Contains(_op)); }
+                if (!string.IsNullOrWhiteSpace(location))  rawQuery = rawQuery.Where(x => x.d.Location == location.Trim());
+                if (!string.IsNullOrWhiteSpace(reason))    rawQuery = rawQuery.Where(x => x.d.Reason == reason.Trim());
+                if (!string.IsNullOrWhiteSpace(effect))    rawQuery = rawQuery.Where(x => x.d.Effect == effect.Trim());
+                if (!string.IsNullOrWhiteSpace(station))   rawQuery = rawQuery.Where(x => x.d.Station == station.Trim());
 
-                    ws.Cell(currentRow, 1).Value = "按工序停机时间报告";
-                    ws.Range(currentRow, 1, currentRow, 8).Merge();
-                    ws.Cell(currentRow, 1).Style.Font.Bold = true;
-                    ws.Cell(currentRow, 1).Style.Font.FontSize = 14;
-                    ws.Cell(currentRow, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                    currentRow += 2;
+                var rawStops = await rawQuery.OrderBy(x => x.d.Datetime).ToListAsync();
 
-                    if (!string.IsNullOrEmpty(fromDate) || !string.IsNullOrEmpty(toDate))
-                    {
-                        ws.Cell(currentRow, 1).Value = $"从: {fromDate}  到: {toDate}";
-                        ws.Range(currentRow, 1, currentRow, 8).Merge();
-                        currentRow += 2;
-                    }
+                // Join TechResponses for Start/Response/End times
+                var techResps = await _context.SVN_Downtime_TechResponses
+                    .Where(x => x.TechAction == "ACCEPT")
+                    .Select(x => new { x.DowntimeId, x.TechUsername, x.RespondDatetime, x.StopDatetime })
+                    .ToListAsync();
 
-                    // ✅ FIX: đổi 'operation' → 'opRow' để tránh conflict với parameter 'operation'
-                    foreach (var opRow in reportData)
-                    {
-                        ws.Cell(currentRow, 1).Value = $"工序: {opRow.Operation}";
-                        ws.Cell(currentRow, 1).Style.Font.Bold = true;
-                        ws.Cell(currentRow, 1).Style.Fill.BackgroundColor = XLColor.LightBlue;
-                        ws.Range(currentRow, 1, currentRow, 8).Merge();
-                        currentRow++;
+                var runRecords = await _context.SVN_Downtime_Infos_Devel
+                    .Where(x => x.State != null && x.State.ToUpper() == "RUN")
+                    .Select(x => new { x.MachineCode, x.Datetime })
+                    .ToListAsync();
 
-                        ws.Cell(currentRow, 1).Value = "停机次数:";
-                        ws.Cell(currentRow, 2).Value = opRow.TotalDowntimeCount;
-                        ws.Cell(currentRow, 3).Value = "总停机时长:";
-                        ws.Cell(currentRow, 4).Value = opRow.TotalDowntimeFormatted;
-                        ws.Cell(currentRow, 5).Value = "运行时长:";
-                        ws.Cell(currentRow, 6).Value = opRow.RunningTimeFormatted;
-                        ws.Cell(currentRow, 7).Value = "停机占比:";
-                        ws.Cell(currentRow, 8).Value = $"{opRow.DowntimePct}%";
-                        ws.Cell(currentRow, 1).Style.Font.Bold = true;
-                        ws.Cell(currentRow, 3).Style.Font.Bold = true;
-                        ws.Cell(currentRow, 5).Style.Font.Bold = true;
-                        ws.Cell(currentRow, 7).Style.Font.Bold = true;
-                        ws.Cell(currentRow, 8).Style.Font.FontColor = opRow.DowntimePct >= 10 ? XLColor.Red : XLColor.DarkGreen;
-                        currentRow++;
+                using var workbook = new XLWorkbook();
 
-                        string[] headers = { "#", "故障代码", "故障名称", "次数", "总时长(分钟)", "总时长", "占比%" };
-                        for (int i = 0; i < headers.Length; i++)
-                        {
-                            var cell = ws.Cell(currentRow, i + 1);
-                            cell.Value = headers[i];
-                            cell.Style.Font.Bold = true;
-                            cell.Style.Fill.BackgroundColor = XLColor.FromTheme(XLThemeColor.Accent1, 0.5);
-                            cell.Style.Font.FontColor = XLColor.White;
-                            cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                        }
-                        currentRow++;
+                // ── Helper styles ──
+                XLColor headerBg   = XLColor.FromHtml("#1F3864");
+                XLColor subHeaderBg = XLColor.FromHtml("#2E75B6");
+                XLColor altRow     = XLColor.FromHtml("#EBF3FB");
+                XLColor totalBg    = XLColor.FromHtml("#D6E4F0");
+                XLColor titleColor = XLColor.White;
 
-                        int seq = 1;
-                        foreach (var error in opRow.ErrorDetails)
-                        {
-                            ws.Cell(currentRow, 1).Value = seq++;
-                            ws.Cell(currentRow, 2).Value = error.ISS_Code;
-                            ws.Cell(currentRow, 3).Value = error.ErrorName;
-                            ws.Cell(currentRow, 4).Value = error.DowntimeCount;
-                            ws.Cell(currentRow, 5).Value = Math.Round(error.TotalDowntimeMinutes, 2);
-                            ws.Cell(currentRow, 6).Value = error.TotalDowntimeFormatted;
-                            double pct = opRow.TotalDowntimeMinutes > 0
-                                ? error.TotalDowntimeMinutes / opRow.TotalDowntimeMinutes * 100 : 0;
-                            ws.Cell(currentRow, 7).Value = $"{Math.Round(pct, 1)}%";
-                            currentRow++;
-                        }
-                        currentRow += 2;
-                    }
-
-                    ws.Column(1).Width = 6; ws.Column(2).Width = 14; ws.Column(3).Width = 30;
-                    ws.Column(4).Width = 10; ws.Column(5).Width = 14; ws.Column(6).Width = 14;
-                    ws.Column(7).Width = 10; ws.Column(8).Width = 10;
-
-                    // ══════════ Sheet 2: 按设备 ══════════
-                    var ws2 = workbook.Worksheets.Add("按设备统计");
-                    ws2.Style.Font.FontName = "Times New Roman";
-                    ws2.Style.Font.FontSize = 11;
-                    int r2 = 1;
-
-                    ws2.Cell(r2, 1).Value = "按设备停机时间报告";
-                    ws2.Range(r2, 1, r2, 7).Merge();
-                    ws2.Cell(r2, 1).Style.Font.Bold = true;
-                    ws2.Cell(r2, 1).Style.Font.FontSize = 14;
-                    ws2.Cell(r2, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                    r2 += 2;
-
-                    if (!string.IsNullOrEmpty(fromDate) || !string.IsNullOrEmpty(toDate))
-                    {
-                        ws2.Cell(r2, 1).Value = $"从: {fromDate}  到: {toDate}";
-                        ws2.Range(r2, 1, r2, 7).Merge();
-                        r2 += 2;
-                    }
-
-                    string[] sumHdr = { "#", "设备号", "工序/产线", "停机次数", "总时长(分钟)", "总时长", "占总停机比%" };
-                    for (int i = 0; i < sumHdr.Length; i++)
-                    {
-                        var c = ws2.Cell(r2, i + 1);
-                        c.Value = sumHdr[i];
-                        c.Style.Font.Bold = true;
-                        c.Style.Fill.BackgroundColor = XLColor.FromTheme(XLThemeColor.Accent1, 0.5);
-                        c.Style.Font.FontColor = XLColor.White;
-                        c.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                    }
-                    r2++;
-
-                    var grandTotal = machineData.Sum(x => x.TotalDowntimeMinutes);
-                    int mSeq = 1;
-                    // ✅ FIX: đổi 'm' giữ nguyên — không conflict, OK
-                    foreach (var m in machineData)
-                    {
-                        ws2.Cell(r2, 1).Value = mSeq++;
-                        ws2.Cell(r2, 2).Value = m.MachineCode;
-                        ws2.Cell(r2, 3).Value = m.Operation;
-                        ws2.Cell(r2, 4).Value = m.DowntimeCount;
-                        ws2.Cell(r2, 5).Value = Math.Round(m.TotalDowntimeMinutes, 2);
-                        ws2.Cell(r2, 6).Value = m.TotalDowntimeFormatted;
-                        double pctGrand = grandTotal > 0 ? m.TotalDowntimeMinutes / grandTotal * 100 : 0;
-                        ws2.Cell(r2, 7).Value = $"{Math.Round(pctGrand, 1)}%";
-                        r2++;
-                    }
-
-                    r2 += 2;
-
-                    foreach (var m in machineData)
-                    {
-                        ws2.Cell(r2, 1).Value = $"设备: {m.MachineCode}  |  产线: {m.Operation}  |  总停机: {m.TotalDowntimeFormatted}  |  次数: {m.DowntimeCount}";
-                        ws2.Cell(r2, 1).Style.Font.Bold = true;
-                        ws2.Cell(r2, 1).Style.Fill.BackgroundColor = XLColor.LightSteelBlue;
-                        ws2.Range(r2, 1, r2, 7).Merge();
-                        r2++;
-
-                        string[] dHdr = { "#", "故障代码", "故障名称", "次数", "总时长(分钟)", "总时长", "占比%" };
-                        for (int i = 0; i < dHdr.Length; i++)
-                        {
-                            var c = ws2.Cell(r2, i + 1);
-                            c.Value = dHdr[i];
-                            c.Style.Font.Bold = true;
-                            c.Style.Fill.BackgroundColor = XLColor.LightGray;
-                        }
-                        r2++;
-
-                        int dSeq = 1;
-                        foreach (var rd in m.ReasonDetails)
-                        {
-                            ws2.Cell(r2, 1).Value = dSeq++;
-                            ws2.Cell(r2, 2).Value = rd.ReasonCode;
-                            ws2.Cell(r2, 3).Value = rd.ReasonName;
-                            ws2.Cell(r2, 4).Value = rd.DowntimeCount;
-                            ws2.Cell(r2, 5).Value = Math.Round(rd.TotalDowntimeMinutes, 2);
-                            ws2.Cell(r2, 6).Value = rd.TotalDowntimeFormatted;
-                            double pct = m.TotalDowntimeMinutes > 0 ? rd.TotalDowntimeMinutes / m.TotalDowntimeMinutes * 100 : 0;
-                            ws2.Cell(r2, 7).Value = $"{Math.Round(pct, 1)}%";
-                            r2++;
-                        }
-                        r2 += 2;
-                    }
-
-                    ws2.Column(1).Width = 6; ws2.Column(2).Width = 16; ws2.Column(3).Width = 30;
-                    ws2.Column(4).Width = 10; ws2.Column(5).Width = 14; ws2.Column(6).Width = 14;
-                    ws2.Column(7).Width = 12;
-
-                    using (var stream = new MemoryStream())
-                    {
-                        workbook.SaveAs(stream);
-                        return File(stream.ToArray(),
-                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                            $"DowntimeReport_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx");
-                    }
+                void StyleHeader(IXLCell cell, bool dark = true) {
+                    cell.Style.Font.Bold = true;
+                    cell.Style.Font.FontColor = XLColor.White;
+                    cell.Style.Fill.BackgroundColor = dark ? headerBg : subHeaderBg;
+                    cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                    cell.Style.Alignment.Vertical   = XLAlignmentVerticalValues.Center;
+                    cell.Style.Alignment.WrapText   = true;
+                    cell.Style.Border.OutsideBorder  = XLBorderStyleValues.Thin;
+                    cell.Style.Border.OutsideBorderColor = XLColor.White;
                 }
+
+                void StyleData(IXLCell cell, bool alt = false) {
+                    if (alt) cell.Style.Fill.BackgroundColor = altRow;
+                    cell.Style.Border.BottomBorder = XLBorderStyleValues.Hair;
+                    cell.Style.Border.BottomBorderColor = XLColor.FromHtml("#BDD7EE");
+                    cell.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+                    cell.Style.Alignment.WrapText = true;
+                }
+
+                string FilterInfo() {
+                    var parts = new List<string>();
+                    if (!string.IsNullOrEmpty(fromDate)) parts.Add($"From: {fromDate}");
+                    if (!string.IsNullOrEmpty(toDate))   parts.Add($"To: {toDate}");
+                    if (!string.IsNullOrEmpty(machine))  parts.Add($"Machine: {machine}");
+                    if (!string.IsNullOrEmpty(operation)) parts.Add($"Line: {operation}");
+                    if (!string.IsNullOrEmpty(location)) parts.Add($"Location: {location}");
+                    if (!string.IsNullOrEmpty(effect))   parts.Add($"Effect: {(effect=="1"?"Affects Production":"No Effect")}");
+                    return parts.Any() ? string.Join("  |  ", parts) : "All data (no filter)";
+                }
+
+                // ════════════════════════════════════════════════
+                // SHEET 1: Summary by Line
+                // ════════════════════════════════════════════════
+                var ws1 = workbook.Worksheets.Add("Summary by Line");
+                ws1.Style.Font.FontName = "Arial";
+                ws1.Style.Font.FontSize = 10;
+
+                int r = 1;
+                // Title
+                ws1.Cell(r, 1).Value = "DOWNTIME REPORT — Summary by Line";
+                ws1.Range(r, 1, r, 5).Merge();
+                ws1.Cell(r, 1).Style.Font.Bold = true;
+                ws1.Cell(r, 1).Style.Font.FontSize = 14;
+                ws1.Cell(r, 1).Style.Font.FontColor = XLColor.White;
+                ws1.Cell(r, 1).Style.Fill.BackgroundColor = headerBg;
+                ws1.Cell(r, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                ws1.Row(r).Height = 28; r++;
+
+                ws1.Cell(r, 1).Value = FilterInfo();
+                ws1.Range(r, 1, r, 5).Merge();
+                ws1.Cell(r, 1).Style.Font.Italic = true;
+                ws1.Cell(r, 1).Style.Font.FontColor = XLColor.FromHtml("#1F3864");
+                ws1.Cell(r, 1).Style.Fill.BackgroundColor = XLColor.FromHtml("#DEEAF1");
+                ws1.Row(r).Height = 16; r++;
+                ws1.Cell(r, 1).Value = $"Generated: {DateTime.Now:dd/MM/yyyy HH:mm}";
+                ws1.Range(r, 1, r, 5).Merge();
+                ws1.Cell(r, 1).Style.Font.Italic = true;
+                ws1.Cell(r, 1).Style.Font.FontColor = XLColor.Gray;
+                r += 2;
+
+                // Headers
+                string[] sh1 = { "#", "Line / Operation", "Downtime Count", "Total Downtime", "Total Downtime (min)" };
+                for (int c = 0; c < sh1.Length; c++) { StyleHeader(ws1.Cell(r, c + 1)); ws1.Cell(r, c + 1).Value = sh1[c]; }
+                ws1.Row(r).Height = 22; r++;
+
+                int seq1 = 0;
+                foreach (var op in reportData)
+                {
+                    seq1++;
+                    bool alt = seq1 % 2 == 0;
+                    var row = ws1.Row(r);
+                    ws1.Cell(r, 1).Value = seq1;
+                    ws1.Cell(r, 2).Value = op.Operation;
+                    ws1.Cell(r, 3).Value = op.TotalDowntimeCount;
+                    ws1.Cell(r, 4).Value = op.TotalDowntimeFormatted;
+                    ws1.Cell(r, 5).Value = Math.Round(op.TotalDowntimeMinutes, 1);
+                    for (int c = 1; c <= 5; c++) StyleData(ws1.Cell(r, c), alt);
+                    ws1.Cell(r, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                    ws1.Cell(r, 3).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                    ws1.Cell(r, 5).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                    r++;
+                }
+                // Total row
+                ws1.Cell(r, 1).Value = "TOTAL";
+                ws1.Range(r, 1, r, 2).Merge();
+                ws1.Cell(r, 3).Value = reportData.Sum(x => x.TotalDowntimeCount);
+                ws1.Cell(r, 4).Value = FormatMinutesToTime(reportData.Sum(x => x.TotalDowntimeMinutes));
+                ws1.Cell(r, 5).Value = Math.Round(reportData.Sum(x => x.TotalDowntimeMinutes), 1);
+                for (int c = 1; c <= 5; c++) {
+                    ws1.Cell(r, c).Style.Font.Bold = true;
+                    ws1.Cell(r, c).Style.Fill.BackgroundColor = totalBg;
+                    ws1.Cell(r, c).Style.Border.OutsideBorder = XLBorderStyleValues.Medium;
+                }
+
+                ws1.Column(1).Width = 5; ws1.Column(2).Width = 35; ws1.Column(3).Width = 16;
+                ws1.Column(4).Width = 18; ws1.Column(5).Width = 20;
+
+                // ════════════════════════════════════════════════
+                // SHEET 2: Summary by Machine
+                // ════════════════════════════════════════════════
+                var ws2 = workbook.Worksheets.Add("Summary by Machine");
+                ws2.Style.Font.FontName = "Arial";
+                ws2.Style.Font.FontSize = 10;
+
+                r = 1;
+                ws2.Cell(r, 1).Value = "DOWNTIME REPORT — Summary by Machine";
+                ws2.Range(r, 1, r, 6).Merge();
+                ws2.Cell(r, 1).Style.Font.Bold = true;
+                ws2.Cell(r, 1).Style.Font.FontSize = 14;
+                ws2.Cell(r, 1).Style.Font.FontColor = XLColor.White;
+                ws2.Cell(r, 1).Style.Fill.BackgroundColor = XLColor.FromHtml("#1A5276");
+                ws2.Cell(r, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                ws2.Row(r).Height = 28; r++;
+                ws2.Cell(r, 1).Value = FilterInfo();
+                ws2.Range(r, 1, r, 6).Merge();
+                ws2.Cell(r, 1).Style.Font.Italic = true;
+                ws2.Cell(r, 1).Style.Fill.BackgroundColor = XLColor.FromHtml("#D6EAF8");
+                r += 2;
+
+                string[] sh2 = { "#", "Machine No.", "Line", "Downtime Count", "Total Downtime", "Total Downtime (min)" };
+                for (int c = 0; c < sh2.Length; c++) { StyleHeader(ws2.Cell(r, c + 1), false); ws2.Cell(r, c + 1).Value = sh2[c]; }
+                ws2.Row(r).Height = 22; r++;
+
+                int seq2 = 0;
+                double grandTotal = machineData.Sum(x => x.TotalDowntimeMinutes);
+                foreach (var m in machineData)
+                {
+                    seq2++;
+                    bool alt = seq2 % 2 == 0;
+                    ws2.Cell(r, 1).Value = seq2;
+                    ws2.Cell(r, 2).Value = m.MachineCode;
+                    ws2.Cell(r, 3).Value = m.Operation;
+                    ws2.Cell(r, 4).Value = m.DowntimeCount;
+                    ws2.Cell(r, 5).Value = m.TotalDowntimeFormatted;
+                    ws2.Cell(r, 6).Value = Math.Round(m.TotalDowntimeMinutes, 1);
+                    for (int c = 1; c <= 6; c++) StyleData(ws2.Cell(r, c), alt);
+                    ws2.Cell(r, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                    ws2.Cell(r, 4).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                    r++;
+                }
+                ws2.Cell(r, 1).Value = "TOTAL";
+                ws2.Range(r, 1, r, 3).Merge();
+                ws2.Cell(r, 4).Value = machineData.Sum(x => x.DowntimeCount);
+                ws2.Cell(r, 5).Value = FormatMinutesToTime(grandTotal);
+                ws2.Cell(r, 6).Value = Math.Round(grandTotal, 1);
+                for (int c = 1; c <= 6; c++) {
+                    ws2.Cell(r, c).Style.Font.Bold = true;
+                    ws2.Cell(r, c).Style.Fill.BackgroundColor = totalBg;
+                }
+
+                ws2.Column(1).Width = 5; ws2.Column(2).Width = 32; ws2.Column(3).Width = 28;
+                ws2.Column(4).Width = 15; ws2.Column(5).Width = 16; ws2.Column(6).Width = 20;
+
+                // ════════════════════════════════════════════════
+                // SHEET 3: Detail Records (template with AutoFilter)
+                // ════════════════════════════════════════════════
+                var ws3 = workbook.Worksheets.Add("Detail Records");
+                ws3.Style.Font.FontName = "Arial";
+                ws3.Style.Font.FontSize = 10;
+
+                r = 1;
+                ws3.Cell(r, 1).Value = "DOWNTIME REPORT — Detail Records";
+                ws3.Range(r, 1, r, 18).Merge();
+                ws3.Cell(r, 1).Style.Font.Bold = true;
+                ws3.Cell(r, 1).Style.Font.FontSize = 14;
+                ws3.Cell(r, 1).Style.Font.FontColor = XLColor.White;
+                ws3.Cell(r, 1).Style.Fill.BackgroundColor = XLColor.FromHtml("#1E8449");
+                ws3.Cell(r, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                ws3.Row(r).Height = 28; r++;
+                ws3.Cell(r, 1).Value = FilterInfo();
+                ws3.Range(r, 1, r, 18).Merge();
+                ws3.Cell(r, 1).Style.Font.Italic = true;
+                ws3.Cell(r, 1).Style.Fill.BackgroundColor = XLColor.FromHtml("#D5F5E3");
+                r += 2;
+
+                string[] sh3 = {
+                    "Datetime", "Operation", "Machine", "Location", "Reason",
+                    "Station", "Image", "Problem Description", "Root Cause",
+                    "Start Time", "Response Time", "End Time",
+                    "Response Duration (min)", "Downtime (min)",
+                    "Action", "Spare Parts", "Employee Name", "Effect"
+                };
+                int headerRow3 = r;
+                for (int c = 0; c < sh3.Length; c++) {
+                    var cell = ws3.Cell(r, c + 1);
+                    cell.Value = sh3[c];
+                    cell.Style.Font.Bold = true;
+                    cell.Style.Font.FontColor = XLColor.White;
+                    cell.Style.Fill.BackgroundColor = XLColor.FromHtml("#1E8449");
+                    cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                    cell.Style.Alignment.Vertical   = XLAlignmentVerticalValues.Center;
+                    cell.Style.Alignment.WrapText   = true;
+                    cell.Style.Border.OutsideBorder  = XLBorderStyleValues.Thin;
+                    cell.Style.Border.OutsideBorderColor = XLColor.White;
+                }
+                ws3.Row(r).Height = 32; r++;
+
+                int seq3 = 0;
+                foreach (var item in rawStops)
+                {
+                    seq3++;
+                    bool alt = seq3 % 2 == 0;
+                    var d = item.d;
+
+                    // Find tech response
+                    var tr = techResps.Where(t => t.DowntimeId == d.Id).FirstOrDefault();
+                    DateTime? startDt  = d.Datetime;
+                    DateTime? respDt   = tr?.RespondDatetime;
+                    DateTime? endDt    = runRecords
+                        .Where(rr => rr.MachineCode == d.MachineCode && rr.Datetime.HasValue && rr.Datetime > d.Datetime)
+                        .OrderBy(rr => rr.Datetime)
+                        .Select(rr => rr.Datetime)
+                        .FirstOrDefault();
+
+                    double respDuration = (startDt.HasValue && respDt.HasValue) ? (respDt.Value - startDt.Value).TotalMinutes : 0;
+                    double totalDT      = (startDt.HasValue && endDt.HasValue)  ? (endDt.Value  - startDt.Value).TotalMinutes  : 0;
+
+                    string effStr = d.Effect == "1" ? "Yes" : d.Effect == "2" ? "No" : "-";
+
+                    ws3.Cell(r, 1).Value  = d.Datetime?.ToString("dd/MM/yyyy HH:mm") ?? "-";
+                    ws3.Cell(r, 2).Value  = d.Operation   ?? "-";
+                    ws3.Cell(r, 3).Value  = d.MachineCode ?? "-";
+                    ws3.Cell(r, 4).Value  = d.Location    ?? "-";
+                    ws3.Cell(r, 5).Value  = item.ReasonName.Length > 0 ? item.ReasonName : (d.Reason ?? "-");
+                    ws3.Cell(r, 6).Value  = d.Station     ?? "-";
+                    ws3.Cell(r, 7).Value  = !string.IsNullOrEmpty(d.Image) ? d.Image : "-";
+                    ws3.Cell(r, 8).Value  = d.Description ?? "-";
+                    ws3.Cell(r, 9).Value  = d.RootCause   ?? "-";
+                    ws3.Cell(r, 10).Value = startDt?.ToString("dd/MM/yyyy HH:mm") ?? "-";
+                    ws3.Cell(r, 11).Value = respDt?.ToString("dd/MM/yyyy HH:mm")  ?? "-";
+                    ws3.Cell(r, 12).Value = endDt?.ToString("dd/MM/yyyy HH:mm")   ?? "-";
+                    if (respDuration > 0) ws3.Cell(r, 13).Value = Math.Round(respDuration, 1);
+                    else ws3.Cell(r, 13).Value = "-";
+                    if (totalDT > 0) ws3.Cell(r, 14).Value = Math.Round(totalDT, 1);
+                    else ws3.Cell(r, 14).Value = "-";
+                    ws3.Cell(r, 15).Value = d.Action     ?? "-";
+                    ws3.Cell(r, 16).Value = d.SpareParts ?? "-";
+                    ws3.Cell(r, 17).Value = d.EmployeeName ?? d.EmployeeCode ?? "-";
+                    ws3.Cell(r, 18).Value = effStr;
+
+                    for (int c = 1; c <= 18; c++) {
+                        var cell = ws3.Cell(r, c);
+                        if (alt) cell.Style.Fill.BackgroundColor = XLColor.FromHtml("#EAFAF1");
+                        cell.Style.Border.BottomBorder = XLBorderStyleValues.Hair;
+                        cell.Style.Border.BottomBorderColor = XLColor.FromHtml("#A9DFBF");
+                        cell.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+                    }
+                    // Right-align numbers
+                    ws3.Cell(r, 13).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                    ws3.Cell(r, 14).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                    ws3.Cell(r, 18).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+                    // Highlight unresolved rows
+                    if (totalDT <= 0 && endDt == null)
+                        ws3.Cell(r, 14).Style.Fill.BackgroundColor = XLColor.FromHtml("#FDEDEC");
+
+                    ws3.Row(r).Height = 18;
+                    r++;
+                }
+
+                // AutoFilter on header row
+                ws3.Range(headerRow3, 1, r - 1, 18).SetAutoFilter();
+
+                // Freeze pane below header
+                ws3.SheetView.FreezeRows(headerRow3);
+
+                // Column widths
+                int[] ws3Widths = { 18, 28, 32, 16, 28, 14, 12, 32, 28, 18, 18, 18, 20, 16, 28, 20, 20, 14 };
+                for (int c = 0; c < ws3Widths.Length; c++)
+                    ws3.Column(c + 1).Width = ws3Widths[c];
+
+                using var stream = new MemoryStream();
+                workbook.SaveAs(stream);
+                return File(stream.ToArray(),
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    $"DowntimeReport_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx");
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = $"导出Excel时出错: {ex.Message}" });
+                return Json(new { success = false, message = $"Export error: {ex.Message}" });
             }
         }
 
@@ -3412,25 +3588,44 @@ public class EmployeeDto
                 .Where(x => x.MachineCode != null && x.State != null && x.State.ToUpper() == "STOP").AsQueryable();
             if (!string.IsNullOrWhiteSpace(operation)) { var _op = operation.Trim(); q = q.Where(x => x.Operation != null && x.Operation.Contains(_op)); }
             if (!string.IsNullOrWhiteSpace(machine))   { var _mc = machine.Trim();   q = q.Where(x => x.MachineCode == _mc); }
-            if (!string.IsNullOrEmpty(fromDate) && DateTime.TryParse(fromDate, out var fd)) q = q.Where(x => x.Datetime.HasValue && x.Datetime.Value.Date >= fd.Date);
-            if (!string.IsNullOrEmpty(toDate)   && DateTime.TryParse(toDate,   out var td)) q = q.Where(x => x.Datetime.HasValue && x.Datetime.Value.Date <= td.Date);
+
+            bool hasFrom = DateTime.TryParse(fromDate, out var fd);
+            bool hasTo   = DateTime.TryParse(toDate,   out var td);
+
+            DateTime today      = DateTime.Now.Date;
+            // Thứ 2 của tuần hiện tại
+            DateTime weekMon    = today.AddDays(-(((int)today.DayOfWeek + 6) % 7));
+            // Chủ nhật của tuần hiện tại
+            DateTime weekSun    = weekMon.AddDays(6);
+
+            DateTime rangeStart = hasFrom ? fd.Date : weekMon;
+            DateTime rangeEnd   = hasTo   ? td.Date : weekSun;
+
+            // Giới hạn tối đa 14 ngày để sparkline không quá dày
+            int totalDays = Math.Min((int)(rangeEnd - rangeStart).TotalDays + 1, 14);
+            // Lấy `totalDays` ngày cuối trong range
+            var trendStart = rangeEnd.AddDays(-(totalDays - 1));
+            var trendDays  = Enumerable.Range(0, totalDays).Select(i => trendStart.AddDays(i)).ToList();
+
+            // Query với date filter
+            q = q.Where(x => x.Datetime.HasValue
+                           && x.Datetime.Value.Date >= rangeStart
+                           && x.Datetime.Value.Date <= rangeEnd);
 
             var stops = await q.Select(x => new { x.MachineCode, x.Operation, x.Datetime }).ToListAsync();
-            var today = DateTime.Now.Date;
-            var days7 = Enumerable.Range(0, 7).Select(i => today.AddDays(-6 + i)).ToList();
 
             return stops.GroupBy(x => x.MachineCode)
                 .Select(g => new { MC = g.Key ?? "", Op = g.First().Operation ?? "", Count = g.Count(), Items = g.ToList() })
                 .OrderByDescending(x => x.Count).Take(5)
                 .Select(m => new Top5MachineData
                 {
-                    MachineCode   = m.MC,
-                    Operation     = m.Op,
-                    DowntimeCount = m.Count,
-                    TotalMinutes  = 0,
+                    MachineCode    = m.MC,
+                    Operation      = m.Op,
+                    DowntimeCount  = m.Count,
+                    TotalMinutes   = 0,
                     TotalFormatted = "-",
-                    DailyTrend    = days7.Select(d => (double)m.Items.Count(r => r.Datetime.HasValue && r.Datetime.Value.Date == d)).ToList(),
-                    TrendDates    = days7.Select(d => d.ToString("dd/MM")).ToList()
+                    DailyTrend     = trendDays.Select(d => (double)m.Items.Count(r => r.Datetime.HasValue && r.Datetime.Value.Date == d)).ToList(),
+                    TrendDates     = trendDays.Select(d => d.ToString("dd/MM")).ToList()
                 }).ToList();
         }
 
@@ -3445,20 +3640,33 @@ public class EmployeeDto
             if (!string.IsNullOrWhiteSpace(operation)) { var _op = operation.Trim(); q = q.Where(x => x.Operation != null && x.Operation.Contains(_op)); }
             if (!string.IsNullOrWhiteSpace(machine))   { var _mc = machine.Trim();   q = q.Where(x => x.MachineCode == _mc); }
 
-            var records = await q.Select(x => new { x.MachineCode, x.StopDatetime, x.RespondDatetime }).ToListAsync();
+            var records = await q.Select(x => new {
+                x.TechUsername,
+                x.StopDatetime,
+                x.RespondDatetime
+            }).ToListAsync();
+
             if (!records.Any()) return new ResponseTimeData();
 
             var result = new ResponseTimeData();
-            foreach (var g in records.Where(x => x.MachineCode != null).GroupBy(x => x.MachineCode).OrderBy(g => g.Key))
+
+            // Group by Technician
+            foreach (var g in records
+                .Where(x => !string.IsNullOrWhiteSpace(x.TechUsername))
+                .GroupBy(x => x.TechUsername)
+                .OrderBy(g => g.Key))
             {
-                var times = g.Select(r => (r.RespondDatetime!.Value - r.StopDatetime!.Value).TotalMinutes).Where(t => t >= 0 && t < 1440).ToList();
+                var times = g.Select(r => (r.RespondDatetime!.Value - r.StopDatetime!.Value).TotalMinutes)
+                             .Where(t => t >= 0 && t < 1440).ToList();
                 if (!times.Any()) continue;
                 result.Labels.Add(g.Key ?? "");
                 result.AvgResponseMins.Add(Math.Round(times.Average(), 1));
                 result.MinResponseMins.Add(Math.Round(times.Min(), 1));
                 result.MaxResponseMins.Add(Math.Round(times.Max(), 1));
             }
-            var all = records.Select(r => (r.RespondDatetime!.Value - r.StopDatetime!.Value).TotalMinutes).Where(t => t >= 0 && t < 1440).ToList();
+
+            var all = records.Select(r => (r.RespondDatetime!.Value - r.StopDatetime!.Value).TotalMinutes)
+                             .Where(t => t >= 0 && t < 1440).ToList();
             result.OverallAvgMins = all.Any() ? Math.Round(all.Average(), 1) : 0;
             result.TotalResponded = records.Count;
             return result;

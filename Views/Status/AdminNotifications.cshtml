@@ -1,6 +1,6 @@
 @model List<MachineStatusUpdate.Models.SVN_Notification>
 @{
-    ViewData["Title"] = "📊 所有通知 / 全部通知";
+    ViewData["Title"] = "📊 All notifications / All notifications";
     var adminName = Context.Session.GetString("UserName") ?? "Admin";
 
     // Thống kê
@@ -283,13 +283,13 @@
 <!-- ── Header ── -->
 <div class="an-header">
     <div>
-        <h1>📊 全部通知 / All Notifications</h1>
-        <div class="sub">今日所有生产 & 技术通知一览 · All Production & Technical activity today</div>
+        <h1>📊 All Notifications</h1>
+        <div class="sub"> All Production & Technical activity today</div>
     </div>
     <div style="display:flex;align-items:center;gap:10px;">
         @if (unreadCount > 0)
         {
-            <button class="btn-mark-all" onclick="markAllRead()">✓ 全标已读 (@unreadCount)</button>
+            <button class="btn-mark-all" onclick="markAllRead()">✓ Mark all as read (@unreadCount)</button>
         }
         <div class="an-admin-badge">🛡 @adminName</div>
     </div>
@@ -300,35 +300,35 @@
     <div class="an-sum-card">
         <div class="an-sum-icon">📋</div>
         <div>
-            <div class="an-sum-label">总计 Total</div>
+            <div class="an-sum-label">Total</div>
             <div class="an-sum-val val-total">@total</div>
         </div>
     </div>
     <div class="an-sum-card">
         <div class="an-sum-icon">🛑</div>
         <div>
-            <div class="an-sum-label">停机 STOP</div>
+            <div class="an-sum-label">Stop</div>
             <div class="an-sum-val val-stop">@stopCount</div>
         </div>
     </div>
     <div class="an-sum-card">
         <div class="an-sum-icon">⚙️</div>
         <div>
-            <div class="an-sum-label">技术响应 Tech</div>
+            <div class="an-sum-label">Technical</div>
             <div class="an-sum-val val-tech">@techRespCount</div>
         </div>
     </div>
     <div class="an-sum-card">
         <div class="an-sum-icon">🔧</div>
         <div>
-            <div class="an-sum-label">已修复 Fixed</div>
+            <div class="an-sum-label">Fixed</div>
             <div class="an-sum-val val-fix">@fixCount</div>
         </div>
     </div>
     <div class="an-sum-card">
         <div class="an-sum-icon">▶️</div>
         <div>
-            <div class="an-sum-label">恢复运行 RUN</div>
+            <div class="an-sum-label">Running</div>
             <div class="an-sum-val val-run">@runCount</div>
         </div>
     </div>
@@ -337,14 +337,14 @@
 <!-- ── Toolbar ── -->
 <div class="an-toolbar">
     <div class="an-tabs">
-        <button class="an-tab active" onclick="setFilter('ALL',this)">全部 All (@total)</button>
-        <button class="an-tab" onclick="setFilter('STOP',this)">🛑 停机 (@stopCount)</button>
-        <button class="an-tab" onclick="setFilter('TECH_RESPONSE',this)">⚙️ 技术响应 (@techRespCount)</button>
-        <button class="an-tab" onclick="setFilter('FIX_COMPLETE',this)">🔧 已修复 (@fixCount)</button>
-        <button class="an-tab" onclick="setFilter('RUN',this)">▶️ 运行 (@runCount)</button>
+        <button class="an-tab active" onclick="setFilter('ALL',this)">All (@total)</button>
+        <button class="an-tab" onclick="setFilter('STOP',this)">🛑 Stop (@stopCount)</button>
+        <button class="an-tab" onclick="setFilter('TECH_RESPONSE',this)">⚙️ Technical Response (@techRespCount)</button>
+        <button class="an-tab" onclick="setFilter('FIX_COMPLETE',this)">🔧 Fixed (@fixCount)</button>
+        <button class="an-tab" onclick="setFilter('RUN',this)">▶️ Running (@runCount)</button>
     </div>
     <div class="an-search">
-        <input type="text" id="searchInput" placeholder="🔍 查找机器、工序..." oninput="onSearch()">
+        <input type="text" id="searchInput" placeholder="🔍 Search machines, operations..." oninput="onSearch()">
     </div>
 </div>
 
@@ -354,9 +354,9 @@
     {
         <div class="an-empty">
             <span class="empty-icon">📭</span>
-            今日暂无通知。<br>
+            No notifications available today.
             <small style="display:block;margin-top:6px;font-size:13px;">
-                Chưa có thông báo nào hôm nay.
+                No notifications available today.
             </small>
         </div>
     }
@@ -384,10 +384,10 @@
             // ── Label badge ──
             string badgeLabel = n.NotifType switch
             {
-                "STOP"          => "停机 STOP",
-                "RUN"           => "运行 RUN",
-                "TECH_RESPONSE" => n.TechAction == "ACCEPT" ? "已接受 ACCEPT" : "等待中 WAIT",
-                "FIX_COMPLETE"  => "已修复 FIXED",
+                "STOP"          => "STOP",
+                "RUN"           => "RUN",
+                "TECH_RESPONSE" => n.TechAction == "ACCEPT" ? "ACCEPT" : "WAIT",
+                "FIX_COMPLETE"  => "FIXED",
                 _               => n.NotifType
             };
 
@@ -415,7 +415,7 @@
                         <div style="display:flex;align-items:center;gap:8px;">
                             @if (!n.IsRead)
                             {
-                                <span class="an-unread-dot" title="Chưa đọc"></span>
+                                <span class="an-unread-dot" title="Unread"></span>
                             }
                             <span class="an-time">🕐 @n.CreatedAt.ToString("HH:mm:ss")</span>
                         </div>
@@ -431,15 +431,15 @@
                     <div class="an-card-meta">
                         @if (!string.IsNullOrEmpty(n.MachineCode))
                         {
-                            <span>🔩 机器: <strong>@n.MachineCode</strong></span>
+                            <span>🔩 Machine: <strong>@n.MachineCode</strong></span>
                         }
                         @if (!string.IsNullOrEmpty(n.Operation))
                         {
-                            <span>📍 工序: <strong>@n.Operation</strong></span>
+                            <span>📍 Operation: <strong>@n.Operation</strong></span>
                         }
                         @if (!string.IsNullOrEmpty(n.TechName))
                         {
-                            <span>👨‍🔧 技术 : <strong>@n.TechName</strong></span>
+                            <span>👨‍🔧 Technician: <strong>@n.TechName</strong></span>
                         }
                         @if (n.TechResponseId.HasValue)
                         {
@@ -457,7 +457,7 @@
     <div class="an-page-info" id="pageInfo"></div>
     <div class="an-page-btns" id="pageBtns"></div>
     <div class="an-pagesize">
-        每页 / Page:
+        Items per page / Page:
         <select id="pageSizeSelect" onchange="changePageSize(this.value)">
             <option value="5" selected>5</option>
             <option value="10">10</option>
@@ -509,7 +509,7 @@
 
         const showing = Math.min(end, total);
         document.getElementById('pageInfo').innerHTML =
-            `显示 <strong>${start + 1}–${showing}</strong> / 共 <strong>${total}</strong> 条`;
+            `Showing <strong>${start + 1}–${showing}</strong> of <strong>${total}</strong> items`;
 
         renderPageBtns(pages);
     }
