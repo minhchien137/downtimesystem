@@ -200,6 +200,17 @@
     .btn-fix-complete:active { transform: translateY(1px); }
     .btn-fix-complete:disabled { opacity: .55; cursor: not-allowed; transform: none; }
 
+    .btn-not-ef {
+        background: linear-gradient(135deg, #7c3aed, #a855f7);
+        color: #fff; border: none; border-radius: 8px; padding: 9px 16px;
+        font-size: 13px; font-weight: 700; cursor: pointer;
+        display: inline-flex; align-items: center; gap: 6px;
+        box-shadow: 0 3px 10px rgba(124,58,237,.3); transition: all .18s;
+    }
+    .btn-not-ef:hover  { filter: brightness(1.08); transform: translateY(-1px); }
+    .btn-not-ef:active { transform: translateY(1px); }
+    .btn-not-ef:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+
     .responded-badge.fix-done { background: #dbeafe; color: #1e40af; }
 
     .response-time-badge {
@@ -1387,6 +1398,7 @@ function renderStopCard(data, prepend = true) {
             </select>
             <button class="btn-accept" onclick="respondToOperator(this,'ACCEPT')">✅ Response</button>
             <button class="btn-reject" onclick="openRejectModal(this)">❌ 拒绝 / Reject</button>
+            <button class="btn-not-ef" onclick="pieNotEF(this)" title="Not E&F problem — call relevant department">🏢 Not E&F</button>
         </div>`;
 
     card.innerHTML = `
@@ -1680,6 +1692,45 @@ document.addEventListener('keydown', function(e) {
 });
 
 
+
+/* ===== PIE bấm "Not E&F" → notify PROD to call relevant dept ===== */
+async function pieNotEF(btn) {
+    const card = btn.closest('.notif-card');
+    if (!card) return;
+
+    const techResponseId = card.dataset.techResponseId || '';
+    const actionsDiv     = card.querySelector('.notif-actions');
+
+    if (!confirm('Confirm: This is NOT an E&F problem — Production will be notified to call the relevant department (PDE/QUAL/FAC/IT).')) return;
+
+    btn.disabled  = true;
+    btn.innerHTML = '⏳ Sending...';
+
+    try {
+        const res  = await fetch(`${pathBase}/Status/PIENotEF`, {
+            method : 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body   : JSON.stringify({ techResponseId: parseInt(techResponseId) || 0 })
+        });
+        const data = await res.json();
+        if (data.success) {
+            if (actionsDiv) {
+                actionsDiv.innerHTML = `<span class="responded-badge" style="background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe;">
+                    🏢 Not E&F — Production notified to call relevant department
+                </span>`;
+            }
+            teShowToast('✅ Production has been notified to call the relevant department.');
+        } else {
+            btn.disabled  = false;
+            btn.innerHTML = '🏢 Not E&F';
+            teShowToast('❌ ' + (data.message || 'Error'), true);
+        }
+    } catch(e) {
+        btn.disabled  = false;
+        btn.innerHTML = '🏢 Not E&F';
+        teShowToast('❌ Connection error', true);
+    }
+}
 
 /* ===== Tech bấm Response (Đã sửa xong) — tạo RUN record + notify Prod ===== */
 async function techFixComplete(btn) {

@@ -4,9 +4,10 @@
     bool isAdmin      = userRole == "Admin";
     bool isTechnical  = userRole == "Technical";
     bool isProduction = userRole == "Production";
+    bool isDRI        = userRole == "DRI";
 }
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -183,7 +184,7 @@
         <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
             <div class="container-fluid">
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse"
-                    aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="切换导航">
+                    aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
 
@@ -194,20 +195,20 @@
                         {
                         <li class="nav-item">
                             <a class="nav-link text-dark custom-highlight" asp-controller="Status" asp-action="CreateDownTime">
-                                📝 录入停机时间
+                                📝 Create Downtime
                             </a>
                         </li>
                         }
 
                         <li class="nav-item">
                             <a class="nav-link text-dark custom-highlight" asp-controller="Status" asp-action="DowntimeList">
-                                📈 停机时间历史
+                                📈 Downtime History
                             </a>
                         </li>
 
                         <li class="nav-item">
                             <a class="nav-link text-dark custom-highlight" asp-controller="Status" asp-action="ReportDowntime">
-                                📊 停机时间报告
+                                📊 Downtime Report
                             </a>
                         </li>
 
@@ -215,7 +216,7 @@
                         {
                         <li class="nav-item">
                             <a class="nav-link text-dark custom-highlight" asp-controller="Status" asp-action="AdminNotifications">
-                                🔔 通知仪表板
+                                🔔 Notification Dashboard
                                 <span id="navAdminBadge" style="display:none;background:#7c3aed;color:#fff;font-size:10px;font-weight:700;border-radius:99px;padding:1px 6px;margin-left:4px;vertical-align:middle;"></span>
                             </a>
                         </li>
@@ -224,7 +225,15 @@
                         {
                         <li class="nav-item">
                             <a class="nav-link text-dark custom-highlight" asp-controller="Status" asp-action="NotificationDashboard">
-                                🔔 通知仪表板
+                                🔔 Notification Dashboard
+                            </a>
+                        </li>
+                        }
+                        else if (isDRI)
+                        {
+                        <li class="nav-item">
+                            <a class="nav-link text-dark custom-highlight" asp-controller="Status" asp-action="DRIDashboard">
+                                🔧 DRI Dashboard
                             </a>
                         </li>
                         }
@@ -233,7 +242,7 @@
                         {
                         <li class="nav-item">
                             <a class="nav-link text-dark custom-highlight" asp-controller="Status" asp-action="ProductionNotifications">
-                                📬 我的通知
+                                📬 My Notifications
                                 <span id="navProdBadge" style="display:none;background:#ef4444;color:#fff;font-size:10px;font-weight:700;border-radius:99px;padding:1px 6px;margin-left:4px;vertical-align:middle;"></span>
                             </a>
                         </li>
@@ -243,7 +252,7 @@
                         {
                         <li class="nav-item">
                             <a class="nav-link text-dark custom-highlight" asp-controller="Status" asp-action="AdminPanel">
-                                🛡 管理面板
+                                🛡 Admin Panel
                             </a>
                         </li>
                         }
@@ -253,19 +262,19 @@
                     <ul class="navbar-nav align-items-center gap-2">
                         <li class="nav-item">
                             <div class="bell-wrapper" id="bellWrapper">
-                                <button class="bell-btn" id="bellBtn" onclick="toggleBellDropdown(event)" title="通知">
+                                <button class="bell-btn" id="bellBtn" onclick="toggleBellDropdown(event)" title="Notifications">
                                     🔔
                                     <span class="bell-badge" id="bellBadge">0</span>
                                 </button>
                                 <div class="bell-dropdown" id="bellDropdown">
                                     <div class="bell-drop-header">
-                                        @if (isProduction) { <span>📬 技术团队响应</span> }
-                                        @if (isTechnical)  { <span>🛑 生产团队通知</span> }
-                                        @if (isAdmin)      { <span>📋 全部通知</span> }
-                                        <button class="bell-drop-clear" onclick="clearBellNotifs()">清空全部</button>
+                                        @if (isProduction) { <span>📬 Tech Team Responses</span> }
+                                        @if (isTechnical)  { <span>🛑 Production Notifications</span> }
+                                        @if (isAdmin)      { <span>📋 All Notifications</span> }
+                                        <button class="bell-drop-clear" onclick="clearBellNotifs()">Clear All</button>
                                     </div>
                                     <div class="bell-drop-list" id="bellList">
-                                        <div class="bell-drop-empty" id="bellEmpty">暂无通知。</div>
+                                        <div class="bell-drop-empty" id="bellEmpty">No notifications.</div>
                                     </div>
                                 </div>
                             </div>
@@ -273,14 +282,15 @@
                         <li class="nav-item">
                             <span class="nav-link text-muted" style="font-size:13px; cursor:default;">
                                 👤 @userName
-                                @if (isAdmin)      { <span class="role-badge-nav role-admin">管理员</span> }
-                                @if (isTechnical)  { <span class="role-badge-nav role-technical">技术员</span> }
-                                @if (isProduction) { <span class="role-badge-nav role-production">生产</span> }
+                                @if (isAdmin)      { <span class="role-badge-nav role-admin">Admin</span> }
+                                @if (isTechnical)  { <span class="role-badge-nav role-technical">Technician</span> }
+                                @if (isProduction) { <span class="role-badge-nav role-production">Production</span> }
+                                @if (isDRI)        { <span class="role-badge-nav" style="background:#7c3aed;color:#fff;">DRI</span> }
                             </span>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link nav-logout" asp-controller="Account" asp-action="Logout">
-                                ⏻ 退出 / Logout
+                                ⏻ Logout
                             </a>
                         </li>
                     </ul>
@@ -381,7 +391,7 @@
             toast._t = setTimeout(() => { if (toast.parentNode) toast.remove(); }, 6000);
         }
 
-        // ─── 渲染单条通知 ──────────────────────────────────────────────
+        // ─── Render single notification item ──────────────────────────
         function renderItem(n) {
             const isRead   = n.isRead;
             const type     = n.notifType;
@@ -409,7 +419,7 @@
                 : '';
 
             const markBtn = !isRead
-                ? `<button class="bell-mark-read-btn" title="标记已读 / Mark as read"
+                ? `<button class="bell-mark-read-btn" title="Mark as read"
                        onclick="event.stopPropagation(); markOneRead(${n.id}, this.closest('.bell-notif-item'))">✓</button>`
                 : '';
 
@@ -428,14 +438,13 @@
                 </div>`;
         }
 
-        // ─── Load thông báo từ DB ──────────────────────────────────────
+        // ─── Load notifications from DB ───────────────────────────────
         async function loadNotifications() {
             try {
                 const res  = await fetch(`${pathBase}/Status/GetMyNotifications`);
                 const data = await res.json();
                 if (!data.success) return;
 
-                // DEBUG — mở Console (F12) để xem
                 if (data.notifications && data.notifications.length) {
                     console.log('[Bell] Raw notifications:', JSON.stringify(data.notifications.slice(0,3)));
                     console.log('[Bell] unreadCount:', data.unreadCount);
@@ -444,12 +453,11 @@
                 bellList.innerHTML = '';
 
                 if (!data.notifications || data.notifications.length === 0) {
-                    bellList.innerHTML = '<div class="bell-drop-empty" id="bellEmpty">暂无通知。</div>';
+                    bellList.innerHTML = '<div class="bell-drop-empty" id="bellEmpty">No notifications.</div>';
                 } else {
                     data.notifications.forEach(n => {
                         bellList.insertAdjacentHTML('beforeend', renderItem(n));
                     });
-                    // Ẩn các item đã bị xóa bởi Tech từ notification list
                     applyDismissedFilter();
                 }
 
@@ -494,7 +502,6 @@
 
         window.markOneRead = async function(id, el) {
             if (!el) return;
-            // Optimistic UI update immediately
             el.classList.remove('unread');
             el.style.background = '#ffffff';
             el.style.opacity = '0.7';
@@ -533,7 +540,7 @@
 
         window.clearBellNotifs = function(e) {
             if (e) e.stopPropagation();
-            bellList.innerHTML = '<div class="bell-drop-empty" id="bellEmpty">暂无通知。</div>';
+            bellList.innerHTML = '<div class="bell-drop-empty" id="bellEmpty">No notifications.</div>';
             bellBadge.style.display = 'none';
             markAllRead();
         };
@@ -551,8 +558,8 @@
                 playNotifSound();
                 showToast(
                     data && data.action === 'ACCEPT'
-                        ? `✅ 技术员 [${data.techName}] 正在前往维修设备 ${data.machineCode}`
-                        : `⏳ 技术员已查看通知，请稍候`,
+                        ? `✅ Technician [${data.techName}] is on the way to repair machine ${data.machineCode}`
+                        : `⏳ Technician has seen the notification, please wait`,
                     'accept'
                 );
             });
@@ -560,8 +567,8 @@
                 addRealTimeItem();
                 playNotifSound();
                 showToast(
-                    `❌ 技术员 [${data.techName}] 已拒绝 — 设备: ${data.machineCode}`
-                    + (data && data.rejectReason ? ` | 原因: ${data.rejectReason}` : ''),
+                    `❌ Technician [${data.techName}] rejected — Machine: ${data.machineCode}`
+                    + (data && data.rejectReason ? ` | Reason: ${data.rejectReason}` : ''),
                     'reject'
                 );
             });
@@ -569,7 +576,7 @@
                 addRealTimeItem();
                 playNotifSound();
                 showToast(
-                    `🔧 设备 ${data.machineCode} 已修复完成！`,
+                    `🔧 Machine ${data.machineCode} has been repaired!`,
                     'fix'
                 );
             });
@@ -592,7 +599,7 @@
             }
         }
 
-        // ─── Lọc bỏ bell items đã bị Tech xóa (sync với localStorage) ──
+        // ─── Filter dismissed bell items (sync with localStorage) ─────
         function applyDismissedFilter() {
             if (myRole !== 'Technical') return;
             try {
@@ -602,18 +609,15 @@
                     const rid = parseInt(el.dataset.techResponseId || '0');
                     if (rid && dismissed.includes(rid)) el.remove();
                 });
-                // Ẩn badge nếu list trống
                 if (!bellList.querySelector('.bell-notif-item')) {
                     bellBadge.style.display = 'none';
                 }
             } catch(e) {}
         }
-        // Expose để NotificationDashboard gọi khi xóa card
         window.filterDismissedBellItems = applyDismissedFilter;
 
-        // ─── Click bell item → scroll đến card trong NotificationDashboard / ProductionNotifications ──
+        // ─── Click bell item → scroll to card in NotificationDashboard / ProductionNotifications ──
         window.handleBellItemClick = function(id, techRespId, el) {
-            // Always mark as read on click for any role
             markOneRead(id, el);
 
             if (myRole === 'Technical' && techRespId) {
@@ -647,7 +651,6 @@
             }
         };
 
-        // Expose để các trang con gọi được
         window.loadNotifications = loadNotifications;
 
         loadNotifications();

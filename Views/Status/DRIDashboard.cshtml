@@ -1,0 +1,662 @@
+@{
+    ViewData["Title"] = "🔧 DRI Dashboard";
+}
+
+<style>
+    :root {
+        --dri-color:  #7c3aed;
+        --stop-color: #ef4444;
+        --run-color:  #22c55e;
+        --border:     #e5e7eb;
+        --text:       #111827;
+        --muted:      #6b7280;
+        --bg:         #f9fafb;
+        --card-bg:    #ffffff;
+    }
+
+    * { box-sizing: border-box; }
+
+    body { font-family: "Segoe UI", system-ui, Arial, sans-serif; background: var(--bg); margin: 0; }
+
+    .dash-header {
+        background: #111;
+        border-top: 4px solid var(--dri-color);
+        padding: 16px 24px;
+        display: flex; align-items: center; justify-content: space-between;
+        flex-wrap: wrap; gap: 10px;
+    }
+    .dash-header h1 { margin: 0; color: #fff; font-size: 20px; font-weight: 700; }
+    .dash-header .sub { color: #999; font-size: 13px; margin-top: 3px; }
+
+    .conn-badge {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 6px 14px; border-radius: 99px; font-size: 13px; font-weight: 600; transition: all .3s;
+    }
+    .conn-badge.connecting   { background: #fef3c7; color: #92400e; }
+    .conn-badge.connected    { background: #dcfce7; color: #166534; }
+    .conn-badge.disconnected { background: #fee2e2; color: #991b1b; }
+    .conn-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+    .connecting  .conn-dot  { background: #f59e0b; animation: pulse 1.2s infinite; }
+    .connected   .conn-dot  { background: #22c55e; }
+    .disconnected .conn-dot { background: #ef4444; }
+    @@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    .dash-body { max-width: 1000px; margin: 0 auto; padding: 20px 16px; }
+
+    /* Summary */
+    .summary-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-bottom: 22px; }
+    .summary-card {
+        background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+        padding: 16px 20px; box-shadow: 0 2px 8px rgba(0,0,0,.04);
+        display: flex; align-items: center; gap: 14px;
+    }
+    .summary-icon { font-size: 28px; line-height: 1; }
+    .summary-label { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; }
+    .summary-value { font-size: 28px; font-weight: 800; line-height: 1.1; }
+    .val-pending { color: #ef4444; }
+    .val-handling { color: #7c3aed; }
+    .val-done  { color: #22c55e; }
+
+    /* Toolbar */
+    .toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+    .toolbar-title { font-weight: 700; font-size: 15px; flex: 1; }
+    .notif-date-filter {
+        border: 1.5px solid #e5e7eb; border-radius: 8px;
+        padding: 7px 10px; font-size: 13px; outline: none; cursor: pointer;
+    }
+    .notif-date-filter:focus { border-color: var(--dri-color); }
+    .btn-today {
+        background: #f5f3ff; color: var(--dri-color);
+        border: 1.5px solid #ddd6fe; border-radius: 8px;
+        padding: 7px 12px; font-size: 13px; font-weight: 600; cursor: pointer;
+    }
+    .btn-today:hover { background: #ede9fe; }
+    .btn-clear { background: #e5e7eb; border: none; border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .btn-clear:hover { background: #d1d5db; }
+
+    /* Notification list */
+    .notif-list { display: flex; flex-direction: column; gap: 12px; }
+    .notif-empty { text-align: center; padding: 60px 20px; color: var(--muted); font-size: 15px; }
+    .notif-empty .empty-icon { font-size: 48px; display: block; margin-bottom: 12px; }
+
+    .notif-card {
+        background: var(--card-bg); border: 1px solid var(--border);
+        border-left: 5px solid var(--dri-color); border-radius: 12px;
+        padding: 16px 18px; box-shadow: 0 2px 10px rgba(0,0,0,.05);
+        animation: slideIn .3s ease; position: relative;
+    }
+    .notif-card.new-card { box-shadow: 0 0 0 3px rgba(124,58,237,.25), 0 4px 16px rgba(0,0,0,.08); }
+    @@keyframes slideIn { from{opacity:0;transform:translateY(-10px)} to{opacity:1;transform:translateY(0)} }
+
+    .notif-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+    .notif-badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 12px; border-radius: 99px; font-size: 12px; font-weight: 700; }
+    .badge-dri  { background: #f5f3ff; color: #6d28d9; }
+    .notif-time { font-size: 12px; color: var(--muted); }
+
+    .notif-machine { font-size: 17px; font-weight: 800; color: var(--text); margin-bottom: 2px; }
+    .notif-op { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+
+    .notif-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap: 8px; }
+    .notif-field { background: #f8fafc; border: 1px solid #f1f5f9; border-radius: 8px; padding: 7px 10px; }
+    .notif-field-label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; margin-bottom: 2px; }
+    .notif-field-value { font-size: 13.5px; color: var(--text); font-weight: 600; word-break: break-word; }
+
+    .notif-actions {
+        display: flex; gap: 10px; margin-top: 14px; padding-top: 12px;
+        border-top: 1px solid var(--border); flex-wrap: wrap; align-items: center;
+    }
+
+    .btn-dri-accept {
+        background: linear-gradient(135deg, #6d28d9, #7c3aed);
+        color: #fff; border: none; border-radius: 8px; padding: 9px 20px;
+        font-size: 13px; font-weight: 700; cursor: pointer;
+        display: inline-flex; align-items: center; gap: 6px;
+        box-shadow: 0 3px 10px rgba(124,58,237,.35); transition: all .18s;
+    }
+    .btn-dri-accept:hover { filter: brightness(1.08); transform: translateY(-1px); }
+    .btn-dri-accept:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+
+    .btn-dri-solved {
+        background: linear-gradient(135deg, #16a34a, #22c55e);
+        color: #fff; border: none; border-radius: 8px; padding: 9px 20px;
+        font-size: 13px; font-weight: 700; cursor: pointer;
+        display: inline-flex; align-items: center; gap: 6px;
+        box-shadow: 0 3px 10px rgba(34,197,94,.35); transition: all .18s;
+    }
+    .btn-dri-solved:hover { filter: brightness(1.08); transform: translateY(-1px); }
+    .btn-dri-solved:disabled { opacity:.55; cursor:not-allowed; transform:none; }
+
+    .btn-dri-unsolved {
+        background: linear-gradient(135deg, #b91c1c, #ef4444);
+        color: #fff; border: none; border-radius: 8px; padding: 9px 20px;
+        font-size: 13px; font-weight: 700; cursor: pointer;
+        display: inline-flex; align-items: center; gap: 6px;
+        box-shadow: 0 3px 10px rgba(239,68,68,.3); transition: all .18s;
+    }
+    .btn-dri-unsolved:hover { filter: brightness(1.08); transform: translateY(-1px); }
+    .btn-dri-unsolved:disabled { opacity:.55; cursor:not-allowed; transform:none; }
+
+    .responded-badge {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 600;
+    }
+    .responded-badge.handling  { background: #f5f3ff; color: #6d28d9; }
+    .responded-badge.solved    { background: #dcfce7; color: #166534; }
+    .responded-badge.unsolved  { background: #fee2e2; color: #991b1b; }
+
+    .notif-dismiss {
+        position: absolute; top: 10px; right: 12px;
+        background: transparent; border: none; font-size: 16px;
+        color: var(--muted); cursor: pointer; padding: 2px 5px;
+        border-radius: 6px; transition: all .15s;
+    }
+    .notif-dismiss:hover { color: #ef4444; background: #fee2e2; }
+
+    /* Problem form (revealed after Accept) */
+    .problem-form {
+        margin-top: 14px; padding: 16px;
+        background: #faf5ff; border-radius: 10px;
+        border: 1.5px solid #ddd6fe; display: none;
+    }
+    .problem-form.open { display: block; }
+    .problem-form h6 { margin: 0 0 12px; font-size: 13px; font-weight: 700; color: var(--dri-color); }
+    .pf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .pf-group { display: flex; flex-direction: column; gap: 4px; }
+    .pf-group label { font-size: 11px; font-weight: 700; color: #374151; text-transform: uppercase; }
+    .pf-group input, .pf-group textarea, .pf-group select {
+        border: 1.5px solid #e5e7eb; border-radius: 8px; padding: 8px 10px;
+        font-size: 13px; outline: none; transition: border .15s; resize: vertical;
+        font-family: inherit;
+    }
+    .pf-group input:focus, .pf-group textarea:focus, .pf-group select:focus {
+        border-color: var(--dri-color);
+    }
+    .pf-actions { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+
+    /* Audio banner */
+    .audio-banner {
+        background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px;
+        padding: 10px 16px; font-size: 13px; color: #92400e;
+        margin-bottom: 16px; display: none; align-items: center; gap: 10px;
+    }
+    .audio-banner button {
+        background: #f59e0b; color: #fff; border: none;
+        border-radius: 6px; padding: 5px 12px; font-size: 12px; font-weight: 600; cursor: pointer; margin-left: auto;
+    }
+
+    /* Toast */
+    .dri-toast {
+        position: fixed; bottom: 24px; right: 24px; background: #111; color: #fff;
+        padding: 12px 20px; border-radius: 10px; font-size: 13px; font-weight: 600;
+        z-index: 99999; display: none; box-shadow: 0 8px 24px rgba(0,0,0,.2);
+        border-left: 4px solid #22c55e;
+    }
+    .dri-toast.error { border-left-color: #ef4444; }
+    .dri-toast.show  { display: block; animation: toastIn .2s ease; }
+    @@keyframes toastIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+    /* Flash */
+    #flashOverlay {
+        display: none; position: fixed; inset: 0;
+        background: rgba(124,58,237,0.15); z-index: 9999;
+        pointer-events: none;
+    }
+
+    @@media(max-width:600px) {
+        .summary-row { grid-template-columns: 1fr 1fr; }
+        .pf-grid { grid-template-columns: 1fr; }
+    }
+</style>
+
+<div class="dash-header">
+    <div>
+        <h1>🔧 DRI Dashboard</h1>
+        <div class="sub">PDE / QUAL / FAC / IT — Real-time issue notifications</div>
+    </div>
+    <span class="conn-badge connecting" id="connBadge">
+        <span class="conn-dot"></span>
+        <span id="connText">Connecting...</span>
+    </span>
+</div>
+
+<div class="dash-body">
+
+    <div class="audio-banner" id="audioBanner">
+        ⚠ Click to enable alert sounds.
+        <button onclick="unlockAudio()">Enable Sound</button>
+    </div>
+
+    <!-- Summary -->
+    <div class="summary-row">
+        <div class="summary-card">
+            <div class="summary-icon">🔔</div>
+            <div>
+                <div class="summary-label">Pending</div>
+                <div class="summary-value val-pending" id="cntPending">0</div>
+            </div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-icon">🔧</div>
+            <div>
+                <div class="summary-label">Handling</div>
+                <div class="summary-value val-handling" id="cntHandling">0</div>
+            </div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-icon">✅</div>
+            <div>
+                <div class="summary-label">Resolved</div>
+                <div class="summary-value val-done" id="cntDone">0</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+        <div class="toolbar-title">📬 Call Notifications</div>
+        <input type="date" id="notifDateFilter" class="notif-date-filter" onchange="reloadByDate()">
+        <button class="btn-today" onclick="setToday()">📅 Today</button>
+        <button class="btn-clear" onclick="clearDone()">🗑 Clear Resolved</button>
+    </div>
+
+    <!-- Notification list -->
+    <div class="notif-list" id="notifList">
+        <div class="notif-empty" id="emptyState">
+            <span class="empty-icon">🟢</span>
+            Waiting for notifications...<br>
+            <small style="font-size:13px;margin-top:6px;display:block;">
+                When Production calls your department, it will appear here.
+            </small>
+        </div>
+    </div>
+
+</div>
+
+<!-- Flash overlay -->
+<div id="flashOverlay"></div>
+
+<!-- Toast -->
+<div class="dri-toast" id="driToast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+
+<script>
+"use strict";
+
+const pathBase  = '@Context.Request.PathBase'.replace(/\/$/, '');
+const notifList = document.getElementById('notifList');
+let   emptyState = document.getElementById('emptyState');
+const connBadge  = document.getElementById('connBadge');
+const connText   = document.getElementById('connText');
+
+let cntPending = 0, cntHandling = 0, cntDone = 0;
+let audioCtx = null, audioUnlocked = false;
+let soundEnabled = true;
+
+// ── Audio ──
+function ensureAudio() {
+    if (audioUnlocked && audioCtx) return audioCtx;
+    try {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        audioUnlocked = true;
+        document.getElementById('audioBanner').style.display = 'none';
+    } catch(e) {}
+    return audioCtx;
+}
+['click','touchstart','keydown'].forEach(e => document.addEventListener(e, () => ensureAudio(), {once:false, passive:true}));
+
+function unlockAudio() { ensureAudio(); document.getElementById('audioBanner').style.display = 'none'; }
+
+function playAlert() {
+    if (!soundEnabled) return;
+    const ctx = ensureAudio(); if (!ctx) return;
+    if (ctx.state === 'suspended') ctx.resume();
+    [0, 0.22, 0.44].forEach(offset => {
+        const osc = ctx.createOscillator(), gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = 'square'; osc.frequency.value = 880;
+        const t = ctx.currentTime + offset;
+        gain.gain.setValueAtTime(0.7, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+        osc.start(t); osc.stop(t + 0.2);
+    });
+}
+
+function flashScreen() {
+    const o = document.getElementById('flashOverlay');
+    let n = 0;
+    function f() {
+        if (n++ >= 4) { o.style.display='none'; return; }
+        o.style.display='block';
+        setTimeout(() => { o.style.display='none'; setTimeout(f, 100); }, 200);
+    }
+    f();
+}
+
+// ── Counters ──
+function updateCounters() {
+    document.getElementById('cntPending').textContent  = cntPending;
+    document.getElementById('cntHandling').textContent = cntHandling;
+    document.getElementById('cntDone').textContent     = cntDone;
+}
+
+// ── Toast ──
+function showToast(msg, isError = false) {
+    const t = document.getElementById('driToast');
+    t.textContent = msg;
+    t.className = 'dri-toast show' + (isError ? ' error' : '');
+    clearTimeout(t._t);
+    t._t = setTimeout(() => t.classList.remove('show'), 4000);
+}
+
+// ── Render notification card ──
+function renderCard(data, prepend = true) {
+    if (emptyState) { emptyState.remove(); emptyState = null; }
+
+    const card = document.createElement('div');
+    card.className = 'notif-card new-card';
+    card.dataset.techResponseId   = data.techResponseId   || data.id || '';
+    card.dataset.operatorUsername = data.operatorUsername  || '';
+    card.dataset.machineCode      = data.machineCode       || '';
+
+    const alreadyHandled = data.techAction && data.techAction !== '';
+
+    let actionsHtml;
+    if (alreadyHandled) {
+        actionsHtml = buildStatusBadge(data.techAction);
+    } else {
+        actionsHtml = `<button class="btn-dri-accept" onclick="driAccept(this)">🔧 Accept & Handle</button>`;
+    }
+
+    card.innerHTML = `
+        <button class="notif-dismiss" onclick="removeCard(this)" title="Dismiss">🗑</button>
+        <div class="notif-top">
+            <span class="notif-badge badge-dri">🏢 Department Call</span>
+            <span class="notif-time">🕐 ${data.datetime || data.createdAt || new Date().toLocaleString()}</span>
+        </div>
+        <div class="notif-machine">${data.machineCode || '-'}</div>
+        <div class="notif-op">📍 ${data.operation || '-'} ${data.location ? '· ' + data.location : ''}</div>
+        <div class="notif-grid">
+            <div class="notif-field">
+                <div class="notif-field-label">👤 Operator</div>
+                <div class="notif-field-value">${data.employeeName || data.employeeCode || '-'}</div>
+            </div>
+            ${data.reason ? `<div class="notif-field"><div class="notif-field-label">⚠ Reason</div><div class="notif-field-value">${data.reason}</div></div>` : ''}
+            ${data.description ? `<div class="notif-field" style="grid-column:1/-1;"><div class="notif-field-label">📝 Description</div><div class="notif-field-value">${data.description}</div></div>` : ''}
+        </div>
+        <div class="notif-actions" id="actions-${card.dataset.techResponseId}">${actionsHtml}</div>
+
+        <!-- Problem form (shown after Accept) -->
+        <div class="problem-form" id="form-${card.dataset.techResponseId}">
+            <h6>📋 Troubleshoot & Record Details</h6>
+            <div class="pf-grid">
+                <div class="pf-group" style="grid-column:1/-1;">
+                    <label>Problem Description</label>
+                    <textarea rows="2" placeholder="Describe the issue found..." class="pf-desc"></textarea>
+                </div>
+                <div class="pf-group">
+                    <label>Root Cause</label>
+                    <input type="text" placeholder="Enter root cause..." class="pf-root">
+                </div>
+                <div class="pf-group">
+                    <label>Action Taken</label>
+                    <input type="text" placeholder="Enter action taken..." class="pf-action">
+                </div>
+                <div class="pf-group">
+                    <label>Spare Parts (optional)</label>
+                    <input type="text" placeholder="Parts used..." class="pf-parts">
+                </div>
+            </div>
+            <div class="pf-actions">
+                <button class="btn-dri-solved" onclick="driProblemSolved(this)">✅ Problem Solved — Notify Prod to Run</button>
+                <button class="btn-dri-unsolved" onclick="driProblemNotSolved(this)">❌ Problem NOT Solved — Record & End</button>
+            </div>
+        </div>
+    `;
+
+    if (prepend) notifList.insertBefore(card, notifList.firstChild);
+    else notifList.appendChild(card);
+
+    if (prepend) setTimeout(() => card.classList.remove('new-card'), 5000);
+    else card.classList.remove('new-card');
+}
+
+function buildStatusBadge(action) {
+    if (action === 'DRI_SOLVED')    return `<span class="responded-badge solved">✅ Problem Solved — Prod notified to Run</span>`;
+    if (action === 'DRI_UNSOLVED')  return `<span class="responded-badge unsolved">❌ Recorded as Unresolved</span>`;
+    if (action === 'DRI_ACCEPT')    return `<span class="responded-badge handling">🔧 Handling...</span>`;
+    return `<span class="responded-badge handling">🔧 In Progress</span>`;
+}
+
+// ── DRI Accept ──
+async function driAccept(btn) {
+    const card = btn.closest('.notif-card');
+    const id   = card.dataset.techResponseId;
+    btn.disabled = true; btn.innerHTML = '⏳ Sending...';
+
+    try {
+        const res  = await fetch(`${pathBase}/Status/DRIAccept`, {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ techResponseId: parseInt(id)||0, department: 'DRI' })
+        });
+        const data = await res.json();
+        if (data.success) {
+            // Replace accept button with "handling" badge + show form
+            const actionsDiv = document.getElementById(`actions-${id}`);
+            actionsDiv.innerHTML = `<span class="responded-badge handling">🔧 Handling — fill in details below</span>`;
+            document.getElementById(`form-${id}`).classList.add('open');
+            cntPending = Math.max(0, cntPending - 1);
+            cntHandling++;
+            updateCounters();
+            showToast('✅ Accepted — please troubleshoot and fill in details.');
+        } else {
+            btn.disabled = false; btn.innerHTML = '🔧 Accept & Handle';
+            showToast('❌ Error: ' + (data.message || 'Failed'), true);
+        }
+    } catch(e) {
+        btn.disabled = false; btn.innerHTML = '🔧 Accept & Handle';
+        showToast('❌ Connection error', true);
+    }
+}
+
+// ── Problem Solved ──
+async function driProblemSolved(btn) {
+    const card = btn.closest('.notif-card');
+    const form = btn.closest('.problem-form');
+    const id   = card.dataset.techResponseId;
+
+    const description = form.querySelector('.pf-desc')?.value.trim()   || '';
+    const rootCause   = form.querySelector('.pf-root')?.value.trim()   || '';
+    const action      = form.querySelector('.pf-action')?.value.trim() || '';
+    const spareParts  = form.querySelector('.pf-parts')?.value.trim()  || '';
+
+    btn.disabled = true; btn.innerHTML = '⏳ Sending...';
+
+    try {
+        const res  = await fetch(`${pathBase}/Status/DRIProblemSolved`, {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ techResponseId: parseInt(id)||0, description, rootCause, action, spareParts })
+        });
+        const data = await res.json();
+        if (data.success) {
+            const actionsDiv = document.getElementById(`actions-${id}`);
+            actionsDiv.innerHTML = `<span class="responded-badge solved">✅ Problem Solved — Production notified to click Run</span>`;
+            form.classList.remove('open');
+            cntHandling = Math.max(0, cntHandling - 1);
+            cntDone++;
+            updateCounters();
+            showToast('✅ Production has been notified to click Run!');
+        } else {
+            btn.disabled = false; btn.innerHTML = '✅ Problem Solved — Notify Prod to Run';
+            showToast('❌ ' + (data.message || 'Error'), true);
+        }
+    } catch(e) {
+        btn.disabled = false; btn.innerHTML = '✅ Problem Solved — Notify Prod to Run';
+        showToast('❌ Connection error', true);
+    }
+}
+
+// ── Problem NOT Solved ──
+async function driProblemNotSolved(btn) {
+    const card = btn.closest('.notif-card');
+    const form = btn.closest('.problem-form');
+    const id   = card.dataset.techResponseId;
+
+    const description = form.querySelector('.pf-desc')?.value.trim()   || '';
+    const rootCause   = form.querySelector('.pf-root')?.value.trim()   || '';
+    const action      = form.querySelector('.pf-action')?.value.trim() || '';
+    const spareParts  = form.querySelector('.pf-parts')?.value.trim()  || '';
+
+    if (!description && !rootCause) {
+        showToast('⚠ Please fill in at least Description or Root Cause.', true);
+        return;
+    }
+
+    btn.disabled = true; btn.innerHTML = '⏳ Recording...';
+
+    try {
+        const res  = await fetch(`${pathBase}/Status/DRIProblemNotSolved`, {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ techResponseId: parseInt(id)||0, description, rootCause, action, spareParts })
+        });
+        const data = await res.json();
+        if (data.success) {
+            const actionsDiv = document.getElementById(`actions-${id}`);
+            actionsDiv.innerHTML = `<span class="responded-badge unsolved">❌ Recorded as Unresolved — Details saved</span>`;
+            form.classList.remove('open');
+            cntHandling = Math.max(0, cntHandling - 1);
+            cntDone++;
+            updateCounters();
+            showToast('📝 Details recorded. Issue marked as unresolved.');
+        } else {
+            btn.disabled = false; btn.innerHTML = '❌ Problem NOT Solved — Record & End';
+            showToast('❌ ' + (data.message || 'Error'), true);
+        }
+    } catch(e) {
+        btn.disabled = false; btn.innerHTML = '❌ Problem NOT Solved — Record & End';
+        showToast('❌ Connection error', true);
+    }
+}
+
+function removeCard(btn) {
+    const card = btn.closest('.notif-card');
+    card.style.transition = 'opacity .2s,transform .2s';
+    card.style.opacity = '0'; card.style.transform = 'translateX(30px)';
+    setTimeout(() => {
+        card.remove();
+        if (!notifList.querySelector('.notif-card')) {
+            notifList.innerHTML = '';
+            const e = document.createElement('div');
+            e.className = 'notif-empty'; e.id = 'emptyState';
+            e.innerHTML = `<span class="empty-icon">🟢</span>Waiting for notifications...`;
+            notifList.appendChild(e);
+            emptyState = e;
+        }
+    }, 220);
+}
+
+function clearDone() {
+    notifList.querySelectorAll('.notif-card').forEach(card => {
+        if (card.querySelector('.responded-badge.solved, .responded-badge.unsolved')) card.remove();
+    });
+}
+
+// ── Load from DB ──
+async function loadFromDB() {
+    const dateVal = document.getElementById('notifDateFilter')?.value || '';
+    const url = dateVal
+        ? `${pathBase}/Status/GetDRIPendingNotifications?date=${encodeURIComponent(dateVal)}`
+        : `${pathBase}/Status/GetDRIPendingNotifications`;
+
+    try {
+        const res  = await fetch(url);
+        if (!res.ok) return;
+        const list = await res.json();
+        if (!list || list.length === 0) return;
+
+        const empty = document.getElementById('emptyState');
+        if (empty) empty.remove();
+
+        list.forEach(item => {
+            renderCard(item, false);
+            if (!item.techAction) cntPending++;
+            else if (item.techAction === 'DRI_ACCEPT') cntHandling++;
+            else cntDone++;
+        });
+
+        // Reverse to newest first
+        const cards = Array.from(notifList.querySelectorAll('.notif-card'));
+        cards.reverse().forEach(c => notifList.insertBefore(c, notifList.firstChild));
+        updateCounters();
+    } catch(e) {
+        console.error('loadFromDB error:', e);
+    }
+}
+
+function setToday() {
+    const df = document.getElementById('notifDateFilter');
+    if (df) { df.value = new Date().toISOString().split('T')[0]; reloadByDate(); }
+}
+
+async function reloadByDate() {
+    notifList.innerHTML = '';
+    cntPending = cntHandling = cntDone = 0;
+    updateCounters(); emptyState = null;
+    const tmp = document.createElement('div');
+    tmp.className = 'notif-empty'; tmp.id = 'emptyState';
+    tmp.innerHTML = `<span class="empty-icon">⏳</span>Loading...`;
+    notifList.appendChild(tmp); emptyState = tmp;
+    await loadFromDB();
+}
+
+// ── SignalR ──
+const connection = new signalR.HubConnectionBuilder()
+    .withUrl(`${pathBase}/downtimeHub`)
+    .withAutomaticReconnect([1000,2000,5000,10000])
+    .configureLogging(signalR.LogLevel.Warning)
+    .build();
+
+// Receive DRI calls (notifications routed to DRI group)
+connection.on("ReceiveDRINotification", (data) => {
+    cntPending++;
+    updateCounters();
+    renderCard(data, true);
+    playAlert();
+    flashScreen();
+});
+
+connection.onreconnecting(() => { connBadge.className = 'conn-badge connecting'; connText.textContent = 'Reconnecting...'; });
+connection.onreconnected(() => {
+    connBadge.className = 'conn-badge connected'; connText.textContent = 'Connected ✓';
+    connection.invoke("JoinDRIGroup").catch(console.error);
+});
+connection.onclose(() => { connBadge.className = 'conn-badge disconnected'; connText.textContent = 'Disconnected ✗'; });
+
+async function startConnection() {
+    try {
+        await connection.start();
+        await connection.invoke("JoinDRIGroup");
+        connBadge.className = 'conn-badge connected'; connText.textContent = 'Connected ✓';
+    } catch(e) {
+        connBadge.className = 'conn-badge disconnected'; connText.textContent = 'Error ✗';
+        setTimeout(startConnection, 5000);
+    }
+}
+
+// ── Init ──
+document.addEventListener('DOMContentLoaded', () => {
+    const df = document.getElementById('notifDateFilter');
+    if (df) df.value = new Date().toISOString().split('T')[0];
+
+    loadFromDB();
+    startConnection();
+
+    const banner = document.getElementById('audioBanner');
+    banner.style.display = 'flex';
+    document.addEventListener('click', () => {
+        ensureAudio();
+        if (audioUnlocked) banner.style.display = 'none';
+    }, { passive: true });
+});
+</script>

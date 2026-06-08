@@ -1,6 +1,6 @@
 @model List<MachineStatusUpdate.Models.DowntimeReportByOperation>
 @{
-    ViewData["Title"] = "停机时间报告 (Downtime Report)";
+    ViewData["Title"] = "Downtime Report";
     var chartData = ViewBag.ChartData as MachineStatusUpdate.Models.DowntimeChartData;
     var dailyChartData = ViewBag.DailyChartData as MachineStatusUpdate.Models.DailyDowntimeChartData;
     
@@ -206,7 +206,7 @@
 <body>
     <div class="container-fluid mt-3">
         <div class="page-header">
-            <h1><i class="fas fa-chart-line"></i> 停机时间报告 (Downtime Report)</h1>
+            <h1><i class="fas fa-chart-line"></i> Downtime Report</h1>
         </div>
 
         @if (!string.IsNullOrEmpty(ViewBag.ErrorMessage))
@@ -223,22 +223,22 @@
                     <!-- Row 1: Dates + pageSize -->
                     <div class="col-md-2">
                         <label class="form-label fw-bold mb-1">
-                            <i class="fas fa-calendar-alt text-primary"></i> 从日期
+                            <i class="fas fa-calendar-alt text-primary"></i> From Date
                         </label>
                         <input type="date" class="form-control form-control-sm" name="fromDate" value="@ViewBag.FromDate" />
                     </div>
                     <div class="col-md-2">
                         <label class="form-label fw-bold mb-1">
-                            <i class="fas fa-calendar-alt text-primary"></i> 到日期
+                            <i class="fas fa-calendar-alt text-primary"></i> To Date
                         </label>
                         <input type="date" class="form-control form-control-sm" name="toDate" value="@ViewBag.ToDate" />
                     </div>
                     <div class="col-md-2">
                         <label class="form-label fw-bold mb-1">
-                            <i class="fas fa-microchip text-info"></i> 设备号
+                            <i class="fas fa-microchip text-info"></i> Machine No.
                         </label>
                         <select class="form-select form-select-sm" name="machine">
-                            <option value="">-- 全部设备 --</option>
+                            <option value="">-- All Machines --</option>
                             @if (ViewBag.MachineOptions != null)
                             {
                                 foreach (var mc in (IEnumerable<string>)ViewBag.MachineOptions)
@@ -250,10 +250,10 @@
                     </div>
                     <div class="col-md-2">
                         <label class="form-label fw-bold mb-1">
-                            <i class="fas fa-map-marker-alt text-warning"></i> 位置 (Location)
+                            <i class="fas fa-map-marker-alt text-warning"></i> Location
                         </label>
                         <select class="form-select form-select-sm" name="location">
-                            <option value="">-- 全部位置 --</option>
+                            <option value="">-- All Locations --</option>
                             @if (ViewBag.LocationOptions != null)
                             {
                                 foreach (var loc in (IEnumerable<string>)ViewBag.LocationOptions)
@@ -265,10 +265,10 @@
                     </div>
                     <div class="col-md-2">
                         <label class="form-label fw-bold mb-1">
-                            <i class="fas fa-exclamation-triangle text-danger"></i> 故障代码
+                            <i class="fas fa-exclamation-triangle text-danger"></i> Fault Code
                         </label>
                         <select class="form-select form-select-sm" name="reason">
-                            <option value="">-- 全部故障 --</option>
+                            <option value="">-- All Faults --</option>
                             @if (ViewBag.ReasonOptions != null)
                             {
                                 foreach (var r in ViewBag.ReasonOptions)
@@ -282,20 +282,20 @@
                     </div>
                     <div class="col-md-2">
                         <label class="form-label fw-bold mb-1">
-                            <i class="fas fa-tools text-secondary"></i> 影响程度 (Effect)
+                            <i class="fas fa-tools text-secondary"></i> Effect
                         </label>
                         <select class="form-select form-select-sm" name="effect">
-                            <option value="">-- 全部 --</option>
-                            <option value="1" selected="@(ViewBag.Effect == "1" ? "selected" : null)">影响生产</option>
-                            <option value="2" selected="@(ViewBag.Effect == "2" ? "selected" : null)">不影响生产</option>
+                            <option value="">-- All --</option>
+                            <option value="1" selected="@(ViewBag.Effect == "1" ? "selected" : null)">Affects Production</option>
+                            <option value="2" selected="@(ViewBag.Effect == "2" ? "selected" : null)">No Effect on Production</option>
                         </select>
                     </div>
                     <div class="col-md-2">
                         <label class="form-label fw-bold mb-1">
-                            <i class="fas fa-sitemap text-purple"></i> 工位 (Station)
+                            <i class="fas fa-sitemap text-purple"></i> Station
                         </label>
                         <select class="form-select form-select-sm" name="station">
-                            <option value="">-- 全部工位 --</option>
+                            <option value="">-- All Stations --</option>
                             @if (ViewBag.StationOptions != null)
                             {
                                 foreach (var st in (IEnumerable<string>)ViewBag.StationOptions)
@@ -307,40 +307,40 @@
                     </div>
                     <div class="col-md-2">
                         <label class="form-label fw-bold mb-1">
-                            <i class="fas fa-list"></i> 每页记录数
+                            <i class="fas fa-list"></i> Records Per Page
                         </label>
                         <select class="form-select form-select-sm" name="pageSize">
-                            <option value="5"  selected="@(pageSize == 5)">5 条记录</option>
-                            <option value="10" selected="@(pageSize == 10)">10 条记录</option>
-                            <option value="25" selected="@(pageSize == 25)">25 条记录</option>
-                            <option value="50" selected="@(pageSize == 50)">50 条记录</option>
+                            <option value="5"  selected="@(pageSize == 5)">5 records</option>
+                            <option value="10" selected="@(pageSize == 10)">10 records</option>
+                            <option value="25" selected="@(pageSize == 25)">25 records</option>
+                            <option value="50" selected="@(pageSize == 50)">50 records</option>
                         </select>
                     </div>
                     <div class="col-md-2">
                         <button type="submit" class="btn btn-primary btn-sm w-100">
-                            <i class="fas fa-search"></i> 筛选 (Filter)
+                            <i class="fas fa-search"></i> Filter
                         </button>
                     </div>
                     <div class="col-md-2">
                         <a href="@Url.Action("ReportDowntime")" class="btn btn-outline-secondary btn-sm w-100">
-                            <i class="fas fa-times"></i> 重置 (Reset)
+                            <i class="fas fa-times"></i> Reset
                         </a>
                     </div>
                 </div>
 
                 @{
                     var activeFilters = new List<(string Label, string Value, string Color)>();
-                    if (!string.IsNullOrEmpty(ViewBag.Operation as string))  activeFilters.Add(("产线", ViewBag.Operation, "primary"));
-                    if (!string.IsNullOrEmpty(ViewBag.Machine  as string))   activeFilters.Add(("设备", ViewBag.Machine, "info"));
-                    if (!string.IsNullOrEmpty(ViewBag.Location as string))   activeFilters.Add(("位置", ViewBag.Location, "warning"));
-                    if (!string.IsNullOrEmpty(ViewBag.Reason   as string))   activeFilters.Add(("故障", ViewBag.Reason, "danger"));
-                    if (!string.IsNullOrEmpty(ViewBag.Effect   as string))   activeFilters.Add(("影响", ViewBag.Effect == "1" ? "影响生产" : "不影响生产", "secondary"));
-                    if (!string.IsNullOrEmpty(ViewBag.Station  as string))   activeFilters.Add(("工位", ViewBag.Station, "dark"));
+                    if (!string.IsNullOrEmpty(ViewBag.Operation as string))  activeFilters.Add(("Line", ViewBag.Operation, "primary"));
+                    if (!string.IsNullOrEmpty(ViewBag.Machine  as string))   activeFilters.Add(("Machine", ViewBag.Machine, "info"));
+                    if (!string.IsNullOrEmpty(ViewBag.Location as string))   activeFilters.Add(("Location", ViewBag.Location, "warning"));
+                    if (!string.IsNullOrEmpty(ViewBag.Reason   as string))   activeFilters.Add(("Fault", ViewBag.Reason, "danger"));
+                    if (!string.IsNullOrEmpty(ViewBag.Effect   as string))   activeFilters.Add(("Effect", ViewBag.Effect == "1" ? "Affects Production" : "No Effect", "secondary"));
+                    if (!string.IsNullOrEmpty(ViewBag.Station  as string))   activeFilters.Add(("Station", ViewBag.Station, "dark"));
                 }
                 @if (activeFilters.Any())
                 {
                     <div class="mt-2 pt-2 border-top d-flex gap-2 flex-wrap align-items-center">
-                        <small class="text-muted fw-bold"><i class="fas fa-filter"></i> 当前筛选:</small>
+                        <small class="text-muted fw-bold"><i class="fas fa-filter"></i> Active Filters:</small>
                         @foreach (var f in activeFilters)
                         {
                             <span class="badge bg-@f.Color">@f.Label: @f.Value</span>
@@ -361,34 +361,34 @@
 
         @if (allData != null && allData.Any())
         {
-            <!-- TỔNG QUAN -->
+            <!-- OVERVIEW -->
             <div class="row mb-3">
                 <div class="col-md-3">
                     <div class="stats-card">
-                        <h5 class="text-muted mb-1"><i class="fas fa-cogs"></i> 产线总数</h5>
+                        <h5 class="text-muted mb-1"><i class="fas fa-cogs"></i> Total Lines</h5>
                         <h2 class="text-primary mb-0">@allData.Count</h2>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="stats-card">
-                        <h5 class="text-muted mb-1"><i class="fas fa-exclamation-triangle"></i> 停机总次数</h5>
+                        <h5 class="text-muted mb-1"><i class="fas fa-exclamation-triangle"></i> Total Downtime Events</h5>
                         <h2 class="text-danger mb-0">@allData.Sum(x => x.TotalDowntimeCount)</h2>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="stats-card">
-                        <h5 class="text-muted mb-1"><i class="fas fa-clock"></i> 停机总时长</h5>
+                        <h5 class="text-muted mb-1"><i class="fas fa-clock"></i> Total Downtime Duration</h5>
                         <h2 class="text-warning mb-0">
                             @{ var totalMinutes = allData.Sum(x => x.TotalDowntimeMinutes);
                                var hours = (int)(totalMinutes / 60);
                                var mins  = (int)(totalMinutes % 60); }
-                            @hours 小时 @mins 分钟
+                            @hours hr @mins min
                         </h2>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="stats-card">
-                        <h5 class="text-muted mb-1"><i class="fas fa-microchip"></i> 受影响设备数</h5>
+                        <h5 class="text-muted mb-1"><i class="fas fa-microchip"></i> Affected Machines</h5>
                         <h2 class="text-info mb-0">@(machineData?.Count ?? 0)</h2>
                     </div>
                 </div>
@@ -397,7 +397,7 @@
             <div class="mb-3 text-end">
                 <a href="@Url.Action("ExportDowntimeReportToExcel", new { fromDate = ViewBag.FromDate, toDate = ViewBag.ToDate, operation = ViewBag.Operation, reason = ViewBag.Reason, location = ViewBag.Location, machine = ViewBag.Machine, effect = ViewBag.Effect, station = ViewBag.Station })"
                     class="btn-export">
-                    <i class="fas fa-file-excel"></i> 导出 Excel (2 个工作表)
+                    <i class="fas fa-file-excel"></i> Export Excel (2 sheets)
                 </a>
             </div>
 
@@ -405,19 +405,19 @@
             <div class="row">
                 <div class="col-md-4">
                     <div class="chart-container">
-                        <h4 class="mb-2"><i class="fas fa-chart-bar"></i> 按产线停机时长 (分钟)</h4>
+                        <h4 class="mb-2"><i class="fas fa-chart-bar"></i> Downtime by Line (minutes)</h4>
                         <canvas id="operationChart"></canvas>
                     </div>
                 </div>
                 <div class="col-md-4">
                     <div class="chart-container">
-                        <h4 class="mb-2"><i class="fas fa-chart-pie"></i> 停机分布占比</h4>
+                        <h4 class="mb-2"><i class="fas fa-chart-pie"></i> Downtime Distribution</h4>
                         <canvas id="pieChart"></canvas>
                     </div>
                 </div>
                 <div class="col-md-4">
                     <div class="chart-container">
-                        <h4 class="mb-2"><i class="fas fa-exclamation-triangle"></i> 按故障代码统计停机</h4>
+                        <h4 class="mb-2"><i class="fas fa-exclamation-triangle"></i> Downtime by Fault Code</h4>
                         <canvas id="issCodeChart"></canvas>
                     </div>
                 </div>
@@ -429,7 +429,7 @@
                 <div class="row mt-3">
                     <div class="col-md-12">
                         <div class="daily-chart-container" style="height:380px">
-                            <h4 class="mb-2"><i class="fas fa-microchip"></i> 按设备号停机时长 (分钟)</h4>
+                            <h4 class="mb-2"><i class="fas fa-microchip"></i> Downtime by Machine (minutes)</h4>
                             <canvas id="machineChart"></canvas>
                         </div>
                     </div>
@@ -442,7 +442,7 @@
                 <div class="row mt-3">
                     <div class="col-md-12">
                         <div class="daily-chart-container">
-                            <h4 class="mb-3"><i class="fas fa-chart-line"></i> 停机历史趋势图 (Daily Trend)</h4>
+                            <h4 class="mb-3"><i class="fas fa-chart-line"></i> Daily Downtime Trend</h4>
                             <canvas id="dailyTrendChart"></canvas>
                         </div>
                     </div>
@@ -462,7 +462,7 @@
                             labels: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(dailyChartData.Dates)),
                             datasets: [
                                 {
-                                    label: '停机分钟数',
+                                    label: 'Downtime Minutes',
                                     data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(dailyChartData.DowntimeMinutes)),
                                     borderColor: 'rgba(54, 162, 235, 1)',
                                     backgroundColor: gradient,
@@ -472,7 +472,7 @@
                                     yAxisID: 'y'
                                 },
                                 {
-                                    label: '停机次数',
+                                    label: 'Downtime Count',
                                     data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(dailyChartData.DowntimeCounts)),
                                     borderColor: 'rgba(255, 99, 132, 1)',
                                     backgroundColor: gradient2,
@@ -487,9 +487,9 @@
                             responsive: true, maintainAspectRatio: false,
                             plugins: { legend: { display: true, position: 'top' } },
                             scales: {
-                                x: { title: { display: true, text: '日期' } },
-                                y: { position: 'left', title: { display: true, text: '分钟' } },
-                                y1: { position: 'right', title: { display: true, text: '次数' }, grid: { drawOnChartArea: false } }
+                                x: { title: { display: true, text: 'Date' } },
+                                y: { position: 'left', title: { display: true, text: 'Minutes' } },
+                                y1: { position: 'right', title: { display: true, text: 'Count' }, grid: { drawOnChartArea: false } }
                             },
                             animation: { duration: 2000, easing: 'easeOutQuart' }
                         }
@@ -503,7 +503,7 @@
                 <div class="row mt-3">
                     <div class="col-md-6">
                         <div class="chart-container" style="height:360px">
-                            <h4 class="mb-2">🔧 MTTR — 平均维修时长 / Mean Time To Repair (min)</h4>
+                            <h4 class="mb-2">🔧 MTTR — Mean Time To Repair (min)</h4>
                             <canvas id="mttrChart"></canvas>
                         </div>
                     </div>
@@ -512,7 +512,7 @@
                         <div class="col-md-6">
                             <div class="chart-container" style="height:360px">
                                 <div class="d-flex align-items-center justify-content-between mb-2">
-                                    <h4 class="mb-0">⚡ 响应时间 / Response Time (All Machines)</h4>
+                                    <h4 class="mb-0">⚡ Response Time (All Machines)</h4>
                                     <div style="font-size:12px;color:#6c757d">
                                         Avg: <strong style="color:#0d6efd">@responseTimeData.OverallAvgMins min</strong>
                                         &nbsp;|&nbsp; <strong>@responseTimeData.TotalResponded</strong> times
@@ -538,9 +538,9 @@
                         options: {
                             responsive: true, maintainAspectRatio: false,
                             plugins: { legend: { display: false },
-                                tooltip: { callbacks: { label: c => { const m=c.parsed.y; return [`MTTR: ${Math.floor(m/60)}h ${Math.round(m%60)}min`, `次数 / Times: ${counts[c.dataIndex]}`]; }}}
+                                tooltip: { callbacks: { label: c => { const m=c.parsed.y; return [`MTTR: ${Math.floor(m/60)}h ${Math.round(m%60)}min`, `Times: ${counts[c.dataIndex]}`]; }}}
                             },
-                            scales: { y: { beginAtZero: true, title: { display: true, text: '分钟 / Min' } }, x: { ticks: { maxRotation: 40 } } },
+                            scales: { y: { beginAtZero: true, title: { display: true, text: 'Minutes' } }, x: { ticks: { maxRotation: 40 } } },
                             animation: { duration: 1500 }
                         }
                     });
@@ -566,7 +566,7 @@
                             plugins: { legend: { display: true, position: 'top' },
                                 tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.parsed.y} min` }}
                             },
-                            scales: { y: { beginAtZero: true, title: { display: true, text: '分钟 / Min' } }, x: { ticks: { maxRotation: 40 } } },
+                            scales: { y: { beginAtZero: true, title: { display: true, text: 'Minutes' } }, x: { ticks: { maxRotation: 40 } } },
                             animation: { duration: 1500 }
                         }
                     });
@@ -580,7 +580,7 @@
                 <div class="row mt-3">
                     <div class="col-12">
                         <div class="operation-section">
-                            <h5 class="mb-3">🏆 Top 5 — 停机次数最多的设备 / Most Downtime Machines (7-day trend)</h5>
+                            <h5 class="mb-3">🏆 Top 5 — Most Downtime Machines (7-day trend)</h5>
                             <div class="row g-3">
                                 @{ var _rank = 0; }
                                 @foreach (var _m in top5Data)
@@ -600,7 +600,7 @@
                                                 </div>
                                                 <div class="ms-auto text-end">
                                                     <div style="font-size:22px;font-weight:800;color:@_rc">@_m.DowntimeCount</div>
-                                                    <div style="font-size:10px;color:#6b7280">次 STOP</div>
+                                                    <div style="font-size:10px;color:#6b7280">STOP(s)</div>
                                                 </div>
                                             </div>
                                             <div style="height:60px;position:relative;">
@@ -640,13 +640,13 @@
             <ul class="nav nav-tabs mt-4" id="reportTab" role="tablist">
                 <li class="nav-item">
                     <button class="nav-link active" id="line-tab" data-bs-toggle="tab" data-bs-target="#tabLine" type="button">
-                        <i class="fas fa-industry"></i> 按产线统计
+                        <i class="fas fa-industry"></i> By Line
                         <span class="badge bg-primary ms-1">@(allDataPct?.Count ?? 0)</span>
                     </button>
                 </li>
                 <li class="nav-item">
                     <button class="nav-link" id="eq-tab" data-bs-toggle="tab" data-bs-target="#tabEQ" type="button">
-                        <i class="fas fa-microchip"></i> 按设备统计
+                        <i class="fas fa-microchip"></i> By Machine
                         <span class="badge bg-info ms-1">@(machineData?.Count ?? 0)</span>
                     </button>
                 </li>
@@ -660,18 +660,18 @@
                     {
                         <!-- Summary table By Line -->
                         <div class="operation-section mb-3">
-                            <h5 class="mb-2"><i class="fas fa-table"></i> 汇总表 — 按产线停机 vs 运行时间</h5>
+                            <h5 class="mb-2"><i class="fas fa-table"></i> Summary — Downtime vs Running Time by Line</h5>
                             <div class="table-responsive">
                                 <table class="table table-bordered table-hover table-sm" style="font-size:13px">
                                     <thead class="table-dark">
                                         <tr>
                                             <th>#</th>
-                                            <th>产线 (Line)</th>
-                                            <th class="text-center">停机次数</th>
-                                            <th class="text-center">停机时长</th>
-                                            <th class="text-center">运行时长</th>
-                                            <th class="text-center">停机占比</th>
-                                            <th>占比条</th>
+                                            <th>Line</th>
+                                            <th class="text-center">Downtime Count</th>
+                                            <th class="text-center">Downtime Duration</th>
+                                            <th class="text-center">Running Time</th>
+                                            <th class="text-center">Downtime %</th>
+                                            <th>% Bar</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -684,8 +684,8 @@
                                                 <td class="text-center">@lineIdx</td>
                                                 <td><strong>@op.Operation</strong></td>
                                                 <td class="text-center"><span class="badge bg-secondary">@op.TotalDowntimeCount</span></td>
-                                                <td class="text-center"><strong>@op.TotalDowntimeFormatted</strong><br/><small class="text-muted">@Math.Round(op.TotalDowntimeMinutes,1) 分钟</small></td>
-                                                <td class="text-center">@op.RunningTimeFormatted<br/><small class="text-muted">@Math.Round(op.RunningTimeMinutes,1) 分钟</small></td>
+                                                <td class="text-center"><strong>@op.TotalDowntimeFormatted</strong><br/><small class="text-muted">@Math.Round(op.TotalDowntimeMinutes,1) min</small></td>
+                                                <td class="text-center">@op.RunningTimeFormatted<br/><small class="text-muted">@Math.Round(op.RunningTimeMinutes,1) min</small></td>
                                                 <td class="text-center"><span class="badge bg-@pctColor fs-6">@op.DowntimePct%</span></td>
                                                 <td>
                                                     <div class="progress" style="height:20px">
@@ -699,11 +699,11 @@
                                     </tbody>
                                     <tfoot class="table-secondary fw-bold">
                                         <tr>
-                                            <td colspan="2" class="text-end">合计:</td>
+                                            <td colspan="2" class="text-end">Total:</td>
                                             <td class="text-center">@allDataPct.Sum(x => x.TotalDowntimeCount)</td>
                                             <td class="text-center">@{ var tDT = allDataPct.Sum(x=>x.TotalDowntimeMinutes); var tRun = allDataPct.Sum(x=>x.RunningTimeMinutes); }
-                                                @((int)(tDT/60))小时 @((int)(tDT%60))分钟</td>
-                                            <td class="text-center">@((int)(tRun/60))小时 @((int)(tRun%60))分钟</td>
+                                                @((int)(tDT/60))h @((int)(tDT%60))min</td>
+                                            <td class="text-center">@((int)(tRun/60))h @((int)(tRun%60))min</td>
                                             <td class="text-center">@(tRun > 0 ? Math.Round(tDT/tRun*100,1) : 0)%</td>
                                             <td></td>
                                         </tr>
@@ -715,7 +715,7 @@
                         <!-- Detail per Line (paged) -->
                         @if (Model != null && Model.Any())
                         {
-                            <h5 class="mb-2"><i class="fas fa-list"></i> 按产线明细 (@Model.Count / @totalRecords)</h5>
+                            <h5 class="mb-2"><i class="fas fa-list"></i> Detail by Line (@Model.Count / @totalRecords)</h5>
                             @foreach (var operation in Model)
                             {
                                 var lineId = $"line_{operation.Operation.Replace(" ","_").Replace("-","_").Replace(".","_")}";
@@ -727,13 +727,13 @@
                                             </div>
                                             <div class="col-md-5 text-end d-flex align-items-center justify-content-end gap-2">
                                                 <span class="badge bg-light text-dark"><i class="fas fa-stopwatch"></i> @operation.TotalDowntimeFormatted</span>
-                                                <span class="badge bg-light text-dark"><i class="fas fa-list"></i> @operation.TotalDowntimeCount 次</span>
+                                                <span class="badge bg-light text-dark"><i class="fas fa-list"></i> @operation.TotalDowntimeCount times</span>
                                                 @{
                                                     var opPct = allDataPct?.FirstOrDefault(x => x.Operation == operation.Operation);
                                                     if (opPct != null)
                                                     {
                                                         var pc = opPct.DowntimePct >= 15 ? "danger" : opPct.DowntimePct >= 8 ? "warning" : "success";
-                                                        <span class="badge bg-@pc">停机占运行时间 @opPct.DowntimePct%</span>
+                                                        <span class="badge bg-@pc">Downtime / Running @opPct.DowntimePct%</span>
                                                     }
                                                 }
                                                 <span id="arrow_@lineId" style="transition:.2s;display:inline-block;">▼</span>
@@ -746,12 +746,12 @@
                                             <thead>
                                                 <tr>
                                                     <th width="4%">#</th>
-                                                    <th width="13%">故障代码 / Fault Code</th>
-                                                    <th width="28%">故障名称 / Fault Name</th>
-                                                    <th width="9%" class="text-center">次数 / Times</th>
-                                                    <th width="14%" class="text-center">总时长 / Total</th>
-                                                    <th width="12%" class="text-center">占产线停机比 / %</th>
-                                                    <th>占比条</th>
+                                                    <th width="13%">Fault Code</th>
+                                                    <th width="28%">Fault Name</th>
+                                                    <th width="9%" class="text-center">Times</th>
+                                                    <th width="14%" class="text-center">Total Duration</th>
+                                                    <th width="12%" class="text-center">% of Line Downtime</th>
+                                                    <th>% Bar</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -781,7 +781,7 @@
                                             </tbody>
                                             <tfoot>
                                                 <tr class="table-info fw-bold">
-                                                    <td colspan="3" class="text-end">合计 / Total:</td>
+                                                    <td colspan="3" class="text-end">Total:</td>
                                                     <td class="text-center">@operation.TotalDowntimeCount</td>
                                                     <td class="text-center">@operation.TotalDowntimeFormatted</td>
                                                     <td class="text-center">100%</td>
@@ -799,18 +799,18 @@
                                         {
                                             <div class="mt-3 p-3" style="background:#f0f9ff;border-radius:8px;border:1px solid #bae6fd;">
                                                 <h6 class="mb-2" style="color:#0369a1;">
-                                                    <i class="fas fa-bolt"></i> 停机时间详情 / Downtime Breakdown
+                                                    <i class="fas fa-bolt"></i> Downtime Breakdown
                                                 </h6>
                                                 <table class="table table-sm table-bordered" style="font-size:12px;">
                                                     <thead style="background:#e0f2fe;">
                                                         <tr>
                                                             <th>#</th>
-                                                            <th>设备<br/><small>Machine</small></th>
-                                                            <th>停机时间<br/><small>Stop</small></th>
-                                                            <th class="text-center" style="color:#6366f1;">⚡ 响应用时<br/><small>Response</small></th>
-                                                            <th class="text-center" style="color:#0369a1;">🔧 维修用时<br/><small>Repair</small></th>
-                                                            <th class="text-center" style="color:#dc2626;">⏱ 总停机<br/><small>Total DT</small></th>
-                                                            <th>技术员<br/><small>Tech</small></th>
+                                                            <th>Machine</th>
+                                                            <th>Stop Time</th>
+                                                            <th class="text-center" style="color:#6366f1;">⚡ Response Time</th>
+                                                            <th class="text-center" style="color:#0369a1;">🔧 Repair Time</th>
+                                                            <th class="text-center" style="color:#dc2626;">⏱ Total DT</th>
+                                                            <th>Technician</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
@@ -845,7 +845,7 @@
                                 </div>
                             }
 
-                            <!-- Phân trang -->
+                            <!-- Pagination -->
                             @if (totalPages > 1)
                             {
                                 <div class="pagination-container">
@@ -853,8 +853,8 @@
                                         <ul class="pagination justify-content-center">
                                             <li class="page-item @(!hasPreviousPage ? "disabled" : "")">
                                                 @if (hasPreviousPage)
-                                                { <a class="page-link" href="@Url.Action("ReportDowntime", new { fromDate=ViewBag.FromDate,toDate=ViewBag.ToDate,operation=ViewBag.Operation,reason=ViewBag.Reason,location=ViewBag.Location,machine=ViewBag.Machine,effect=ViewBag.Effect,station=ViewBag.Station,page=currentPage-1,pageSize })"><i class="fas fa-chevron-left"></i> 上一页</a> }
-                                                else { <span class="page-link"><i class="fas fa-chevron-left"></i> 上一页</span> }
+                                                { <a class="page-link" href="@Url.Action("ReportDowntime", new { fromDate=ViewBag.FromDate,toDate=ViewBag.ToDate,operation=ViewBag.Operation,reason=ViewBag.Reason,location=ViewBag.Location,machine=ViewBag.Machine,effect=ViewBag.Effect,station=ViewBag.Station,page=currentPage-1,pageSize })"><i class="fas fa-chevron-left"></i> Previous</a> }
+                                                else { <span class="page-link"><i class="fas fa-chevron-left"></i> Previous</span> }
                                             </li>
                                             @for (int i = 1; i <= totalPages; i++)
                                             {
@@ -865,13 +865,13 @@
                                             }
                                             <li class="page-item @(!hasNextPage ? "disabled" : "")">
                                                 @if (hasNextPage)
-                                                { <a class="page-link" href="@Url.Action("ReportDowntime", new{fromDate=ViewBag.FromDate,toDate=ViewBag.ToDate,operation=ViewBag.Operation,reason=ViewBag.Reason,location=ViewBag.Location,machine=ViewBag.Machine,effect=ViewBag.Effect,station=ViewBag.Station,page=currentPage+1,pageSize})">下一页 <i class="fas fa-chevron-right"></i></a> }
-                                                else { <span class="page-link">下一页 <i class="fas fa-chevron-right"></i></span> }
+                                                { <a class="page-link" href="@Url.Action("ReportDowntime", new{fromDate=ViewBag.FromDate,toDate=ViewBag.ToDate,operation=ViewBag.Operation,reason=ViewBag.Reason,location=ViewBag.Location,machine=ViewBag.Machine,effect=ViewBag.Effect,station=ViewBag.Station,page=currentPage+1,pageSize})">Next <i class="fas fa-chevron-right"></i></a> }
+                                                else { <span class="page-link">Next <i class="fas fa-chevron-right"></i></span> }
                                             </li>
                                         </ul>
                                     </nav>
                                     <div class="text-center mt-1">
-                                        <small class="page-info">第 @currentPage 页 / 共 @totalPages 页 — 总计 @totalRecords 条产线</small>
+                                        <small class="page-info">Page @currentPage of @totalPages — Total @totalRecords lines</small>
                                     </div>
                                 </div>
                             }
@@ -885,18 +885,18 @@
                     {
                         <!-- Summary table By EQ -->
                         <div class="operation-section mb-3">
-                            <h5 class="mb-2"><i class="fas fa-table"></i> 汇总表 — 按设备统计停机</h5>
+                            <h5 class="mb-2"><i class="fas fa-table"></i> Summary — Downtime by Machine</h5>
                             <div class="table-responsive">
                                 <table class="table table-bordered table-hover table-sm" style="font-size:13px">
                                     <thead class="table-dark">
                                         <tr>
                                             <th>#</th>
-                                            <th>设备号</th>
-                                            <th>产线 (Line)</th>
-                                            <th class="text-center">停机次数</th>
-                                            <th class="text-center">停机总时长</th>
-                                            <th class="text-center">占全部设备停机比</th>
-                                            <th>占比条</th>
+                                            <th>Machine No.</th>
+                                            <th>Line</th>
+                                            <th class="text-center">Downtime Count</th>
+                                            <th class="text-center">Total Downtime</th>
+                                            <th class="text-center">% of All Machines</th>
+                                            <th>% Bar</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -914,7 +914,7 @@
                                                 <td class="text-center"><span class="badge bg-secondary">@m.DowntimeCount</span></td>
                                                 <td class="text-center">
                                                     <strong>@m.TotalDowntimeFormatted</strong><br/>
-                                                    <small class="text-muted">@Math.Round(m.TotalDowntimeMinutes,1) 分钟</small>
+                                                    <small class="text-muted">@Math.Round(m.TotalDowntimeMinutes,1) min</small>
                                                 </td>
                                                 <td class="text-center"><span class="badge bg-@eqColor">@Math.Round(eqPct,1)%</span></td>
                                                 <td>
@@ -927,9 +927,9 @@
                                     </tbody>
                                     <tfoot class="table-secondary fw-bold">
                                         <tr>
-                                            <td colspan="3" class="text-end">合计:</td>
+                                            <td colspan="3" class="text-end">Total:</td>
                                             <td class="text-center">@machineData.Sum(x=>x.DowntimeCount)</td>
-                                            <td class="text-center">@((int)(grandEqTotal/60))小时 @((int)(grandEqTotal%60))分钟</td>
+                                            <td class="text-center">@((int)(grandEqTotal/60))h @((int)(grandEqTotal%60))min</td>
                                             <td class="text-center">100%</td>
                                             <td></td>
                                         </tr>
@@ -939,7 +939,7 @@
                         </div>
 
                         <!-- Detail per EQ -->
-                        <h5 class="mb-2"><i class="fas fa-list"></i> 按设备明细 / Machine Detail</h5>
+                        <h5 class="mb-2"><i class="fas fa-list"></i> Machine Detail</h5>
                         @foreach (var m in machineData)
                         {
                             var mId = $"eq_{m.MachineCode.Replace(" ","_").Replace("-","_").Replace(".","_")}";
@@ -950,12 +950,12 @@
                                         <div class="col-md-7">
                                             <h4 class="mb-1">
                                                 <i class="fas fa-microchip"></i> @m.MachineCode
-                                                <small class="ms-2" style="font-size:0.85rem">| 产线: @m.Operation</small>
+                                                <small class="ms-2" style="font-size:0.85rem">| Line: @m.Operation</small>
                                             </h4>
                                         </div>
                                         <div class="col-md-5 text-end d-flex align-items-center justify-content-end gap-2">
                                             <span class="badge bg-light text-dark"><i class="fas fa-stopwatch"></i> @m.TotalDowntimeFormatted</span>
-                                            <span class="badge bg-light text-dark"><i class="fas fa-list"></i> @m.DowntimeCount 次</span>
+                                            <span class="badge bg-light text-dark"><i class="fas fa-list"></i> @m.DowntimeCount times</span>
                                             <span id="arrow_@mId" style="transition:.2s;display:inline-block;">▼</span>
                                         </div>
                                     </div>
@@ -967,12 +967,12 @@
                                         <thead>
                                             <tr>
                                                 <th width="4%">#</th>
-                                                <th width="13%">故障代码 / Fault Code</th>
-                                                <th width="28%">故障名称 / Fault Name</th>
-                                                <th width="9%" class="text-center">次数 / Times</th>
-                                                <th width="14%" class="text-center">总时长 / Total</th>
-                                                <th width="10%" class="text-center">占比 / %</th>
-                                                <th>占比条</th>
+                                                <th width="13%">Fault Code</th>
+                                                <th width="28%">Fault Name</th>
+                                                <th width="9%" class="text-center">Times</th>
+                                                <th width="14%" class="text-center">Total Duration</th>
+                                                <th width="10%" class="text-center">%</th>
+                                                <th>% Bar</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -1001,7 +1001,7 @@
                                         </tbody>
                                         <tfoot>
                                             <tr class="table-success fw-bold">
-                                                <td colspan="3" class="text-end">合计 / Total:</td>
+                                                <td colspan="3" class="text-end">Total:</td>
                                                 <td class="text-center">@m.DowntimeCount</td>
                                                 <td class="text-center">@m.TotalDowntimeFormatted</td>
                                                 <td class="text-center">100%</td>
@@ -1013,7 +1013,7 @@
                                     <!-- Response time detail from TechResponses -->
                                     <div class="mt-3 p-3" style="background:#f0f9ff;border-radius:8px;border:1px solid #bae6fd;">
                                         <h6 class="mb-2" style="color:#0369a1;">
-                                            <i class="fas fa-bolt"></i> 停机时间详情 / Downtime Breakdown
+                                            <i class="fas fa-bolt"></i> Downtime Breakdown
                                         </h6>
                                         @{
                                             var techResps = ViewBag.AllTechResponses as List<dynamic>;
@@ -1025,13 +1025,13 @@
                                                 <thead style="background:#e0f2fe;">
                                                     <tr>
                                                         <th>#</th>
-                                                        <th>停机时间<br/><small>Stop Time</small></th>
-                                                        <th>响应时间<br/><small>Response Time</small></th>
-                                                        <th class="text-center" style="color:#6366f1;">⚡ 响应用时<br/><small>Time to Respond</small></th>
-                                                        <th>恢复运行<br/><small>Run Time</small></th>
-                                                        <th class="text-center" style="color:#0369a1;">🔧 维修用时<br/><small>Repair Time</small></th>
-                                                        <th class="text-center" style="color:#dc2626;">⏱ 总停机<br/><small>Total DT</small></th>
-                                                        <th>技术员<br/><small>Technician</small></th>
+                                                        <th>Stop Time</th>
+                                                        <th>Response Time</th>
+                                                        <th class="text-center" style="color:#6366f1;">⚡ Time to Respond</th>
+                                                        <th>Run Time</th>
+                                                        <th class="text-center" style="color:#0369a1;">🔧 Repair Time</th>
+                                                        <th class="text-center" style="color:#dc2626;">⏱ Total DT</th>
+                                                        <th>Technician</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -1068,7 +1068,7 @@
                                                 </tbody>
                                                 <tfoot>
                                                     <tr style="background:#e0f2fe;font-weight:700;font-size:12px;">
-                                                        <td colspan="3" class="text-end">平均 / Avg:</td>
+                                                        <td colspan="3" class="text-end">Avg:</td>
                                                         <td class="text-center">
                                                             @{
                                                                 var avgResp = mResps.Select(r => { var s=(DateTime?)r.StopDatetime; var rr=(DateTime?)r.RespondDatetime; return (s.HasValue&&rr.HasValue)?(rr.Value-s.Value).TotalMinutes:0; }).Where(x=>x>0).ToList();
@@ -1087,7 +1087,7 @@
                                         }
                                         else
                                         {
-                                            <div class="text-muted" style="font-size:13px;"><i class="fas fa-info-circle"></i> 暂无响应记录 / No response records</div>
+                                            <div class="text-muted" style="font-size:13px;"><i class="fas fa-info-circle"></i> No response records found.</div>
                                         }
                                     </div>
                                 </div>
@@ -1096,7 +1096,7 @@
                     }
                     else
                     {
-                        <div class="alert alert-info"><i class="fas fa-info-circle"></i> 所选时间段内无设备停机数据。</div>
+                        <div class="alert alert-info"><i class="fas fa-info-circle"></i> No machine downtime data for the selected period.</div>
                     }
                 </div>
             </div>
@@ -1105,7 +1105,7 @@
         {
             <div class="alert alert-info">
                 <i class="fas fa-info-circle"></i>
-                所选时间段内无停机数据。
+                No downtime data for the selected period.
             </div>
         }
     </div>
@@ -1119,7 +1119,7 @@
     <script>
         function formatMinutes(minutes) {
             const h = Math.floor(minutes / 60), m = Math.round(minutes % 60);
-            return `${h}小时 ${m}分钟`;
+            return `${h}h ${m}min`;
         }
 
         // ── 1. DT by Line bar chart ──
@@ -1141,11 +1141,11 @@
         const operationCtx = document.getElementById('operationChart').getContext('2d');
         new Chart(operationCtx, {
             type: 'bar',
-            data: { labels: finalLabels, datasets: [{ label: '停机分钟数', data: finalData, backgroundColor: 'rgba(102,126,234,0.8)', borderColor: 'rgba(102,126,234,1)', borderWidth: 2 }] },
+            data: { labels: finalLabels, datasets: [{ label: 'Downtime (min)', data: finalData, backgroundColor: 'rgba(102,126,234,0.8)', borderColor: 'rgba(102,126,234,1)', borderWidth: 2 }] },
             options: {
                 responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { display: true, position: 'top' }, tooltip: { callbacks: { label: ctx => { let m=ctx.parsed.y; return `${Math.floor(m/60)}小时 ${Math.round(m%60)}分钟 (${m.toFixed(1)} 分钟)`; } } } },
-                scales: { y: { beginAtZero: true, title: { display: true, text: '分钟' } }, x: { title: { display: true, text: '产线' } } },
+                plugins: { legend: { display: true, position: 'top' }, tooltip: { callbacks: { label: ctx => { let m=ctx.parsed.y; return `${Math.floor(m/60)}h ${Math.round(m%60)}min (${m.toFixed(1)} min)`; } } } },
+                scales: { y: { beginAtZero: true, title: { display: true, text: 'Minutes' } }, x: { title: { display: true, text: 'Line' } } },
                 animation: { duration: 1500, easing: 'easeOutQuart' }
             }
         });
@@ -1163,7 +1163,7 @@
                 responsive: true, maintainAspectRatio: false, cutout: '60%',
                 plugins: {
                     legend: { display: true, position: 'right' },
-                    tooltip: { callbacks: { label: ctx => { let v=ctx.parsed,t=ctx.dataset.data.reduce((a,b)=>a+b,0); return `${ctx.label}: ${Math.floor(v/60)}小时 ${Math.round(v%60)}分钟 (${(v/t*100).toFixed(1)}%)`; } } },
+                    tooltip: { callbacks: { label: ctx => { let v=ctx.parsed,t=ctx.dataset.data.reduce((a,b)=>a+b,0); return `${ctx.label}: ${Math.floor(v/60)}h ${Math.round(v%60)}min (${(v/t*100).toFixed(1)}%)`; } } },
                     datalabels: { formatter: (v,ctx) => { let t=ctx.chart.data.datasets[0].data.reduce((a,b)=>a+b,0),p=(v/t*100).toFixed(1); return p>=3?p+'%':''; }, color:'#fff', font:{weight:'bold',size:13}, align:'center', anchor:'center' }
                 }
             }
@@ -1182,11 +1182,11 @@
                 const issCodeCounts = @Html.Raw(issCountsJson);
                 new Chart(issCodeCtx, {
                     type: 'bar',
-                    data: { labels: issCodeLabels, datasets: [{ label: '停机分钟数', data: issCodeMins, backgroundColor: 'rgba(255,99,132,0.8)', borderColor: 'rgba(255,99,132,1)', borderWidth: 2 }] },
+                    data: { labels: issCodeLabels, datasets: [{ label: 'Downtime (min)', data: issCodeMins, backgroundColor: 'rgba(255,99,132,0.8)', borderColor: 'rgba(255,99,132,1)', borderWidth: 2 }] },
                     options: {
                         indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-                        plugins: { legend: { display: true, position: 'top' }, tooltip: { callbacks: { label: ctx => { let m=ctx.parsed.x; return [`时长: ${Math.floor(m/60)}小时 ${Math.round(m%60)}分钟`, `次数: ${issCodeCounts[ctx.dataIndex]||0}`]; } } } },
-                        scales: { x: { beginAtZero: true, title: { display: true, text: '分钟' } }, y: { title: { display: true, text: '故障代码' } } },
+                        plugins: { legend: { display: true, position: 'top' }, tooltip: { callbacks: { label: ctx => { let m=ctx.parsed.x; return [`Duration: ${Math.floor(m/60)}h ${Math.round(m%60)}min`, `Times: ${issCodeCounts[ctx.dataIndex]||0}`]; } } } },
+                        scales: { x: { beginAtZero: true, title: { display: true, text: 'Minutes' } }, y: { title: { display: true, text: 'Fault Code' } } },
                         animation: { duration: 1800, easing: 'easeOutQuart' }
                     }
                 });
@@ -1197,7 +1197,7 @@
             <text>
                 const issCodeCtx = document.getElementById('issCodeChart').getContext('2d');
                 issCodeCtx.fillStyle='#6c757d'; issCodeCtx.font='14px Arial'; issCodeCtx.textAlign='center';
-                issCodeCtx.fillText('无故障代码数据', 150, 100);
+                issCodeCtx.fillText('No fault code data', 150, 100);
             </text>
         }
 
@@ -1217,20 +1217,20 @@
                     data: {
                         labels: mcLabels,
                         datasets: [
-                            { label: '停机分钟数', data: mcMins, backgroundColor: 'rgba(255,159,64,0.8)', borderColor: 'rgba(255,159,64,1)', borderWidth: 2, yAxisID: 'y' },
-                            { label: '停机次数', data: mcCounts, type: 'line', borderColor: 'rgba(54,162,235,1)', backgroundColor: 'rgba(54,162,235,0.1)', borderWidth: 3, pointRadius: 6, fill: false, yAxisID: 'y1' }
+                            { label: 'Downtime (min)', data: mcMins, backgroundColor: 'rgba(255,159,64,0.8)', borderColor: 'rgba(255,159,64,1)', borderWidth: 2, yAxisID: 'y' },
+                            { label: 'Downtime Count', data: mcCounts, type: 'line', borderColor: 'rgba(54,162,235,1)', backgroundColor: 'rgba(54,162,235,0.1)', borderWidth: 3, pointRadius: 6, fill: false, yAxisID: 'y1' }
                         ]
                     },
                     options: {
                         responsive: true, maintainAspectRatio: false,
                         plugins: {
                             legend: { display: true, position: 'top' },
-                            tooltip: { callbacks: { label: ctx => { if(ctx.dataset.yAxisID==='y'){let m=ctx.parsed.y;return `停机: ${Math.floor(m/60)}小时 ${Math.round(m%60)}分钟 (${m.toFixed(1)} 分钟)`;}return `次数: ${ctx.parsed.y}`; } } }
+                            tooltip: { callbacks: { label: ctx => { if(ctx.dataset.yAxisID==='y'){let m=ctx.parsed.y;return `Downtime: ${Math.floor(m/60)}h ${Math.round(m%60)}min (${m.toFixed(1)} min)`;}return `Count: ${ctx.parsed.y}`; } } }
                         },
                         scales: {
-                            x: { title: { display: true, text: '设备号' }, ticks: { maxRotation: 45 } },
-                            y: { position: 'left', beginAtZero: true, title: { display: true, text: '停机分钟数' } },
-                            y1: { position: 'right', beginAtZero: true, title: { display: true, text: '停机次数' }, grid: { drawOnChartArea: false } }
+                            x: { title: { display: true, text: 'Machine No.' }, ticks: { maxRotation: 45 } },
+                            y: { position: 'left', beginAtZero: true, title: { display: true, text: 'Downtime (min)' } },
+                            y1: { position: 'right', beginAtZero: true, title: { display: true, text: 'Count' }, grid: { drawOnChartArea: false } }
                         },
                         animation: { duration: 1500, easing: 'easeOutQuart' }
                     }

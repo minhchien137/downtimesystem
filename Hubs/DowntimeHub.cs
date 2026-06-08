@@ -31,5 +31,16 @@ namespace MachineStatusUpdate.Hubs
             if (!string.IsNullOrWhiteSpace(operatorUsername))
                 await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"Operator_{operatorUsername}");
         }
+
+        // ── DRI (PDE/QUAL/FAC/IT) join group để nhận thông báo từ Production ──
+        public async Task JoinDRIGroup()
+        {
+            await Groups.AddToGroupAsync(Context.ConnectionId, "DRIGroup");
+        }
+
+        public async Task LeaveDRIGroup()
+        {
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, "DRIGroup");
+        }
     }
 }

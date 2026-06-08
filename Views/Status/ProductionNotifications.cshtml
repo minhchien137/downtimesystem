@@ -150,6 +150,28 @@
     .badge-wait   { background: #fef3c7; color: #92400e; }
     .badge-fix    { background: #dbeafe; color: #1e40af; }
     .badge-stop   { background: #fee2e2; color: #991b1b; }
+    .badge-run    { background: #dcfce7; color: #166634; }
+    .badge-dri    { background: #f5f3ff; color: #6d28d9; }
+
+    .pn-card.type-dri { border-left-color: #7c3aed; }
+
+    .btn-call-dri {
+        background: linear-gradient(135deg, #7c3aed, #a855f7);
+        color: #fff; border: none; border-radius: 9px;
+        padding: 10px 24px; font-size: 14px; font-weight: 700; cursor: pointer;
+        display: inline-flex; align-items: center; gap: 7px;
+        box-shadow: 0 3px 12px rgba(124,58,237,.35); transition: all .18s;
+    }
+    .btn-call-dri:hover  { filter: brightness(1.08); transform: translateY(-1px); }
+    .btn-call-dri:active { transform: translateY(1px); }
+    .btn-call-dri:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+    .dri-called-badge {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 8px 16px; background: #f5f3ff; color: #6d28d9;
+        border-radius: 9px; font-size: 13px; font-weight: 700;
+        border: 1px solid #ddd6fe;
+    }
+    .badge-stop   { background: #fee2e2; color: #991b1b; }
     .badge-run    { background: #dcfce7; color: #166534; }
 
     .pn-time { font-size: 12px; color: var(--muted); }
@@ -436,32 +458,37 @@
         {
             foreach (var n in Model)
             {
-                var isAccept = n.TechAction == "ACCEPT";
-                var isWait   = n.TechAction == "WAIT";
-                var isFix    = n.NotifType == "FIX_COMPLETE";
-                var isRun    = n.NotifType == "RUN";
+                var isAccept   = n.TechAction == "ACCEPT";
+                var isWait     = n.TechAction == "WAIT";
+                var isFix      = n.NotifType == "FIX_COMPLETE";
+                var isRun      = n.NotifType == "RUN";
+                var isCallDRI  = n.NotifType == "CALL_DRI_REQUEST";
 
-                string typeClass = isFix    ? "type-fix"
-                                 : isAccept ? "type-accept"
-                                 : isWait   ? "type-wait"
-                                 : isRun    ? "type-run"
+                string typeClass = isFix     ? "type-fix"
+                                 : isCallDRI ? "type-dri"
+                                 : isAccept  ? "type-accept"
+                                 : isWait    ? "type-wait"
+                                 : isRun     ? "type-run"
                                  : "type-stop";
 
-                string badgeClass = isFix    ? "badge-fix"
-                                  : isAccept ? "badge-accept"
-                                  : isWait   ? "badge-wait"
-                                  : isRun    ? "badge-run"
+                string badgeClass = isFix     ? "badge-fix"
+                                  : isCallDRI ? "badge-dri"
+                                  : isAccept  ? "badge-accept"
+                                  : isWait    ? "badge-wait"
+                                  : isRun     ? "badge-run"
                                   : "badge-stop";
 
-                string icon = isFix    ? "🔧 已修复完成"
-                            : isAccept ? "✅ 技术员已接受"
-                            : isWait   ? "⏳ 技术员等待中"
-                            : isRun    ? "▶ 设备已运行"
+                string icon = isFix     ? "🔧 已修复完成"
+                            : isCallDRI ? "🏢 Call Relevant Dept"
+                            : isAccept  ? "✅ 技术员已接受"
+                            : isWait    ? "⏳ 技术员等待中"
+                            : isRun     ? "▶ 设备已运行"
                             : "🛑 停机通知";
 
-                string dataFilter = isFix    ? "FIX_COMPLETE"
-                                  : isAccept ? "ACCEPT"
-                                  : isWait   ? "WAIT"
+                string dataFilter = isFix     ? "FIX_COMPLETE"
+                                  : isCallDRI ? "CALL_DRI"
+                                  : isAccept  ? "ACCEPT"
+                                  : isWait    ? "WAIT"
                                   : "OTHER";
 
                 <div class="pn-card @typeClass @(!n.IsRead ? "unread" : "")" data-filter="@dataFilter" data-date="@n.CreatedAt.ToString("yyyy-MM-dd")" data-id="@n.Id" id="pn-card-@n.Id">
@@ -498,12 +525,40 @@
                     </div>
                     @if (isFix)
                     {
+                        var prodRunMap = ViewBag.ProdRunMap as Dictionary<int, bool>;
+                        var alreadyRun = prodRunMap != null && prodRunMap.TryGetValue(n.Id, out var ran) && ran;
                         <div class="pn-run-action" id="run-action-@n.Id">
-                            <button class="btn-pn-run"
-                                    onclick="prodRunMachine(this, '@n.MachineCode', '@n.Operation', '@n.Id', '@n.TechName')"
-                                    title="确认设备已恢复，记录运行">
-                                ▶ 运行 (Run)
-                            </button>
+                            @if (alreadyRun)
+                            {
+                                <span class="run-done-badge">▶ 已运行 / Machine is Running ✓</span>
+                            }
+                            else
+                            {
+                                <button class="btn-pn-run"
+                                        onclick="prodRunMachine(this, '@n.MachineCode', '@n.Operation', '@n.Id', '@n.TechName')"
+                                        title="确认设备已恢复，记录运行">
+                                    ▶ 运行 (Run)
+                                </button>
+                            }
+                        </div>
+                    }
+                    @if (isCallDRI)
+                    {
+                        var driCalledMap = ViewBag.DRICalledMap as Dictionary<int, bool>;
+                        var alreadyCalled = driCalledMap != null && driCalledMap.TryGetValue(n.Id, out var called) && called;
+                        <div class="pn-run-action" id="dri-action-@n.Id">
+                            @if (alreadyCalled)
+                            {
+                                <span class="dri-called-badge">🏢 DRI department has been notified ✓</span>
+                            }
+                            else
+                            {
+                                <button class="btn-call-dri"
+                                        onclick="prodCallDRI(this, @(n.TechResponseId ?? 0), '@n.MachineCode', @n.Id)"
+                                        title="Call PDE/QUAL/FAC/IT department">
+                                    🏢 Call Relevant Department (DRI)
+                                </button>
+                            }
                         </div>
                     }
                 </div>
@@ -638,6 +693,46 @@ if (typeof connection !== 'undefined') {
         updateBell(prodUnreadCount);
         showProdToast(`🔧 设备 ${data.machineCode} 已修复完成！`, 'fix');
     });
+
+    // PIE xác nhận không phải E&F → Prod nhận yêu cầu call DRI
+    connection.on("ReceiveCallDRIRequest", function(data) {
+        playProdSound();
+        prodUnreadCount++;
+        updateBell(prodUnreadCount);
+        showProdToast(`🏢 Machine ${data.machineCode} — PIE: Not E&F issue. Please call relevant department!`, 'fix');
+    });
+}
+
+// ════ PROD bấm "Call DRI" ════
+async function prodCallDRI(btn, techResponseId, machineCode, notifId) {
+    if (!techResponseId) { alert('Cannot find tech response ID!'); return; }
+
+    btn.disabled  = true;
+    btn.innerHTML = '⏳ Calling...';
+
+    try {
+        const res  = await fetch('/downtime/Status/ProdCallDRI', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ techResponseId })
+        });
+        const data = await res.json();
+        if (data.success) {
+            const actionDiv = document.getElementById(`dri-action-${notifId}`);
+            if (actionDiv) {
+                actionDiv.innerHTML = `<span class="dri-called-badge">🏢 DRI department has been notified ✓</span>`;
+            }
+            showProdToast(`🏢 Relevant department has been called for machine ${machineCode}!`, 'fix');
+        } else {
+            btn.disabled  = false;
+            btn.innerHTML = '🏢 Call Relevant Department (DRI)';
+            showProdToast('❌ ' + (data.message || 'Error'), 'reject');
+        }
+    } catch(e) {
+        btn.disabled  = false;
+        btn.innerHTML = '🏢 Call Relevant Department (DRI)';
+        showProdToast('❌ Connection error', 'reject');
+    }
 }
 
 // ════ Xóa thông báo ════

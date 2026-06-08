@@ -728,7 +728,7 @@ namespace MachineStatusUpdate.Controllers
                     if (!string.IsNullOrWhiteSpace(latestStop.EstimateTime)
                         && latestStop.EstimateTime.StartsWith("[TECHDESC]"))
                     {
-                        model.Description = latestStop.EstimateTime.Substring(9).Trim();
+                        model.Description = latestStop.EstimateTime.Substring(10).Trim();
                         // Dọn sạch staging field
                         latestStop.EstimateTime = null;
                     }
@@ -969,7 +969,6 @@ namespace MachineStatusUpdate.Controllers
 
             var today = DateTime.Now.Date;
 
-            // Lấy TẤT CẢ thông báo trong ngày, không lọc theo recipient
             var notifications = await _context.SVN_Notifications
                 .AsNoTracking()
                 .Where(n => n.CreatedAt.Date == today)
@@ -979,6 +978,256 @@ namespace MachineStatusUpdate.Controllers
 
             return View("AdminNotifications", notifications);
         }
+
+        // ══════════════════════════════════════════════════════════════
+        // DRI FLOW
+        // PIE → "Not E&F" → notify PROD → PROD bấm "Call DRI" → DRI nhận
+        // ══════════════════════════════════════════════════════════════
+
+        [HttpGet]
+        public async Task<IActionResult> DRIDashboard()
+        {
+            var role = HttpContext.Session.GetString("UserRole");
+            if (role != "DRI" && role != "Admin")
+                return RedirectToAction("Login", "Account");
+
+            ViewBag.DriReasonOptions = await _context.SVN_Downtime_Reasons
+                .AsNoTracking().OrderBy(r => r.Reason_Name)
+                .Select(r => new { r.Reason_Code, r.Reason_Name }).ToListAsync();
+
+            return View("DRIDashboard");
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetDRIPendingNotifications(string date = "")
+        {
+            DateTime targetDate = DateTime.Now.Date;
+            if (!string.IsNullOrWhiteSpace(date) &&
+                DateTime.TryParseExact(date, "yyyy-MM-dd",
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.None, out var parsedDate))
+                targetDate = parsedDate.Date;
+
+            var list = await _context.SVN_Notifications
+                .AsNoTracking()
+                .Where(n => n.CreatedAt.Date == targetDate
+                         && (n.RecipientUsername == "ALL_DRI" || n.RecipientRole == "DRI")
+                         && n.NotifType == "DRI_CALL")
+                .OrderByDescending(n => n.CreatedAt)
+                .Select(n => new {
+                    id             = n.Id,
+                    techResponseId = n.TechResponseId ?? 0,
+                    machineCode    = n.MachineCode ?? "",
+                    operation      = n.Operation  ?? "",
+                    datetime       = n.CreatedAt.ToString("dd/MM/yyyy HH:mm"),
+                    body           = n.Body ?? "",
+                    techAction     = _context.SVN_Notifications
+                        .Where(x => x.TechResponseId == n.TechResponseId
+                                 && (x.NotifType == "DRI_ACCEPT" || x.NotifType == "DRI_UNRESOLVED"))
+                        .OrderByDescending(x => x.CreatedAt)
+                        .Select(x => x.NotifType).FirstOrDefault() ?? ""
+                })
+                .ToListAsync();
+
+            return Json(list);
+        }
+
+        // STEP 1: PIE bấm "Not E&F" → notify PROD
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> PIENotEF([FromBody] PIENotEFDto dto)
+        {
+            var techUser = HttpContext.Session.GetString("UserName") ?? "PIE";
+
+            var techResp = await _context.SVN_Downtime_TechResponses.FindAsync(dto.TechResponseId);
+            if (techResp == null)
+                return Json(new { success = false, message = "Record not found" });
+
+            await SaveNotificationAsync(
+                recipientUsername : techResp.OperatorUsername ?? "",
+                recipientRole     : "Production",
+                notifType         : "CALL_DRI_REQUEST",
+                title             : $"🏢 Not E&F issue — Please call relevant department — Machine: {techResp.MachineCode ?? "-"}",
+                body              : $"PIE [{techUser}] determined this is not an E&F problem. Please call PDE/QUAL/FAC/IT.",
+                machineCode       : techResp.MachineCode,
+                operation         : techResp.Operation,
+                techResponseId    : dto.TechResponseId,
+                techName          : techUser
+            );
+
+            if (!string.IsNullOrWhiteSpace(techResp.OperatorUsername))
+            {
+                await _hubContext.Clients
+                    .Group($"Operator_{techResp.OperatorUsername}")
+                    .SendAsync("ReceiveCallDRIRequest", new
+                    {
+                        techResponseId = dto.TechResponseId,
+                        machineCode    = techResp.MachineCode ?? "",
+                        operation      = techResp.Operation   ?? "",
+                        techName       = techUser,
+                        datetime       = DateTime.Now.ToString("dd/MM/yyyy HH:mm")
+                    });
+            }
+
+            return Json(new { success = true });
+        }
+
+        // STEP 2: PROD bấm "Call DRI" → gửi notification đến DRI group
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> ProdCallDRI([FromBody] ProdCallDRIDto dto)
+        {
+            var prodUser = HttpContext.Session.GetString("UserName") ?? "Production";
+
+            var techResp = await _context.SVN_Downtime_TechResponses.FindAsync(dto.TechResponseId);
+            if (techResp == null)
+                return Json(new { success = false, message = "Record not found" });
+
+            await SaveNotificationAsync(
+                recipientUsername : "ALL_DRI",
+                recipientRole     : "DRI",
+                notifType         : "DRI_CALL",
+                title             : $"🏢 Department Call — Machine: {techResp.MachineCode ?? "-"}",
+                body              : $"Production [{prodUser}] requesting DRI support. Operation: {techResp.Operation ?? "-"}",
+                machineCode       : techResp.MachineCode,
+                operation         : techResp.Operation,
+                techResponseId    : dto.TechResponseId
+            );
+
+            await _hubContext.Clients.Group("DRIGroup").SendAsync("ReceiveDRINotification", new
+            {
+                techResponseId   = dto.TechResponseId,
+                machineCode      = techResp.MachineCode      ?? "",
+                operation        = techResp.Operation        ?? "",
+                employeeCode     = techResp.EmployeeCode     ?? "",
+                employeeName     = techResp.EmployeeName     ?? "",
+                operatorUsername = techResp.OperatorUsername ?? "",
+                reason           = techResp.Reason           ?? "",
+                description      = techResp.Description      ?? "",
+                location         = techResp.Location         ?? "",
+                datetime         = DateTime.Now.ToString("dd/MM/yyyy HH:mm")
+            });
+
+            return Json(new { success = true });
+        }
+
+        // STEP 3a: DRI Accept
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> DRIAccept([FromBody] DRIRespondDto dto)
+        {
+            var driUser  = HttpContext.Session.GetString("UserName") ?? "DRI";
+            var techResp = await _context.SVN_Downtime_TechResponses.FindAsync(dto.TechResponseId);
+            if (techResp == null) return Json(new { success = false, message = "Record not found" });
+
+            await SaveNotificationAsync("ALL_DRI", "DRI", "DRI_ACCEPT",
+                $"🔧 DRI [{driUser}] is handling — Machine: {techResp.MachineCode ?? "-"}",
+                null, techResp.MachineCode, techResp.Operation, dto.TechResponseId, techName: driUser);
+
+            if (!string.IsNullOrWhiteSpace(techResp.OperatorUsername))
+            {
+                await SaveNotificationAsync(techResp.OperatorUsername, "Production", "DRI_ACCEPT",
+                    $"🔧 DRI [{driUser}] is handling — Machine: {techResp.MachineCode ?? "-"}",
+                    null, techResp.MachineCode, techResp.Operation, dto.TechResponseId, techName: driUser);
+
+                await _hubContext.Clients.Group($"Operator_{techResp.OperatorUsername}")
+                    .SendAsync("ReceiveTechResponse", new {
+                        action = "ACCEPT", techName = $"[DRI] {driUser}",
+                        machineCode = techResp.MachineCode ?? "",
+                        message = $"🔧 DRI [{driUser}] is handling machine {techResp.MachineCode}",
+                        datetime = DateTime.Now.ToString("dd/MM/yyyy HH:mm")
+                    });
+            }
+            return Json(new { success = true });
+        }
+
+        // STEP 3b: DRI Problem Solved → notify Prod to Run
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> DRIProblemSolved([FromBody] DRIRespondDto dto)
+        {
+            var driUser  = HttpContext.Session.GetString("UserName") ?? "DRI";
+            var techResp = await _context.SVN_Downtime_TechResponses.FindAsync(dto.TechResponseId);
+            if (techResp == null) return Json(new { success = false, message = "Record not found" });
+
+            var stopRecord = await _context.SVN_Downtime_Infos_Devel.FindAsync(techResp.DowntimeId);
+            if (stopRecord != null)
+            {
+                if (!string.IsNullOrWhiteSpace(dto.Description))
+                    stopRecord.EstimateTime = $"[TECHDESC]{dto.Description.Trim()}";
+                if (!string.IsNullOrWhiteSpace(dto.RootCause))  stopRecord.RootCause  = dto.RootCause;
+                if (!string.IsNullOrWhiteSpace(dto.Action))     stopRecord.Action     = dto.Action;
+                if (!string.IsNullOrWhiteSpace(dto.SpareParts)) stopRecord.SpareParts = dto.SpareParts;
+                await _context.SaveChangesAsync();
+            }
+
+            if (!string.IsNullOrWhiteSpace(techResp.OperatorUsername))
+            {
+                await SaveNotificationAsync(techResp.OperatorUsername, "Production", "FIX_COMPLETE",
+                    $"✅ Problem solved — Machine: {techResp.MachineCode ?? "-"} — Please click Run!",
+                    $"DRI [{driUser}] resolved the issue.",
+                    techResp.MachineCode, techResp.Operation, dto.TechResponseId, techName: driUser);
+
+                await _hubContext.Clients.Group($"Operator_{techResp.OperatorUsername}")
+                    .SendAsync("ReceiveFixComplete", new {
+                        machineCode = techResp.MachineCode ?? "",
+                        operation   = techResp.Operation   ?? "",
+                        techName    = $"[DRI] {driUser}",
+                        message     = $"✅ Machine {techResp.MachineCode} resolved. Please click Run!",
+                        datetime    = DateTime.Now.ToString("dd/MM/yyyy HH:mm")
+                    });
+            }
+            return Json(new { success = true });
+        }
+
+        // STEP 3c: DRI Problem NOT Solved → record details, notify Admin + Prod
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> DRIProblemNotSolved([FromBody] DRIRespondDto dto)
+        {
+            var driUser  = HttpContext.Session.GetString("UserName") ?? "DRI";
+            var techResp = await _context.SVN_Downtime_TechResponses.FindAsync(dto.TechResponseId);
+            if (techResp == null) return Json(new { success = false, message = "Record not found" });
+
+            var stopRecord = await _context.SVN_Downtime_Infos_Devel.FindAsync(techResp.DowntimeId);
+            if (stopRecord != null)
+            {
+                if (!string.IsNullOrWhiteSpace(dto.Description))
+                    stopRecord.Description = $"[DRI-UNRESOLVED] {dto.Description.Trim()}";
+                if (!string.IsNullOrWhiteSpace(dto.RootCause))  stopRecord.RootCause  = dto.RootCause;
+                if (!string.IsNullOrWhiteSpace(dto.Action))     stopRecord.Action     = dto.Action;
+                if (!string.IsNullOrWhiteSpace(dto.SpareParts)) stopRecord.SpareParts = dto.SpareParts;
+                await _context.SaveChangesAsync();
+            }
+
+            await SaveNotificationAsync("ALL_ADMIN", "Admin", "DRI_UNRESOLVED",
+                $"⚠️ Unresolved — Machine: {techResp.MachineCode ?? "-"} | DRI: {driUser}",
+                dto.Description, techResp.MachineCode, techResp.Operation,
+                dto.TechResponseId, techName: driUser);
+
+            if (!string.IsNullOrWhiteSpace(techResp.OperatorUsername))
+                await SaveNotificationAsync(techResp.OperatorUsername, "Production", "DRI_UNRESOLVED",
+                    $"⚠️ Issue unresolved — Machine: {techResp.MachineCode ?? "-"}",
+                    $"DRI [{driUser}] recorded details. Root Cause: {dto.RootCause ?? "-"}",
+                    techResp.MachineCode, techResp.Operation, dto.TechResponseId, techName: driUser);
+
+            return Json(new { success = true });
+        }
+
+        public class PIENotEFDto     { public int TechResponseId { get; set; } }
+        public class ProdCallDRIDto  { public int TechResponseId { get; set; } }
+
+        public class DRIRespondDto
+        {
+            public int     TechResponseId { get; set; }
+            public string? Department     { get; set; }
+            public string? Description    { get; set; }
+            public string? RootCause      { get; set; }
+            public string? Action         { get; set; }
+            public string? SpareParts     { get; set; }
+        }
+
+
 
 
         // ── API: 技术员刷新页面时加载通知列表 (支持按日期筛选) ──
@@ -2588,6 +2837,34 @@ namespace MachineStatusUpdate.Controllers
                 .OrderByDescending(n => n.CreatedAt)
                 .Take(100)
                 .ToListAsync();
+
+            // Tính prodRun cho từng FIX_COMPLETE notification
+            ViewBag.ProdRunMap = notifications
+                .Where(n => n.NotifType == "FIX_COMPLETE" && n.TechResponseId.HasValue)
+                .ToDictionary(
+                    n => n.Id,
+                    n => {
+                        var techResp = _context.SVN_Downtime_TechResponses
+                            .Where(tr => tr.Id == n.TechResponseId)
+                            .Select(tr => new { tr.MachineCode, tr.StopDatetime })
+                            .FirstOrDefault();
+                        if (techResp == null) return false;
+                        return _context.SVN_Downtime_Infos_Devel
+                            .Any(r => r.MachineCode == techResp.MachineCode
+                                   && r.State == "RUN"
+                                   && r.Datetime > techResp.StopDatetime);
+                    }
+                );
+
+            // Check xem CALL_DRI_REQUEST đã được gọi DRI chưa
+            ViewBag.DRICalledMap = notifications
+                .Where(n => n.NotifType == "CALL_DRI_REQUEST" && n.TechResponseId.HasValue)
+                .ToDictionary(
+                    n => n.Id,
+                    n => _context.SVN_Notifications
+                            .Any(x => x.TechResponseId == n.TechResponseId
+                                   && x.NotifType == "DRI_CALL")
+                );
 
             // Đánh dấu tất cả là đã đọc
             var unread = await _context.SVN_Notifications

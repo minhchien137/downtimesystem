@@ -78,6 +78,7 @@ namespace MachineStatusUpdate.Controllers
         {
             "Admin"      => RedirectToAction("AdminPanel",            "Status"),
             "Technical"  => RedirectToAction("NotificationDashboard", "Status"),
+            "DRI"        => RedirectToAction("DRIDashboard",          "Status"),
             _            => RedirectToAction("CreateDownTime",         "Status"),
         };
     }
