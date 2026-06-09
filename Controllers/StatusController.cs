@@ -607,9 +607,13 @@ namespace MachineStatusUpdate.Controllers
                         {
                             try
                             {
-                                string imagePath = item.Image.StartsWith("/uploads/")
-                                    ? Path.Combine(_webHostEnvironment.WebRootPath, item.Image.TrimStart('/').Replace('/', Path.DirectorySeparatorChar))
-                                    : item.Image;
+                                var imgRelative = item.Image;
+                                if (imgRelative.StartsWith("/downtime"))
+                                    imgRelative = imgRelative.Substring("/downtime".Length);
+
+                                string imagePath = Path.Combine(
+                                    _webHostEnvironment.WebRootPath,
+                                    imgRelative.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
 
                                 if (System.IO.File.Exists(imagePath))
                                 {
@@ -617,17 +621,17 @@ namespace MachineStatusUpdate.Controllers
                                     picture.MoveTo(ws.Cell(currentRow, 18), 8, 5);
                                     picture.WithSize(100, 70);
                                     ws.Cell(currentRow, 18).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                                    ws.Cell(currentRow, 18).Style.Alignment.Vertical   = XLAlignmentVerticalValues.Center;
+                                    ws.Cell(currentRow, 18).Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
                                 }
                                 else
                                 {
-                                    ws.Cell(currentRow, 18).Value = "无图片";
+                                    ws.Cell(currentRow, 18).Value = "No image";
                                     ws.Cell(currentRow, 18).Style.Font.FontColor = XLColor.Gray;
                                 }
                             }
-                            catch (Exception ex)
+                            catch
                             {
-                                ws.Cell(currentRow, 18).Value = $"错误: {ex.Message}";
+                                ws.Cell(currentRow, 18).Value = "Error";
                                 ws.Cell(currentRow, 18).Style.Font.FontColor = XLColor.Red;
                             }
                         }
@@ -2337,7 +2341,42 @@ namespace MachineStatusUpdate.Controllers
                     ws3.Cell(r, 4).Value  = d.Location    ?? "-";
                     ws3.Cell(r, 5).Value  = item.ReasonName.Length > 0 ? item.ReasonName : (d.Reason ?? "-");
                     ws3.Cell(r, 6).Value  = d.Station     ?? "-";
-                    ws3.Cell(r, 7).Value  = !string.IsNullOrEmpty(d.Image) ? d.Image : "-";
+                    if (!string.IsNullOrEmpty(d.Image))
+                    {
+                        try
+                        {
+                            var imgRelative = d.Image;
+                            if (imgRelative.StartsWith("/downtime"))
+                                imgRelative = imgRelative.Substring("/downtime".Length);
+
+                            var imgPath = Path.Combine(
+                                _webHostEnvironment.WebRootPath,
+                                imgRelative.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+
+                            if (System.IO.File.Exists(imgPath))
+                            {
+                                ws3.Column(7).Width = 20;
+                                ws3.Row(r).Height = 75;
+
+                                var pic = ws3.AddPicture(imgPath);
+                                pic.MoveTo(ws3.Cell(r, 7), 5, 4);
+                                pic.WithSize(95, 65);
+                                ws3.Cell(r, 7).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                                ws3.Cell(r, 7).Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+                            }
+                            else
+                            {
+                                ws3.Cell(r, 7).Value = "No image";
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            ws3.Cell(r, 7).Value = "Error";
+                        }
+                    }
+
+
+
                     ws3.Cell(r, 8).Value  = d.Description ?? "-";
                     ws3.Cell(r, 9).Value  = d.RootCause   ?? "-";
                     ws3.Cell(r, 10).Value = startDt?.ToString("dd/MM/yyyy HH:mm") ?? "-";
@@ -2379,7 +2418,7 @@ namespace MachineStatusUpdate.Controllers
                 ws3.SheetView.FreezeRows(headerRow3);
 
                 // Column widths
-                int[] ws3Widths = { 18, 28, 32, 16, 28, 14, 12, 32, 28, 18, 18, 18, 20, 16, 28, 20, 20, 14 };
+                int[] ws3Widths = { 18, 28, 32, 16, 28, 14, 20, 32, 28, 18, 18, 18, 20, 16, 28, 20, 20, 14 };
                 for (int c = 0; c < ws3Widths.Length; c++)
                     ws3.Column(c + 1).Width = ws3Widths[c];
 

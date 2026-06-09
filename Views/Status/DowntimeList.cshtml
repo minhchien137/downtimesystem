@@ -483,7 +483,7 @@
                     <th>Description</th>
                     <th>Root Cause</th>
                     <th>Spare Parts</th>
-                    <th>Employee Name</th>
+                    <th>Employee </th>
                     @* <th>Emp. Name</th> *@
                     <th>Datetime</th>
                 </tr>
@@ -524,12 +524,13 @@
                             <td>
                                 @if (!string.IsNullOrEmpty(item.Image))
                                 {
-                                    <a href="@Url.Content(item.Image)" target="_blank">
-                                        <img src="@Url.Content(item.Image)"
-                                             style="height:52px;width:72px;object-fit:cover;border-radius:6px;border:1px solid #e5e7eb;cursor:pointer;transition:transform .15s;"
-                                             onmouseover="this.style.transform='scale(1.08)'"
-                                             onmouseout="this.style.transform='scale(1)'"
-                                             alt="image" />
+                                    var imgUrl = Context.Request.PathBase + item.Image;
+                                    <a href="@imgUrl" target="_blank">
+                                        <img src="@imgUrl"
+                                            style="height:52px;width:72px;object-fit:cover;border-radius:6px;border:1px solid #e5e7eb;cursor:pointer;transition:transform .15s;"
+                                            onmouseover="this.style.transform='scale(1.08)'"
+                                            onmouseout="this.style.transform='scale(1)'"
+                                            alt="image" />
                                     </a>
                                 }
                                 else { <span>-</span> }
@@ -643,12 +644,13 @@
 
                     @if (!string.IsNullOrEmpty(item.Image))
                     {
+                        var imgUrlMobile = Context.Request.PathBase + item.Image;
                         <div class="card-section-title">Image</div>
                         <div class="card-row">
                             <span class="card-label"></span>
                             <span class="card-value">
-                                <a href="@Url.Content(item.Image)" target="_blank"
-                                   style="color:#0d6efd;text-decoration:none;">📷 View Image</a>
+                                <a href="@imgUrlMobile" target="_blank"
+                                style="color:#0d6efd;text-decoration:none;">📷 View Image</a>
                             </span>
                         </div>
                     }

@@ -417,7 +417,7 @@
                 </div>
                 <div class="col-md-4">
                     <div class="chart-container">
-                        <h4 class="mb-2"><i class="fas fa-exclamation-triangle"></i> Downtime by Fault Code</h4>
+                        <h4 class="mb-2"><i class="fas fa-exclamation-triangle"></i> Downtime by Reason</h4>
                         <canvas id="issCodeChart"></canvas>
                     </div>
                 </div>
@@ -1241,7 +1241,7 @@
                     options: {
                         indexAxis: 'y', responsive: true, maintainAspectRatio: false,
                         plugins: { legend: { display: true, position: 'top' }, tooltip: { callbacks: { label: ctx => { let m=ctx.parsed.x; return [`Duration: ${Math.floor(m/60)}h ${Math.round(m%60)}min`, `Times: ${issCodeCounts[ctx.dataIndex]||0}`]; } } } },
-                        scales: { x: { beginAtZero: true, title: { display: true, text: 'Minutes' } }, y: { title: { display: true, text: 'Fault Code' } } },
+                        scales: { x: { beginAtZero: true, title: { display: true, text: 'Minutes' } }, y: { title: { display: true, text: 'Reason' } } },
                         animation: { duration: 1800, easing: 'easeOutQuart' }
                     }
                 });
@@ -1285,7 +1285,16 @@
                         scales: {
                             x: { title: { display: true, text: 'Machine No.' }, ticks: { maxRotation: 45 } },
                             y: { position: 'left', beginAtZero: true, title: { display: true, text: 'Downtime (min)' } },
-                            y1: { position: 'right', beginAtZero: true, title: { display: true, text: 'Count' }, grid: { drawOnChartArea: false } }
+                            y1: { 
+                                    position: 'right', 
+                                    beginAtZero: true, 
+                                    title: { display: true, text: 'Count' }, 
+                                    grid: { drawOnChartArea: false },
+                                    ticks: { 
+                                        stepSize: 1, 
+                                        precision: 0    // ← thêm dòng này
+                                    }
+                                },
                         },
                         animation: { duration: 1500, easing: 'easeOutQuart' }
                     }
