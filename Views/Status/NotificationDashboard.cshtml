@@ -863,12 +863,12 @@
 
 <div class="dash-header">
     <div>
-        <h1>🔧 Technical Dashboard</h1>
-        <div class="sub">Real-time Downtime Notifications / Fault Responses</div>
+        <h1 data-i18n="notifDashboard.pageTitle">🔧 Technical Dashboard</h1>
+        <div class="sub" data-i18n="notifDashboard.subtitle">Real-time Downtime Notifications / Fault Responses</div>
     </div>
     <span class="conn-badge connecting" id="connBadge">
         <span class="conn-dot"></span>
-        <span id="connText">Connecting...</span>
+        <span id="connText" data-i18n="notifDashboard.connecting">Connecting...</span>
     </span>
 </div>
 
@@ -896,28 +896,28 @@
         <div class="summary-card">
             <div class="summary-icon">🛑</div>
             <div>
-                <div class="summary-label">Downtime</div>
+                <div class="summary-label" data-i18n="notifDashboard.pending">Downtime</div>
                 <div class="summary-value stop" id="cntStop">0</div>
             </div>
         </div>
         <div class="summary-card">
             <div class="summary-icon">▶️</div>
             <div>
-                <div class="summary-label">Running</div>
+                <div class="summary-label" data-i18n="notifDashboard.resolved">Running</div>
                 <div class="summary-value run" id="cntRun">0</div>
             </div>
         </div>
         <div class="summary-card">
             <div class="summary-icon">✅</div>
             <div>
-                <div class="summary-label">Accepted</div>
+                <div class="summary-label" data-i18n="notifDashboard.accepted">Accepted</div>
                 <div class="summary-value accept" id="cntAccept">0</div>
             </div>
         </div>
         <div class="summary-card">
             <div class="summary-icon">📋</div>
             <div>
-                <div class="summary-label">Notifications</div>
+                <div class="summary-label" data-i18n="notifDashboard.totalCalls">Notifications</div>
                 <div class="summary-value total" id="cntTotal">0</div>
             </div>
         </div>
@@ -931,14 +931,14 @@
             <input type="date" id="notifDateFilter" class="notif-date-filter" onchange="reloadByDate()" title="筛选日期">
             <button class="btn-today" onclick="setToday()">📅 Today</button>
             <button class="btn-sound" id="btnSound" onclick="toggleSound()">🔔 Sound: On</button>
-            <button class="btn-clear" onclick="clearAll()">🗑 Clear Completed</button>
+            <button class="btn-clear" onclick="clearAll()" data-i18n="common.clear">🗑 Clear Completed</button>
         </div>
 
         <!-- Notification list -->
         <div class="notif-list" id="notifList">
             <div class="notif-empty" id="emptyState">
                 <span class="empty-icon">🟢</span>
-                Waiting for notifications...<br>
+                <span data-i18n="notifDashboard.waiting">Waiting for notifications...</span><br>
                 <small style="font-size:13px;margin-top:6px;display:block;">
                     When operators press <strong>Call Technician</strong>, notifications will appear here.
                 </small>
@@ -1026,8 +1026,8 @@
             </div>
         </div>
         <div class="te-modal-footer">
-            <button class="btn-te-cancel" onclick="closeTeModal()">Cancel</button>
-            <button class="btn-te-save" id="teSaveBtn" onclick="teSaveRecord()">💾 Save</button>
+            <button class="btn-te-cancel" onclick="closeTeModal()" data-i18n="common.cancel">Cancel</button>
+            <button class="btn-te-save" id="teSaveBtn" onclick="teSaveRecord()" data-i18n="common.save">💾 Save</button>
         </div>
     </div>
 </div>
@@ -1083,16 +1083,17 @@ body.flashing {
 <!-- ===== Reject Reason Modal ===== -->
 <div class="reject-modal-overlay" id="rejectModalOverlay">
     <div class="reject-modal">
-        <h3>❌ Reject Maintenance Request</h3>
-        <p class="modal-sub">Device: <strong id="rejectModalMachine">—</strong> · Line: <strong id="rejectModalOp">—</strong></p>
+        <h3 data-i18n="notifDashboard.rejectTitle">❌ Reject Maintenance Request</h3>
+        <p class="modal-sub"><span data-i18n="notifDashboard.device">Device</span>: <strong id="rejectModalMachine">—</strong> · <span data-i18n="notifDashboard.line">Line</span>: <strong id="rejectModalOp">—</strong></p>
         <textarea id="rejectReasonInput"
+                  data-i18n-ph="notifDashboard.rejectPH"
                   placeholder="Please enter rejection reason... (Required)"
                   maxlength="300"
                   oninput="onRejectInput(this)"></textarea>
-        <div class="char-hint" id="rejectCharHint">0 / 300 characters</div>
+        <div class="char-hint" id="rejectCharHint">0 / 300 <span data-i18n="notifDashboard.charCount">characters</span></div>
         <div class="modal-footer">
-            <button class="btn-modal-cancel" onclick="closeRejectModal()">Cancel</button>
-            <button class="btn-modal-submit" id="rejectSubmitBtn" onclick="submitReject()">❌ Confirm Rejection</button>
+            <button class="btn-modal-cancel" onclick="closeRejectModal()" data-i18n="common.cancel">Cancel</button>
+            <button class="btn-modal-submit" id="rejectSubmitBtn" onclick="submitReject()" data-i18n="notifDashboard.confirmReject">❌ Confirm Rejection</button>
         </div>
     </div>
 </div>
@@ -1221,6 +1222,7 @@ function toggleSound() {
     soundEnabled = !soundEnabled;
     document.getElementById('btnSound').textContent =
         soundEnabled ? '🔔 Sound: On' : '🔕 Sound: Off';
+    window.i18nApply && window.i18nApply();
 }
 
 /* ===== Âm thanh STOP: còi báo động to, 5 tiếng bip nhanh ===== */
@@ -1393,12 +1395,12 @@ function renderStopCard(data, prepend = true) {
         ? buildRespondedBadge(data.techAction, data.techUsername, data.respondDatetime, !!data.fixComplete, responseTimeStr, !!data.prodRun)
         : `<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
             <select class="pie-emp-select" style="border:1.5px solid #e5e7eb;border-radius:8px;padding:8px 12px;font-size:13px;outline:none;min-width:200px;cursor:pointer;">
-            <option value="">-- Select Technician --</option>
+            <option value="">${window.i18nT('notifDashboard.selectTechnician')}</option>
             ${pieOptions}
             </select>
-            <button class="btn-accept" onclick="respondToOperator(this,'ACCEPT')">✅ Response</button>
-            <button class="btn-reject" onclick="openRejectModal(this)">❌ Reject</button>
-            <button class="btn-not-ef" onclick="pieNotEF(this)" title="Not E&F problem — call relevant department">🏢 Not E&F</button>
+            <button class="btn-accept" onclick="respondToOperator(this,'ACCEPT')">${window.i18nT('notifDashboard.respond')}</button>
+            <button class="btn-reject" onclick="openRejectModal(this)">${window.i18nT('notifDashboard.reject')}</button>
+            <button class="btn-not-ef" onclick="pieNotEF(this)" title="${window.i18nT('notifDashboard.notEF')}">${window.i18nT('notifDashboard.notEF')}</button>
         </div>`;
 
     card.innerHTML = `
@@ -1455,11 +1457,11 @@ function buildRespondedBadge(action, techUser, respondTime, fixComplete = false,
         : '';
     let responseBtn;
     if (fixComplete) {
-        responseBtn = `<span class="responded-badge fix-done">🔧 Fix Complete Notification Sent</span>`;
+        responseBtn = `<span class="responded-badge fix-done">${window.i18nT('notifDashboard.fixComplete')}</span>`;
     } else if (prodRun) {
         responseBtn = `<span class="responded-badge" style="background:#dbeafe;color:#1e40af;">▶ Production Running — No Action Required</span>`;
     } else {
-        responseBtn = `<button class="btn-fix-complete" onclick="techFixComplete(this)">🔧 Respond — Fix Complete</button>`;
+        responseBtn = `<button class="btn-fix-complete" onclick="techFixComplete(this)">${window.i18nT('notifDashboard.fixComplete')}</button>`;
     }
 
     return `<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">${badge}${respTimeBadge}${responseBtn}</div>`;
@@ -1518,7 +1520,7 @@ async function respondToOperator(btn, action) {
                 updateCounters();
             } else {
                 card.querySelectorAll('.btn-accept, .btn-reject, .btn-wait').forEach(b => b.disabled = false);
-                btn.innerHTML = '✅ Response';
+                btn.innerHTML = window.i18nT('notifDashboard.respond');
             }
         } catch (err) {
             console.error('respondToOperator ACCEPT error:', err);
@@ -1588,7 +1590,7 @@ function openRejectModal(btn) {
     const ta = document.getElementById('rejectReasonInput');
     ta.value = '';
     ta.classList.remove('invalid');
-    document.getElementById('rejectCharHint').textContent = '0 / 300 ký tự';
+    document.getElementById('rejectCharHint').textContent = `0 / 300 ${window.i18nT('notifDashboard.charCount')}`;
     document.getElementById('rejectCharHint').classList.remove('warn');
     document.getElementById('rejectSubmitBtn').classList.remove('active');
 
@@ -1606,7 +1608,7 @@ function onRejectInput(ta) {
     const hint = document.getElementById('rejectCharHint');
     const btn  = document.getElementById('rejectSubmitBtn');
 
-    hint.textContent = `${ta.value.length} / 300 ký tự`;
+    hint.textContent = `${ta.value.length} / 300 ${window.i18nT('notifDashboard.charCount')}`;
     hint.classList.toggle('warn', ta.value.length > 270);
 
     if (len > 0) {
@@ -1670,7 +1672,7 @@ async function submitReject() {
             closeRejectModal();
         } else {
             submitBtn.disabled   = false;
-            submitBtn.textContent = '❌ Confirm Reject';
+            submitBtn.textContent = window.i18nT('notifDashboard.confirmReject');
             submitBtn.classList.add('active');
         }
     } catch (err) {
@@ -1722,7 +1724,7 @@ async function pieNotEF(btn) {
             teShowToast('✅ Production has been notified to call the relevant department.');
         } else {
             btn.disabled  = false;
-            btn.innerHTML = '🏢 Not E&F';
+            btn.innerHTML = window.i18nT('notifDashboard.notEF');
             teShowToast('❌ ' + (data.message || 'Error'), true);
         }
     } catch(e) {
@@ -1758,7 +1760,7 @@ async function techFixComplete(btn) {
     } catch (err) {
         console.error('techFixComplete error:', err);
         btn.disabled  = false;
-        btn.innerHTML = '🔧 Respond — Fix Complete';
+        btn.innerHTML = window.i18nT('notifDashboard.fixComplete');
         _fixCompleteOrigBtn = null;
     }
 }
@@ -1865,7 +1867,7 @@ function showEmptyState() {
     const empty = document.createElement('div');
     empty.className = 'notif-empty';
     empty.id = 'emptyState';
-    empty.innerHTML = `<span class="empty-icon">🟢</span>Waiting for notifications...<br><small style="font-size:13px;margin-top:6px;display:block;">When the operator presses <strong>Call Technician</strong>, notifications will appear here.</small>`;
+    empty.innerHTML = `<span class="empty-icon">🟢</span>${window.i18nT('notifDashboard.waiting')}<br><small style="font-size:13px;margin-top:6px;display:block;">When the operator presses <strong>Call Technician</strong>, notifications will appear here.</small>`;
     notifList.appendChild(empty);
 }
 
@@ -1947,18 +1949,18 @@ connection.on("ReceiveRunNotification", (data) => {
 // Connection state handlers
 connection.onreconnecting(() => {
     if (connBadge) connBadge.className = 'conn-badge connecting';
-    if (connText)  connText.textContent = '重连中...';
+    if (connText)  connText.textContent = window.i18nT('notifDashboard.connecting');
 });
 
 connection.onreconnected(() => {
     if (connBadge) connBadge.className = 'conn-badge connected';
-    if (connText)  connText.textContent = '已连接 ✓';
+    if (connText)  connText.textContent = window.i18nT('notifDashboard.connected');
     connection.invoke("JoinTechnicianGroup").catch(console.error);
 });
 
 connection.onclose(() => {
     if (connBadge) connBadge.className = 'conn-badge disconnected';
-    if (connText)  connText.textContent = '连接断开 ✗';
+    if (connText)  connText.textContent = window.i18nT('notifDashboard.disconnected');
 });
 
 // Khởi động kết nối
@@ -1967,10 +1969,10 @@ async function startConnection() {
         await connection.start();
         await connection.invoke("JoinTechnicianGroup");
         if (connBadge) connBadge.className = 'conn-badge connected';
-        if (connText)  connText.textContent = '已连接 ✓';
+        if (connText)  connText.textContent = window.i18nT('notifDashboard.connected');
     } catch (err) {
         if (connBadge) connBadge.className = 'conn-badge disconnected';
-        if (connText)  connText.textContent = '连接错误 ✗';
+        if (connText)  connText.textContent = window.i18nT('notifDashboard.disconnected');
         console.error('SignalR error:', err);
         setTimeout(startConnection, 5000);
     }
@@ -2070,7 +2072,7 @@ async function reloadByDate() {
     const tmp = document.createElement('div');
     tmp.className = 'notif-empty';
     tmp.id = 'emptyState';
-    tmp.innerHTML = `<span class="empty-icon">⏳</span>Loading...`;
+    tmp.innerHTML = `<span class="empty-icon">⏳</span>${window.i18nT('common.loading')}`;
     notifList.appendChild(tmp);
     emptyState = tmp;
     await loadPendingFromDB();
@@ -2299,7 +2301,7 @@ async function teSaveRecord() {
         teShowToast('❌ Connection error', true);
     } finally {
         btn.disabled    = false;
-        btn.textContent = '💾 Save';
+        btn.textContent = window.i18nT('common.save');
     }
 }
 
@@ -2352,7 +2354,7 @@ async function _finishFixComplete() {
     if (_fixCompleteOrigBtn) {
         const badge = document.createElement('span');
         badge.className   = 'responded-badge fix-done';
-        badge.textContent = '🔧 Fix Complete Notification Sent';
+        badge.textContent = window.i18nT('notifDashboard.fixComplete');
         _fixCompleteOrigBtn.replaceWith(badge);
         _fixCompleteOrigBtn = null;
     }
@@ -2402,7 +2404,7 @@ async function submitPostRunEdit() {
         if (!res.ok) {
             teShowToast(`❌ HTTP ${res.status}: ${res.statusText}`, true);
             saveBtn.disabled = false;
-            saveBtn.innerHTML = '💾 Save / 保存';
+            saveBtn.innerHTML = window.i18nT('notifDashboard.saveDetails');
             return;
         }
         const data = await res.json();
@@ -2412,7 +2414,7 @@ async function submitPostRunEdit() {
         } else {
             teShowToast('❌ Failed to save information!', true);
             saveBtn.disabled  = false;
-            saveBtn.innerHTML = '💾 Save / 保存';
+            saveBtn.innerHTML = window.i18nT('notifDashboard.saveDetails');
         }
     } catch (err) {
         teShowToast('❌ Error occurred while saving!', true);
@@ -2436,13 +2438,13 @@ document.getElementById('postRunModalOverlay')
         max-width:500px;width:94%;box-shadow:0 20px 60px rgba(0,0,0,.22);
         animation:postRunIn .18s ease">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-            <h2 style="margin:0;font-size:17px;font-weight:700;color:#111">
+            <h2 style="margin:0;font-size:17px;font-weight:700;color:#111" data-i18n="notifDashboard.postRunTitle">
                 📝 Add Details
             </h2>
             <button onclick="closePostRunModal()"
                     style="background:none;border:none;font-size:20px;cursor:pointer;color:#9ca3af;line-height:1">×</button>
         </div>
-        <p style="margin:0 0 16px;font-size:13px;color:#6b7280">
+        <p style="margin:0 0 16px;font-size:13px;color:#6b7280" data-i18n="notifDashboard.postRunSubtitle">
             After repair complete, please fill in the details below.<br>
         </p>
         <input type="hidden" id="postRunRecordId" />
@@ -2450,10 +2452,10 @@ document.getElementById('postRunModalOverlay')
         <div style="display:flex;flex-direction:column;gap:12px">
             <div>
                 <label style="font-size:12.5px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px">
-                    Category <span style="color:#ef4444">*</span>
+                    <span data-i18n="notifDashboard.category">Category</span> <span style="color:#ef4444">*</span>
                 </label>
                 <select id="postRunReason" style="width:100%;border:1.5px solid #e5e7eb;border-radius:8px;padding:9px 12px;font-size:14px;box-sizing:border-box;background:#fff">
-                    <option value="">-- Select category --</option>
+                    <option value="" data-i18n="notifDashboard.selectCategory">-- Select category --</option>
                     @foreach (var r in (ViewBag.PieReasonOptions as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>()))
                     {
                         <option value="@r.Reason_Name">@r.Reason_Name (@r.Reason_Code)</option>
@@ -2462,7 +2464,7 @@ document.getElementById('postRunModalOverlay')
             </div>
             <div>
                 <label style="font-size:12.5px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px">
-                    Effect <span style="color:#ef4444">*</span>
+                    <span data-i18n="notifDashboard.effect">Effect</span> <span style="color:#ef4444">*</span>
                 </label>
                 <select id="postRunEffect" style="width:100%;border:1.5px solid #e5e7eb;border-radius:8px;padding:9px 12px;font-size:14px;box-sizing:border-box;background:#fff">
                     <option value="">-- Select effect --</option>
@@ -2472,37 +2474,39 @@ document.getElementById('postRunModalOverlay')
             </div>
             <div>
                 <label style="font-size:12.5px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px">
-                    Problem Description
+                    <span data-i18n="notifDashboard.postRunDesc">Problem Description</span>
                     <span style="font-weight:400;font-size:11px;color:#9ca3af;margin-left:4px">(Prod đã nhập — Tech bổ sung thêm)</span>
                 </label>
-                <input type="text" id="postRunDescription" placeholder="Enter technical description..."
+                <input type="text" id="postRunDescription" data-i18n-ph="notifDashboard.descPH" placeholder="Problem description..."
                        style="width:100%;border:1.5px solid #e5e7eb;border-radius:8px;padding:9px 12px;font-size:14px;box-sizing:border-box" />
             </div>
             <div>
-                <label style="font-size:12.5px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px">Root Cause</label>
-                <input type="text" id="postRunRootCause" placeholder="Enter root cause..."
+                <label style="font-size:12.5px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px" data-i18n="notifDashboard.rootCause">Root Cause</label>
+                <input type="text" id="postRunRootCause" data-i18n-ph="notifDashboard.rootCausePH" placeholder="Enter root cause..."
                        style="width:100%;border:1.5px solid #e5e7eb;border-radius:8px;padding:9px 12px;font-size:14px;box-sizing:border-box" />
             </div>
             <div>
-                <label style="font-size:12.5px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px">Action Taken</label>
-                <input type="text" id="postRunAction" placeholder="Enter action taken..."
+                <label style="font-size:12.5px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px" data-i18n="notifDashboard.actionTaken">Action Taken</label>
+                <input type="text" id="postRunAction" data-i18n-ph="notifDashboard.actionTakenPH" placeholder="Enter action taken..."
                        style="width:100%;border:1.5px solid #e5e7eb;border-radius:8px;padding:9px 12px;font-size:14px;box-sizing:border-box" />
             </div>
             <div>
                 <label style="font-size:12.5px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px">
-                    Spare Parts Used
+                    <span data-i18n="notifDashboard.spareParts">Spare Parts Used</span>
                     <span style="font-weight:400;font-size:11px;color:#9ca3af;margin-left:4px">(optional)</span>
                 </label>
-                <input type="text" id="postRunSpareParts" placeholder="Enter spare parts used (or leave blank)..."
+                <input type="text" id="postRunSpareParts" data-i18n-ph="notifDashboard.sparePartsPH" placeholder="Enter spare parts used (or leave blank)..."
                        style="width:100%;border:1.5px solid #e5e7eb;border-radius:8px;padding:9px 12px;font-size:14px;box-sizing:border-box" />
             </div>
         </div>
         <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px">
             <button onclick="closePostRunModal()"
+                    data-i18n="notifDashboard.skipDetails"
                     style="background:#f3f4f6;color:#374151;border:none;border-radius:9px;padding:9px 20px;font-size:14px;font-weight:600;cursor:pointer">
                 Skip
             </button>
             <button id="postRunSaveBtn" onclick="submitPostRunEdit()"
+                    data-i18n="notifDashboard.saveDetails"
                     style="background:#22c55e;color:#fff;border:none;border-radius:9px;padding:9px 24px;font-size:14px;font-weight:700;cursor:pointer">
                 💾 Save
             </button>

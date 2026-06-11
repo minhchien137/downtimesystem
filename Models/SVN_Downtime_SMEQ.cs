@@ -12,7 +12,11 @@ namespace MachineStatusUpdate.Models
         public int id { get; set; }
  
         [Column("name")]
+        
         public string name { get; set; }
+
+        [Column("namechinese")]
+        public string namechinese { get; set; }
  
         [Column("serialnumber")]
         public string serialnumber { get; set; }

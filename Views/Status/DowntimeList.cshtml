@@ -323,27 +323,27 @@
 </style>
 
 <div class="container">
-    <h2>📋 Downtime List</h2>
+    <h2 data-i18n="downtimeList.pageTitle">📋 Downtime List</h2>
 
     <!-- ===== Filter card ===== -->
     <div class="filter-card">
-        <div class="filter-card-title">🔍 Filter</div>
+        <div class="filter-card-title" data-i18n="common.filter">🔍 Filter</div>
         <form method="get" asp-action="DowntimeList">
 
             <!-- Row 1: From | To | Operation | Location | Machine | Station -->
             <div class="filter-row filter-row-1">
                 <div class="filter-group">
-                    <label>From Date</label>
+                    <label data-i18n="downtimeList.fromDate">From Date</label>
                     <input type="date" name="fromDate" value="@qFrom"
                            class="form-control @(!string.IsNullOrEmpty(qFrom) ? "active-filter" : "")" />
                 </div>
                 <div class="filter-group">
-                    <label>To Date</label>
+                    <label data-i18n="downtimeList.toDate">To Date</label>
                     <input type="date" name="toDate" value="@qTo"
                            class="form-control @(!string.IsNullOrEmpty(qTo) ? "active-filter" : "")" />
                 </div>
                 <div class="filter-group">
-                    <label>Operation</label>
+                    <label data-i18n="downtimeList.operation">Operation</label>
                     <select name="operation" class="@(!string.IsNullOrEmpty(qOp) ? "active-filter" : "")">
                         <option value="">-- All --</option>
                         @foreach (var op in ops)
@@ -353,7 +353,7 @@
                     </select>
                 </div>
                 <div class="filter-group">
-                    <label>Location</label>
+                    <label data-i18n="downtimeList.location">Location</label>
                     <select name="location" class="@(!string.IsNullOrEmpty(qLocation) ? "active-filter" : "")">
                         <option value="">-- All --</option>
                         @foreach (var loc in locationOpts)
@@ -363,7 +363,7 @@
                     </select>
                 </div>
                 <div class="filter-group">
-                    <label>Machine</label>
+                    <label data-i18n="downtimeList.machine">Machine</label>
                     <select name="machine" class="@(!string.IsNullOrEmpty(qMachine) ? "active-filter" : "")">
                         <option value="">-- All --</option>
                         @foreach (var m in machineOpts)
@@ -373,7 +373,7 @@
                     </select>
                 </div>
                 <div class="filter-group">
-                    <label>Station</label>
+                    <label data-i18n="downtimeList.station">Station</label>
                     <select name="station" class="@(!string.IsNullOrEmpty(qStation) ? "active-filter" : "")">
                         <option value="">-- All --</option>
                         @foreach (var st in stationOpts)
@@ -387,7 +387,7 @@
             <!-- Row 2: Employee | Reason | Effect | Buttons (desktop) -->
             <div class="filter-row filter-row-2">
                 <div class="filter-group">
-                    <label>Employee</label>
+                    <label data-i18n="downtimeList.employee">Employee</label>
                     <select name="employee" class="@(!string.IsNullOrEmpty(qEmployee) ? "active-filter" : "")">
                         <option value="">-- All --</option>
                         @foreach (var emp in employeeOpts)
@@ -397,7 +397,7 @@
                     </select>
                 </div>
                 <div class="filter-group">
-                    <label>Reason</label>
+                    <label data-i18n="downtimeList.reason">Reason</label>
                     <select name="reason" class="@(!string.IsNullOrEmpty(qReason) ? "active-filter" : "")">
                         <option value="">-- All --</option>
                         @foreach (var r in reasonOpts)
@@ -407,7 +407,7 @@
                     </select>
                 </div>
                 <div class="filter-group">
-                    <label>Effect</label>
+                    <label data-i18n="downtimeList.effect">Effect</label>
                     <select name="effect" class="@(!string.IsNullOrEmpty(qEffect) ? "active-filter" : "")">
                         <option value="">-- All --</option>
                         @foreach (var ef in effectOpts)
@@ -419,7 +419,7 @@
 
                 <!-- Buttons: desktop only -->
                 <div class="filter-actions-desktop">
-                    <button type="submit" class="btn btn-primary">
+                    <button type="submit" class="btn btn-primary" data-i18n="downtimeList.applyFilter">
                         🔍 Filter
                         @{
                             int activeCount = new[] { qOp, qFrom, qTo, qStation, qMachine, qLocation, qEmployee, qReason, qEffect }
@@ -430,19 +430,19 @@
                             }
                         }
                     </button>
-                    <a class="btn btn-secondary" href="@Url.Action("DowntimeList", "Status")">🔄 Clear</a>
+                    <a class="btn btn-secondary" href="@Url.Action("DowntimeList", "Status")" data-i18n="downtimeList.resetFilter">🔄 Clear</a>
                     <a class="btn btn-success"
                        href="@Url.Action("ExportDowntimeListToExcel", "Status", new {
                            operation = qOp, fromDate = qFrom, toDate = qTo,
                            station = qStation, machine = qMachine, location = qLocation,
                            employee = qEmployee, reason = qReason, effect = qEffect
-                       })">📥 Excel</a>
+                       })" data-i18n="common.exportExcel">📥 Excel</a>
                 </div>
             </div>
 
             <!-- Buttons: mobile only -->
             <div class="filter-actions-mobile">
-                <button type="submit" class="btn btn-primary">
+                <button type="submit" class="btn btn-primary" data-i18n="downtimeList.applyFilter">
                     🔍 Filter
                     @{
                         int activeCountMobile = new[] { qOp, qFrom, qTo, qStation, qMachine, qLocation, qEmployee, qReason, qEffect }
@@ -453,13 +453,13 @@
                         }
                     }
                 </button>
-                <a class="btn btn-secondary" href="@Url.Action("DowntimeList", "Status")">🔄 Clear</a>
+                <a class="btn btn-secondary" href="@Url.Action("DowntimeList", "Status")" data-i18n="downtimeList.resetFilter">🔄 Clear</a>
                 <a class="btn btn-success"
                    href="@Url.Action("ExportDowntimeListToExcel", "Status", new {
                        operation = qOp, fromDate = qFrom, toDate = qTo,
                        station = qStation, machine = qMachine, location = qLocation,
                        employee = qEmployee, reason = qReason, effect = qEffect
-                   })">📥 Excel</a>
+                   })" data-i18n="common.exportExcel">📥 Excel</a>
             </div>
 
         </form>
@@ -470,29 +470,29 @@
         <table>
             <thead>
                 <tr>
-                    <th>Operation</th>
-                    <th>Machine</th>
-                    <th>Location</th>
-                    <th>Reason</th>
-                    <th>Effect</th>
-                    <th>Station</th>
+                    <th data-i18n="downtimeList.colOperation">Operation</th>
+                    <th data-i18n="downtimeList.colMachine">Machine</th>
+                    <th data-i18n="downtimeList.colLocation">Location</th>
+                    <th data-i18n="downtimeList.colReason">Reason</th>
+                    <th data-i18n="downtimeList.colEffect">Effect</th>
+                    <th data-i18n="downtimeList.colStation">Station</th>
                     <th style="display:none;">Estimate Time</th>
-                    <th>State</th>
-                    <th>Action</th>
+                    <th data-i18n="downtimeList.colState">State</th>
+                    <th data-i18n="downtimeList.colAction">Action</th>
                     <th>Image</th>
-                    <th>Description</th>
-                    <th>Root Cause</th>
-                    <th>Spare Parts</th>
-                    <th>Employee </th>
+                    <th data-i18n="downtimeList.colDescription">Description</th>
+                    <th data-i18n="downtimeList.colRootCause">Root Cause</th>
+                    <th data-i18n="downtimeList.colSpareParts">Spare Parts</th>
+                    <th data-i18n="downtimeList.colEmployee">Employee </th>
                     @* <th>Emp. Name</th> *@
-                    <th>Datetime</th>
+                    <th data-i18n="downtimeList.colDatetime">Datetime</th>
                 </tr>
             </thead>
             <tbody>
                 @if (!Model.Any())
                 {
                     <tr>
-                        <td colspan="16" class="no-data">🗂 No data</td>
+                        <td colspan="16" class="no-data" data-i18n="downtimeList.noData">🗂 No data</td>
                     </tr>
                 }
                 else
@@ -552,7 +552,7 @@
     <div class="card-view">
         @if (!Model.Any())
         {
-            <div class="no-data">🗂 No data</div>
+            <div class="no-data" data-i18n="downtimeList.noData">🗂 No data</div>
         }
         else
         {
@@ -576,29 +576,29 @@
 
                     <div class="card-section-title">Basic Info</div>
                     <div class="card-row">
-                        <span class="card-label">Operation:</span>
+                        <span class="card-label" data-i18n="downtimeList.colOperation">Operation:</span>
                         <span class="card-value">@item.Operation</span>
                     </div>
                     <div class="card-row">
-                        <span class="card-label">Machine:</span>
+                        <span class="card-label" data-i18n="downtimeList.colMachine">Machine:</span>
                         <span class="card-value">@(item.MachineCode ?? "-")</span>
                     </div>
                     <div class="card-row">
-                        <span class="card-label">Location:</span>
+                        <span class="card-label" data-i18n="downtimeList.colLocation">Location:</span>
                         <span class="card-value">@(item.Location ?? "-")</span>
                     </div>
                     <div class="card-row">
-                        <span class="card-label">Station:</span>
+                        <span class="card-label" data-i18n="downtimeList.colStation">Station:</span>
                         <span class="card-value">@(item.Station ?? "-")</span>
                     </div>
 
                     <div class="card-section-title">Problem</div>
                     <div class="card-row">
-                        <span class="card-label">Reason:</span>
+                        <span class="card-label" data-i18n="downtimeList.colReason">Reason:</span>
                         <span class="card-value">@(item.Reason ?? "-")</span>
                     </div>
                     <div class="card-row">
-                        <span class="card-label">Effect:</span>
+                        <span class="card-label" data-i18n="downtimeList.colEffect">Effect:</span>
                         <span class="card-value">@effLabel</span>
                     </div>
                     <div class="card-row">
@@ -608,7 +608,7 @@
                     @if (!string.IsNullOrEmpty(item.Description))
                     {
                         <div class="card-row">
-                            <span class="card-label">Description:</span>
+                            <span class="card-label" data-i18n="downtimeList.colDescription">Description:</span>
                             <span class="card-value">@item.Description</span>
                         </div>
                     }
@@ -617,20 +617,20 @@
                     {
                         <div class="card-section-title">Resolution</div>
                         <div class="card-row">
-                            <span class="card-label">Action:</span>
+                            <span class="card-label" data-i18n="downtimeList.colAction">Action:</span>
                             <span class="card-value">@(item.Action ?? "-")</span>
                         </div>
                         <div class="card-row">
-                            <span class="card-label">Root Cause:</span>
+                            <span class="card-label" data-i18n="downtimeList.colRootCause">Root Cause:</span>
                             <span class="card-value">@(item.RootCause ?? "-")</span>
                         </div>
                         <div class="card-row">
-                            <span class="card-label">Spare Parts:</span>
+                            <span class="card-label" data-i18n="downtimeList.colSpareParts">Spare Parts:</span>
                             <span class="card-value">@(item.SpareParts ?? "-")</span>
                         </div>
                     }
 
-                    <div class="card-section-title">Employee</div>
+                    <div class="card-section-title" data-i18n="downtimeList.colEmployee">Employee</div>
                     <div class="card-row">
                         <span class="card-label">Emp. Code:</span>
                         <span class="card-value">@(item.EmployeeCode ?? "-")</span>
@@ -642,7 +642,7 @@
 
                     <div class="card-section-title">Time</div>
                     <div class="card-row">
-                        <span class="card-label">Datetime:</span>
+                        <span class="card-label" data-i18n="downtimeList.colDatetime">Datetime:</span>
                         <span class="card-value">@(item.Datetime?.ToString("dd/MM/yyyy HH:mm") ?? "-")</span>
                     </div>
 
@@ -674,7 +674,8 @@
                        operation = qOp, fromDate = qFrom, toDate = qTo,
                        station = qStation, machine = qMachine, location = qLocation,
                        employee = qEmployee, reason = qReason, effect = qEffect,
-                       page = currentPage - 1, pageSize = ViewBag.PageSize })">
+                       page = currentPage - 1, pageSize = ViewBag.PageSize })"
+                   data-i18n="downtimeList.prevPage">
                     ← Previous
                 </a>
             }
@@ -686,7 +687,8 @@
                        operation = qOp, fromDate = qFrom, toDate = qTo,
                        station = qStation, machine = qMachine, location = qLocation,
                        employee = qEmployee, reason = qReason, effect = qEffect,
-                       page = currentPage + 1, pageSize = ViewBag.PageSize })">
+                       page = currentPage + 1, pageSize = ViewBag.PageSize })"
+                   data-i18n="downtimeList.nextPage">
                     Next →
                 </a>
             }

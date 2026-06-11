@@ -374,8 +374,8 @@
 
 <div class="pn-header">
     <div>
-        <h1>📬 Production Notifications</h1>
-        <div class="sub">All notifications of Production</div>
+        <h1 data-i18n="prodNotifs.pageTitle">📬 Production Notifications</h1>
+        <div class="sub" data-i18n="prodNotifs.subtitle">All notifications of Production</div>
     </div>
     <span style="background:#1e40af;color:#fff;padding:6px 14px;border-radius:99px;font-size:13px;font-weight:600;">
         👤 @username
@@ -396,28 +396,28 @@
         <div class="pn-sum-card">
             <div class="pn-sum-icon">📋</div>
             <div>
-                <div class="pn-sum-label">Total Notifications</div>
+                <div class="pn-sum-label" data-i18n="prodNotifs.totalNotifs">Total Notifications</div>
                 <div class="pn-sum-val val-total">@total</div>
             </div>
         </div>
         <div class="pn-sum-card">
             <div class="pn-sum-icon">✅</div>
             <div>
-                <div class="pn-sum-label">Accepted</div>
+                <div class="pn-sum-label" data-i18n="prodNotifs.accepted">Accepted</div>
                 <div class="pn-sum-val val-accept">@accepts</div>
             </div>
         </div>
         <div class="pn-sum-card">
             <div class="pn-sum-icon">⏳</div>
             <div>
-                <div class="pn-sum-label">Response</div>
+                <div class="pn-sum-label" data-i18n="prodNotifs.waiting">Waiting</div>
                 <div class="pn-sum-val val-wait">@waits</div>
             </div>
         </div>
         <div class="pn-sum-card">
             <div class="pn-sum-icon">🔧</div>
             <div>
-                <div class="pn-sum-label">Fixed</div>
+                <div class="pn-sum-label" data-i18n="prodNotifs.fixComplete">Fix Complete</div>
                 <div class="pn-sum-val val-fix">@fixes</div>
             </div>
         </div>
@@ -425,21 +425,21 @@
 
     <!-- Date filter bar -->
     <div class="pn-date-filter">
-        <label>📅 Date:</label>
+        <label>📅 <span data-i18n="common.date">Date</span>:</label>
         <input type="date" id="filterFrom">
         <span style="color:#6b7280;font-size:13px;">—</span>
         <input type="date" id="filterTo">
-        <button class="pn-filter-btn apply" onclick="applyDateFilter()">🔍 Filter</button>
-        <button class="pn-filter-btn clear" onclick="clearDateFilter()">✕ Clear</button>
+        <button class="pn-filter-btn apply" onclick="applyDateFilter()">🔍 <span data-i18n="common.filter">Filter</span></button>
+        <button class="pn-filter-btn clear" onclick="clearDateFilter()">✕ <span data-i18n="common.clear">Clear</span></button>
         <span id="dateFilterInfo" style="font-size:12px;color:#6b7280;margin-left:4px;"></span>
     </div>
 
     <!-- Filter tabs -->
     <div class="pn-tabs">
-        <button class="pn-tab active" onclick="setFilter('ALL', this)">All (@total)</button>
-        <button class="pn-tab" onclick="setFilter('ACCEPT', this)">✅ Accepted (@accepts)</button>
-        <button class="pn-tab" onclick="setFilter('WAIT', this)">⏳ Response (@waits)</button>
-        <button class="pn-tab" onclick="setFilter('FIX_COMPLETE', this)">🔧 Fixed (@fixes)</button>
+        <button class="pn-tab active" onclick="setFilter('ALL', this)" data-i18n="prodNotifs.allTab">All (@total)</button>
+        <button class="pn-tab" onclick="setFilter('ACCEPT', this)" data-i18n="prodNotifs.acceptTab">✅ Accepted (@accepts)</button>
+        <button class="pn-tab" onclick="setFilter('WAIT', this)" data-i18n="prodNotifs.waitTab">⏳ Waiting (@waits)</button>
+        <button class="pn-tab" onclick="setFilter('FIX_COMPLETE', this)" data-i18n="prodNotifs.fixTab">🔧 Fix Complete (@fixes)</button>
     </div>
 
     <!-- Notification cards -->
@@ -448,7 +448,7 @@
         {
             <div class="pn-empty">
                 <span class="empty-icon">📭</span>
-                No notifications available for today.<br>
+                <span data-i18n="prodNotifs.noNotifs">No notifications for the selected filter.</span><br>
                 <small style="font-size:13px;margin-top:6px;display:block;">
                     When technicians respond to your downtime calls, notifications will appear here.
                 </small>
@@ -497,11 +497,11 @@
                         <div style="display:flex;align-items:center;gap:8px;">
                             @if (!n.IsRead)
                             {
-                                <button class="pn-mark-read-btn" onclick="markProdCardRead(this, @n.Id)" title="标记已读 / Mark as read">✓ 已读</button>
-                                <span class="pn-unread-dot" title="未读"></span>
+                                <button class="pn-mark-read-btn" onclick="markProdCardRead(this, @n.Id)" title="Mark as read">✓ Mark read</button>
+                                <span class="pn-unread-dot" title="Unread"></span>
                             }
                             <span class="pn-time">🕐 @n.CreatedAt.ToString("HH:mm")</span>
-                            <button class="pn-delete-btn" onclick="deleteNotif(this, @n.Id)" title="删除此通知">🗑</button>
+                            <button class="pn-delete-btn" onclick="deleteNotif(this, @n.Id)" title="Delete this notification">🗑</button>
                         </div>
                     </div>
                     <div class="pn-title">@n.Title</div>
@@ -512,15 +512,15 @@
                     <div class="pn-meta">
                         @if (!string.IsNullOrEmpty(n.MachineCode))
                         {
-                            <span>🔩 设备: <strong>@n.MachineCode</strong></span>
+                            <span>🔩 <span data-i18n="prodNotifs.machine">Machine</span>: <strong>@n.MachineCode</strong></span>
                         }
                         @if (!string.IsNullOrEmpty(n.Operation))
                         {
-                            <span>📍 产线: <strong>@n.Operation</strong></span>
+                            <span>📍 <span data-i18n="prodNotifs.line">Line</span>: <strong>@n.Operation</strong></span>
                         }
                         @if (!string.IsNullOrEmpty(n.TechName))
                         {
-                            <span>👨‍🔧 技术员: <strong>@n.TechName</strong></span>
+                            <span>👨‍🔧 <span data-i18n="prodNotifs.employee">Employee</span>: <strong>@n.TechName</strong></span>
                         }
                     </div>
                     @if (isFix)
@@ -530,14 +530,15 @@
                         <div class="pn-run-action" id="run-action-@n.Id">
                             @if (alreadyRun)
                             {
-                                <span class="run-done-badge">▶ Running / Machine is Running ✓</span>
+                                <span class="run-done-badge" data-i18n="prodNotifs.runningMsg">▶ Running / Machine is Running ✓</span>
                             }
                             else
                             {
                                 <button class="btn-pn-run"
                                         onclick="prodRunMachine(this, '@n.MachineCode', '@n.Operation', '@n.Id', '@n.TechName')"
-                                        title="确认设备已恢复，记录运行">
-                                    ▶ Running (Run)
+                                        title="Confirm machine is restored and record run"
+                                        data-i18n="prodNotifs.runMachine">
+                                    ▶ Run Machine
                                 </button>
                             }
                         </div>
@@ -555,8 +556,9 @@
                             {
                                 <button class="btn-call-dri"
                                         onclick="prodCallDRI(this, @(n.TechResponseId ?? 0), '@n.MachineCode', @n.Id)"
-                                        title="Call PDE/QUAL/FAC/IT department">
-                                    🏢 Call Relevant Department (DRI)
+                                        title="Call PDE/QUAL/FAC/IT department"
+                                        data-i18n="prodNotifs.callDRI">
+                                    📞 Call DRI
                                 </button>
                             }
                         </div>
@@ -571,7 +573,7 @@
         <div class="pn-page-info" id="pageInfo"></div>
         <div class="pn-page-btns" id="pageBtns"></div>
         <div class="pn-pagesize">
-            每页 / Page:
+            <span data-i18n="common.pageSize">Page</span>:
             <select id="pageSizeSelect" onchange="changePageSize(this.value)">
                 <option value="5">5</option>
                 <option value="10" selected>10</option>
@@ -670,8 +672,8 @@ if (typeof connection !== 'undefined') {
         updateBell(prodUnreadCount);
         showProdToast(
             data.action === 'ACCEPT'
-                ? `✅ 技术员 [${data.techName}] 正在前往维修设备 ${data.machineCode}`
-                : `⏳ 技术员 [${data.techName}] 已查看，请稍候`,
+                ? `✅ ${window.i18nT('prodNotifs.employee')} [${data.techName}] ${window.i18nT('prodNotifs.techResponse')} ${data.machineCode}`
+                : `⏳ [${data.techName}] ${window.i18nT('prodNotifs.waiting')}`,
             'accept'
         );
     });
@@ -681,8 +683,8 @@ if (typeof connection !== 'undefined') {
         prodUnreadCount++;
         updateBell(prodUnreadCount);
         showProdToast(
-            `❌ 技术员 [${data.techName}] 已拒绝 — 设备: ${data.machineCode}`
-            + (data.rejectReason ? ` | 原因: ${data.rejectReason}` : ''),
+            `❌ [${data.techName}] — ${window.i18nT('prodNotifs.machine')}: ${data.machineCode}`
+            + (data.rejectReason ? ` | ${data.rejectReason}` : ''),
             'reject'
         );
     });
@@ -691,7 +693,7 @@ if (typeof connection !== 'undefined') {
         playProdSound();
         prodUnreadCount++;
         updateBell(prodUnreadCount);
-        showProdToast(`🔧 设备 ${data.machineCode} 已修复完成！`, 'fix');
+        showProdToast(`🔧 ${window.i18nT('prodNotifs.machine')} ${data.machineCode} — ${window.i18nT('prodNotifs.fixComplete')}!`, 'fix');
     });
 
     // PIE xác nhận không phải E&F → Prod nhận yêu cầu call DRI
@@ -699,7 +701,7 @@ if (typeof connection !== 'undefined') {
         playProdSound();
         prodUnreadCount++;
         updateBell(prodUnreadCount);
-        showProdToast(`🏢 Machine ${data.machineCode} — PIE: Not E&F issue. Please call relevant department!`, 'fix');
+        showProdToast(`🏢 ${window.i18nT('prodNotifs.machine')} ${data.machineCode} — PIE: Not E&F issue. ${window.i18nT('prodNotifs.callDRI')}!`, 'fix');
     });
 }
 
@@ -708,7 +710,7 @@ async function prodCallDRI(btn, techResponseId, machineCode, notifId) {
     if (!techResponseId) { alert('Cannot find tech response ID!'); return; }
 
     btn.disabled  = true;
-    btn.innerHTML = '⏳ Calling...';
+    btn.innerHTML = `⏳ ${window.i18nT('common.loading') || 'Calling...'}`;
 
     try {
         const res  = await fetch('/downtime/Status/ProdCallDRI', {
@@ -722,22 +724,22 @@ async function prodCallDRI(btn, techResponseId, machineCode, notifId) {
             if (actionDiv) {
                 actionDiv.innerHTML = `<span class="dri-called-badge">🏢 DRI department has been notified ✓</span>`;
             }
-            showProdToast(`🏢 Relevant department has been called for machine ${machineCode}!`, 'fix');
+            showProdToast(`🏢 ${window.i18nT('prodNotifs.callDRI')} — ${window.i18nT('prodNotifs.machine')}: ${machineCode}!`, 'fix');
         } else {
             btn.disabled  = false;
-            btn.innerHTML = '🏢 Call Relevant Department (DRI)';
+            btn.innerHTML = `📞 ${window.i18nT('prodNotifs.callDRI') || 'Call DRI'}`;
             showProdToast('❌ ' + (data.message || 'Error'), 'reject');
         }
     } catch(e) {
         btn.disabled  = false;
-        btn.innerHTML = '🏢 Call Relevant Department (DRI)';
-        showProdToast('❌ Connection error', 'reject');
+        btn.innerHTML = `📞 ${window.i18nT('prodNotifs.callDRI') || 'Call DRI'}`;
+        showProdToast(`❌ ${window.i18nT('common.connectionError') || 'Connection error'}`, 'reject');
     }
 }
 
 // ════ Xóa thông báo ════
 async function deleteNotif(btn, id) {
-    if (!confirm('确认删除此通知？\nDelete this notification?')) return;
+    if (!confirm(`${window.i18nT('common.confirmDelete') || 'Delete this notification?'}`)) return;
     btn.disabled = true;
     btn.textContent = '…';
     try {
@@ -758,19 +760,19 @@ async function deleteNotif(btn, id) {
                 card.remove();
                 if (!document.querySelector('#pnList .pn-card')) {
                     document.getElementById('pnList').innerHTML =
-                        `<div class="pn-empty"><span class="empty-icon">📭</span>暂无通知。</div>`;
+                        `<div class="pn-empty"><span class="empty-icon">📭</span>${window.i18nT('prodNotifs.noNotifs') || 'No notifications for the selected filter.'}</div>`;
                 }
                 if (typeof window._pnRender === 'function') window._pnRender();
             }, 220);
         } else {
             btn.disabled = false;
             btn.textContent = '🗑';
-            alert(json.message || '删除失败 / Delete failed');
+            alert(json.message || `${window.i18nT('common.deleteFailed') || 'Delete failed'}`);
         }
     } catch(e) {
         btn.disabled = false;
         btn.textContent = '🗑';
-        alert('删除失败 / Delete failed');
+        alert(`${window.i18nT('common.deleteFailed') || 'Delete failed'}`);
     }
 }
 
@@ -793,7 +795,7 @@ function applyDateFilter() {
     });
 
     if (from || to) {
-        info.textContent = `已筛选: 显示 ${shown} 条，隐藏 ${hidden} 条`;
+        info.textContent = `${window.i18nT('common.showing') || 'Showing'} ${shown}, ${window.i18nT('common.hidden') || 'hidden'} ${hidden}`;
     } else {
         info.textContent = '';
     }
@@ -905,7 +907,7 @@ window.scrollToProdCard = function(id) {
         // Info text
         const showing = Math.min(end, total);
         document.getElementById('pageInfo').innerHTML =
-            `显示 <strong>${start + 1}–${showing}</strong> / 共 <strong>${total}</strong> 条`;
+            `${window.i18nT('common.showing') || 'Showing'} <strong>${start + 1}–${showing}</strong> / <strong>${total}</strong>`;
 
         // Page buttons
         renderPageBtns(pages);
@@ -985,10 +987,10 @@ window.scrollToProdCard = function(id) {
 
 // ════ PROD bấm Run từ FIX_COMPLETE notification ════
 async function prodRunMachine(btn, machineCode, operation, notifId, techName) {
-    if (!machineCode) { alert('Không tìm thấy mã máy!'); return; }
+    if (!machineCode) { alert('Cannot find machine code!'); return; }
 
     btn.disabled  = true;
-    btn.innerHTML = '⏳ 处理中...';
+    btn.innerHTML = `⏳ ${window.i18nT('common.loading') || 'Processing...'}`;
 
     try {
         const fd = new FormData();
@@ -1024,19 +1026,19 @@ async function prodRunMachine(btn, machineCode, operation, notifId, techName) {
         if (data?.success) {
             const actionDiv = document.getElementById('run-action-' + notifId);
             if (actionDiv) {
-                actionDiv.innerHTML = '<span class="run-done-badge">▶ 已运行 / Machine is Running ✓</span>';
+                actionDiv.innerHTML = `<span class="run-done-badge">${window.i18nT('prodNotifs.runningMsg') || '▶ Machine is Running ✓'}</span>`;
             }
-            showProdToast('✅ 设备已标记为运行！', 'fix');
+            showProdToast(`✅ ${window.i18nT('prodNotifs.runningMsg') || 'Production resumed'}!`, 'fix');
         } else {
             btn.disabled  = false;
-            btn.innerHTML = '▶ 运行 (Run)';
-            showProdToast('❌ ' + (data?.message || '运行失败'), 'reject');
+            btn.innerHTML = `▶ ${window.i18nT('prodNotifs.runMachine') || 'Run Machine'}`;
+            showProdToast('❌ ' + (data?.message || `${window.i18nT('common.error') || 'Error'}`), 'reject');
         }
     } catch (err) {
         console.error('prodRunMachine error:', err);
         btn.disabled  = false;
-        btn.innerHTML = '▶ 运行 (Run)';
-        showProdToast('❌ 运行出错！', 'reject');
+        btn.innerHTML = `▶ ${window.i18nT('prodNotifs.runMachine') || 'Run Machine'}`;
+        showProdToast(`❌ ${window.i18nT('common.connectionError') || 'Connection error'}!`, 'reject');
     }
 }
 

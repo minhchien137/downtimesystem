@@ -210,8 +210,8 @@
 
 <div class="dash-header">
     <div>
-        <h1>🔧 DRI Dashboard</h1>
-        <div class="sub">PDE / QUAL / FAC / IT — Real-time issue notifications</div>
+        <h1 data-i18n="dri.pageTitle">🔧 DRI Dashboard</h1>
+        <div class="sub" data-i18n="dri.subtitle">PDE / QUAL / FAC / IT — Real-time issue notifications</div>
     </div>
     <span class="conn-badge connecting" id="connBadge">
         <span class="conn-dot"></span>
@@ -222,8 +222,8 @@
 <div class="dash-body">
 
     <div class="audio-banner" id="audioBanner">
-        ⚠ Click to enable alert sounds.
-        <button onclick="unlockAudio()">Enable Sound</button>
+        <span data-i18n="common.enableSoundPrompt">⚠ Click to enable alert sounds.</span>
+        <button onclick="unlockAudio()" data-i18n="common.enableSound">Enable Sound</button>
     </div>
 
     <!-- Summary -->
@@ -231,21 +231,21 @@
         <div class="summary-card">
             <div class="summary-icon">🔔</div>
             <div>
-                <div class="summary-label">Pending</div>
+                <div class="summary-label" data-i18n="dri.pending">Pending</div>
                 <div class="summary-value val-pending" id="cntPending">0</div>
             </div>
         </div>
         <div class="summary-card">
             <div class="summary-icon">🔧</div>
             <div>
-                <div class="summary-label">Handling</div>
+                <div class="summary-label" data-i18n="common.handling">Handling</div>
                 <div class="summary-value val-handling" id="cntHandling">0</div>
             </div>
         </div>
         <div class="summary-card">
             <div class="summary-icon">✅</div>
             <div>
-                <div class="summary-label">Resolved</div>
+                <div class="summary-label" data-i18n="dri.resolved">Resolved</div>
                 <div class="summary-value val-done" id="cntDone">0</div>
             </div>
         </div>
@@ -253,18 +253,18 @@
 
     <!-- Toolbar -->
     <div class="toolbar">
-        <div class="toolbar-title">📬 Call Notifications</div>
+        <div class="toolbar-title" data-i18n="dri.callNotifications">📬 Call Notifications</div>
         <input type="date" id="notifDateFilter" class="notif-date-filter" onchange="reloadByDate()">
-        <button class="btn-today" onclick="setToday()">📅 Today</button>
-        <button class="btn-clear" onclick="clearDone()">🗑 Clear Resolved</button>
+        <button class="btn-today" onclick="setToday()" data-i18n="common.today">📅 Today</button>
+        <button class="btn-clear" onclick="clearDone()" data-i18n="dri.clearResolved">🗑 Clear Resolved</button>
     </div>
 
     <!-- Notification list -->
     <div class="notif-list" id="notifList">
         <div class="notif-empty" id="emptyState">
             <span class="empty-icon">🟢</span>
-            Waiting for notifications...<br>
-            <small style="font-size:13px;margin-top:6px;display:block;">
+            <span data-i18n="dri.noPending">No pending DRI requests.</span><br>
+            <small style="font-size:13px;margin-top:6px;display:block;" data-i18n="dri.noPendingHint">
                 When Production calls your department, it will appear here.
             </small>
         </div>
@@ -366,11 +366,11 @@ function renderCard(data, prepend = true) {
     if (alreadyHandled) {
         actionsHtml = buildStatusBadge(data.techAction);
     } else {
-        actionsHtml = `<button class="btn-dri-accept" onclick="driAccept(this)">🔧 Accept & Handle</button>`;
+        actionsHtml = `<button class="btn-dri-accept" onclick="driAccept(this)">🔧 ${window.i18nT('dri.accept')}</button>`;
     }
 
     card.innerHTML = `
-        <button class="notif-dismiss" onclick="removeCard(this)" title="Dismiss">🗑</button>
+        <button class="notif-dismiss" onclick="removeCard(this)" title="${window.i18nT('common.dismiss')}">🗑</button>
         <div class="notif-top">
             <span class="notif-badge badge-dri">🏢 Department Call</span>
             <span class="notif-time">🕐 ${data.datetime || data.createdAt || new Date().toLocaleString()}</span>
@@ -379,38 +379,38 @@ function renderCard(data, prepend = true) {
         <div class="notif-op">📍 ${data.operation || '-'} ${data.location ? '· ' + data.location : ''}</div>
         <div class="notif-grid">
             <div class="notif-field">
-                <div class="notif-field-label">👤 Operator</div>
+                <div class="notif-field-label">👤 ${window.i18nT('common.operator')}</div>
                 <div class="notif-field-value">${data.employeeName || data.employeeCode || '-'}</div>
             </div>
-            ${data.reason ? `<div class="notif-field"><div class="notif-field-label">⚠ Reason</div><div class="notif-field-value">${data.reason}</div></div>` : ''}
-            ${data.description ? `<div class="notif-field" style="grid-column:1/-1;"><div class="notif-field-label">📝 Description</div><div class="notif-field-value">${data.description}</div></div>` : ''}
+            ${data.reason ? `<div class="notif-field"><div class="notif-field-label">⚠ ${window.i18nT('common.reason')}</div><div class="notif-field-value">${data.reason}</div></div>` : ''}
+            ${data.description ? `<div class="notif-field" style="grid-column:1/-1;"><div class="notif-field-label">📝 ${window.i18nT('common.description')}</div><div class="notif-field-value">${data.description}</div></div>` : ''}
         </div>
         <div class="notif-actions" id="actions-${card.dataset.techResponseId}">${actionsHtml}</div>
 
         <!-- Problem form (shown after Accept) -->
         <div class="problem-form" id="form-${card.dataset.techResponseId}">
-            <h6>📋 Troubleshoot & Record Details</h6>
+            <h6>📋 ${window.i18nT('dri.troubleshootTitle')}</h6>
             <div class="pf-grid">
                 <div class="pf-group" style="grid-column:1/-1;">
-                    <label>Problem Description</label>
-                    <textarea rows="2" placeholder="Describe the issue found..." class="pf-desc"></textarea>
+                    <label>${window.i18nT('dri.problemDescription')}</label>
+                    <textarea rows="2" placeholder="${window.i18nT('dri.problemDescriptionPh')}" class="pf-desc"></textarea>
                 </div>
                 <div class="pf-group">
-                    <label>Root Cause</label>
-                    <input type="text" placeholder="Enter root cause..." class="pf-root">
+                    <label>${window.i18nT('dri.rootCause')}</label>
+                    <input type="text" placeholder="${window.i18nT('dri.rootCausePh')}" class="pf-root">
                 </div>
                 <div class="pf-group">
-                    <label>Action Taken</label>
-                    <input type="text" placeholder="Enter action taken..." class="pf-action">
+                    <label>${window.i18nT('dri.actionTaken')}</label>
+                    <input type="text" placeholder="${window.i18nT('dri.actionTakenPh')}" class="pf-action">
                 </div>
                 <div class="pf-group">
-                    <label>Spare Parts (optional)</label>
-                    <input type="text" placeholder="Parts used..." class="pf-parts">
+                    <label>${window.i18nT('dri.spareParts')}</label>
+                    <input type="text" placeholder="${window.i18nT('dri.sparePartsPh')}" class="pf-parts">
                 </div>
             </div>
             <div class="pf-actions">
-                <button class="btn-dri-solved" onclick="driProblemSolved(this)">✅ Problem Solved — Notify Prod to Run</button>
-                <button class="btn-dri-unsolved" onclick="driProblemNotSolved(this)">❌ Problem NOT Solved — Record & End</button>
+                <button class="btn-dri-solved" onclick="driProblemSolved(this)">✅ ${window.i18nT('dri.resolve')}</button>
+                <button class="btn-dri-unsolved" onclick="driProblemNotSolved(this)">❌ ${window.i18nT('dri.escalate')}</button>
             </div>
         </div>
     `;
@@ -423,17 +423,17 @@ function renderCard(data, prepend = true) {
 }
 
 function buildStatusBadge(action) {
-    if (action === 'DRI_SOLVED')    return `<span class="responded-badge solved">✅ Problem Solved — Prod notified to Run</span>`;
-    if (action === 'DRI_UNSOLVED')  return `<span class="responded-badge unsolved">❌ Recorded as Unresolved</span>`;
-    if (action === 'DRI_ACCEPT')    return `<span class="responded-badge handling">🔧 Handling...</span>`;
-    return `<span class="responded-badge handling">🔧 In Progress</span>`;
+    if (action === 'DRI_SOLVED')    return `<span class="responded-badge solved">✅ ${window.i18nT('dri.statusSolved')}</span>`;
+    if (action === 'DRI_UNSOLVED')  return `<span class="responded-badge unsolved">❌ ${window.i18nT('dri.statusUnresolved')}</span>`;
+    if (action === 'DRI_ACCEPT')    return `<span class="responded-badge handling">🔧 ${window.i18nT('dri.statusHandling')}</span>`;
+    return `<span class="responded-badge handling">🔧 ${window.i18nT('dri.statusInProgress')}</span>`;
 }
 
 // ── DRI Accept ──
 async function driAccept(btn) {
     const card = btn.closest('.notif-card');
     const id   = card.dataset.techResponseId;
-    btn.disabled = true; btn.innerHTML = '⏳ Sending...';
+    btn.disabled = true; btn.innerHTML = `⏳ ${window.i18nT('common.loading')}`;
 
     try {
         const res  = await fetch(`${pathBase}/Status/DRIAccept`, {
@@ -444,19 +444,19 @@ async function driAccept(btn) {
         if (data.success) {
             // Replace accept button with "handling" badge + show form
             const actionsDiv = document.getElementById(`actions-${id}`);
-            actionsDiv.innerHTML = `<span class="responded-badge handling">🔧 Handling — fill in details below</span>`;
+            actionsDiv.innerHTML = `<span class="responded-badge handling">🔧 ${window.i18nT('dri.statusHandlingDetails')}</span>`;
             document.getElementById(`form-${id}`).classList.add('open');
             cntPending = Math.max(0, cntPending - 1);
             cntHandling++;
             updateCounters();
-            showToast('✅ Accepted — please troubleshoot and fill in details.');
+            showToast(`✅ ${window.i18nT('dri.toastAccepted')}`);
         } else {
-            btn.disabled = false; btn.innerHTML = '🔧 Accept & Handle';
+            btn.disabled = false; btn.innerHTML = `🔧 ${window.i18nT('dri.accept')}`;
             showToast('❌ Error: ' + (data.message || 'Failed'), true);
         }
     } catch(e) {
-        btn.disabled = false; btn.innerHTML = '🔧 Accept & Handle';
-        showToast('❌ Connection error', true);
+        btn.disabled = false; btn.innerHTML = `🔧 ${window.i18nT('dri.accept')}`;
+        showToast(`❌ ${window.i18nT('common.connectionError')}`, true);
     }
 }
 
@@ -471,7 +471,7 @@ async function driProblemSolved(btn) {
     const action      = form.querySelector('.pf-action')?.value.trim() || '';
     const spareParts  = form.querySelector('.pf-parts')?.value.trim()  || '';
 
-    btn.disabled = true; btn.innerHTML = '⏳ Sending...';
+    btn.disabled = true; btn.innerHTML = `⏳ ${window.i18nT('common.loading')}`;
 
     try {
         const res  = await fetch(`${pathBase}/Status/DRIProblemSolved`, {
@@ -481,19 +481,19 @@ async function driProblemSolved(btn) {
         const data = await res.json();
         if (data.success) {
             const actionsDiv = document.getElementById(`actions-${id}`);
-            actionsDiv.innerHTML = `<span class="responded-badge solved">✅ Problem Solved — Production notified to click Run</span>`;
+            actionsDiv.innerHTML = `<span class="responded-badge solved">✅ ${window.i18nT('dri.statusSolvedRun')}</span>`;
             form.classList.remove('open');
             cntHandling = Math.max(0, cntHandling - 1);
             cntDone++;
             updateCounters();
-            showToast('✅ Production has been notified to click Run!');
+            showToast(`✅ ${window.i18nT('dri.toastSolved')}`);
         } else {
-            btn.disabled = false; btn.innerHTML = '✅ Problem Solved — Notify Prod to Run';
+            btn.disabled = false; btn.innerHTML = `✅ ${window.i18nT('dri.resolve')}`;
             showToast('❌ ' + (data.message || 'Error'), true);
         }
     } catch(e) {
-        btn.disabled = false; btn.innerHTML = '✅ Problem Solved — Notify Prod to Run';
-        showToast('❌ Connection error', true);
+        btn.disabled = false; btn.innerHTML = `✅ ${window.i18nT('dri.resolve')}`;
+        showToast(`❌ ${window.i18nT('common.connectionError')}`, true);
     }
 }
 
@@ -509,11 +509,11 @@ async function driProblemNotSolved(btn) {
     const spareParts  = form.querySelector('.pf-parts')?.value.trim()  || '';
 
     if (!description && !rootCause) {
-        showToast('⚠ Please fill in at least Description or Root Cause.', true);
+        showToast(`⚠ ${window.i18nT('dri.validationFillRequired')}`, true);
         return;
     }
 
-    btn.disabled = true; btn.innerHTML = '⏳ Recording...';
+    btn.disabled = true; btn.innerHTML = `⏳ ${window.i18nT('common.loading')}`;
 
     try {
         const res  = await fetch(`${pathBase}/Status/DRIProblemNotSolved`, {
@@ -523,19 +523,19 @@ async function driProblemNotSolved(btn) {
         const data = await res.json();
         if (data.success) {
             const actionsDiv = document.getElementById(`actions-${id}`);
-            actionsDiv.innerHTML = `<span class="responded-badge unsolved">❌ Recorded as Unresolved — Details saved</span>`;
+            actionsDiv.innerHTML = `<span class="responded-badge unsolved">❌ ${window.i18nT('dri.statusUnresolvedSaved')}</span>`;
             form.classList.remove('open');
             cntHandling = Math.max(0, cntHandling - 1);
             cntDone++;
             updateCounters();
-            showToast('📝 Details recorded. Issue marked as unresolved.');
+            showToast(`📝 ${window.i18nT('dri.toastNotSolved')}`);
         } else {
-            btn.disabled = false; btn.innerHTML = '❌ Problem NOT Solved — Record & End';
+            btn.disabled = false; btn.innerHTML = `❌ ${window.i18nT('dri.escalate')}`;
             showToast('❌ ' + (data.message || 'Error'), true);
         }
     } catch(e) {
-        btn.disabled = false; btn.innerHTML = '❌ Problem NOT Solved — Record & End';
-        showToast('❌ Connection error', true);
+        btn.disabled = false; btn.innerHTML = `❌ ${window.i18nT('dri.escalate')}`;
+        showToast(`❌ ${window.i18nT('common.connectionError')}`, true);
     }
 }
 
@@ -549,7 +549,7 @@ function removeCard(btn) {
             notifList.innerHTML = '';
             const e = document.createElement('div');
             e.className = 'notif-empty'; e.id = 'emptyState';
-            e.innerHTML = `<span class="empty-icon">🟢</span>Waiting for notifications...`;
+            e.innerHTML = `<span class="empty-icon">🟢</span>${window.i18nT('dri.noPending')}`;
             notifList.appendChild(e);
             emptyState = e;
         }
@@ -605,7 +605,7 @@ async function reloadByDate() {
     updateCounters(); emptyState = null;
     const tmp = document.createElement('div');
     tmp.className = 'notif-empty'; tmp.id = 'emptyState';
-    tmp.innerHTML = `<span class="empty-icon">⏳</span>Loading...`;
+    tmp.innerHTML = `<span class="empty-icon">⏳</span>${window.i18nT('common.loading')}`;
     notifList.appendChild(tmp); emptyState = tmp;
     await loadFromDB();
 }
@@ -626,20 +626,20 @@ connection.on("ReceiveDRINotification", (data) => {
     flashScreen();
 });
 
-connection.onreconnecting(() => { connBadge.className = 'conn-badge connecting'; connText.textContent = 'Reconnecting...'; });
+connection.onreconnecting(() => { connBadge.className = 'conn-badge connecting'; connText.textContent = window.i18nT('common.reconnecting'); });
 connection.onreconnected(() => {
-    connBadge.className = 'conn-badge connected'; connText.textContent = 'Connected ✓';
+    connBadge.className = 'conn-badge connected'; connText.textContent = window.i18nT('common.connected');
     connection.invoke("JoinDRIGroup").catch(console.error);
 });
-connection.onclose(() => { connBadge.className = 'conn-badge disconnected'; connText.textContent = 'Disconnected ✗'; });
+connection.onclose(() => { connBadge.className = 'conn-badge disconnected'; connText.textContent = window.i18nT('common.disconnected'); });
 
 async function startConnection() {
     try {
         await connection.start();
         await connection.invoke("JoinDRIGroup");
-        connBadge.className = 'conn-badge connected'; connText.textContent = 'Connected ✓';
+        connBadge.className = 'conn-badge connected'; connText.textContent = window.i18nT('common.connected');
     } catch(e) {
-        connBadge.className = 'conn-badge disconnected'; connText.textContent = 'Error ✗';
+        connBadge.className = 'conn-badge disconnected'; connText.textContent = window.i18nT('common.connectionError');
         setTimeout(startConnection, 5000);
     }
 }

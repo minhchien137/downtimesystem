@@ -1,6 +1,6 @@
 @model List<MachineStatusUpdate.Models.DowntimeReportByOperation>
 @{
-    ViewData["Title"] = "Downtime Report";
+    ViewData["Title"] = "Downtime Report"; // i18n: report.pageTitle
     var chartData = ViewBag.ChartData as MachineStatusUpdate.Models.DowntimeChartData;
     var dailyChartData = ViewBag.DailyChartData as MachineStatusUpdate.Models.DailyDowntimeChartData;
     
@@ -24,6 +24,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="~/js/i18n-init.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -206,7 +207,7 @@
 <body>
     <div class="container-fluid mt-3">
         <div class="page-header">
-            <h1><i class="fas fa-chart-line"></i> Downtime Report</h1>
+            <h1><i class="fas fa-chart-line"></i> <span data-i18n="report.pageTitle">Downtime Report</span></h1>
         </div>
 
         @if (!string.IsNullOrEmpty(ViewBag.ErrorMessage))
@@ -223,19 +224,19 @@
                     <!-- Row 1: Dates + pageSize -->
                     <div class="col-md-2">
                         <label class="form-label fw-bold mb-1">
-                            <i class="fas fa-calendar-alt text-primary"></i> From Date
+                            <i class="fas fa-calendar-alt text-primary"></i> <span data-i18n="report.fromDate">From Date</span>
                         </label>
                         <input type="date" class="form-control form-control-sm" name="fromDate" value="@ViewBag.FromDate" />
                     </div>
                     <div class="col-md-2">
                         <label class="form-label fw-bold mb-1">
-                            <i class="fas fa-calendar-alt text-primary"></i> To Date
+                            <i class="fas fa-calendar-alt text-primary"></i> <span data-i18n="report.toDate">To Date</span>
                         </label>
                         <input type="date" class="form-control form-control-sm" name="toDate" value="@ViewBag.ToDate" />
                     </div>
                     <div class="col-md-2">
                         <label class="form-label fw-bold mb-1">
-                            <i class="fas fa-microchip text-info"></i> Machine No.
+                            <i class="fas fa-microchip text-info"></i> <span data-i18n="report.machine">Machine</span>
                         </label>
                         <select class="form-select form-select-sm" name="machine">
                             <option value="">-- All Machines --</option>
@@ -250,7 +251,7 @@
                     </div>
                     <div class="col-md-2">
                         <label class="form-label fw-bold mb-1">
-                            <i class="fas fa-map-marker-alt text-warning"></i> Location
+                            <i class="fas fa-map-marker-alt text-warning"></i> <span data-i18n="report.location">Location</span>
                         </label>
                         <select class="form-select form-select-sm" name="location">
                             <option value="">-- All Locations --</option>
@@ -282,7 +283,7 @@
                     </div>
                     <div class="col-md-2">
                         <label class="form-label fw-bold mb-1">
-                            <i class="fas fa-tools text-secondary"></i> Effect
+                            <i class="fas fa-tools text-secondary"></i> <span data-i18n="report.effect">Effect</span>
                         </label>
                         <select class="form-select form-select-sm" name="effect">
                             <option value="">-- All --</option>
@@ -307,7 +308,7 @@
                     </div>
                     <div class="col-md-2">
                         <label class="form-label fw-bold mb-1">
-                            <i class="fas fa-list"></i> Records Per Page
+                            <i class="fas fa-list"></i> <span data-i18n="report.recordsPerPage">Records Per Page</span>
                         </label>
                         <select class="form-select form-select-sm" name="pageSize">
                             <option value="5"  selected="@(pageSize == 5)">5 records</option>
@@ -318,12 +319,12 @@
                     </div>
                     <div class="col-md-2">
                         <button type="submit" class="btn btn-primary btn-sm w-100">
-                            <i class="fas fa-search"></i> Filter
+                            <i class="fas fa-search"></i> <span data-i18n="report.apply">🔍 Apply</span>
                         </button>
                     </div>
                     <div class="col-md-2">
                         <a href="@Url.Action("ReportDowntime")" class="btn btn-outline-secondary btn-sm w-100">
-                            <i class="fas fa-times"></i> Reset
+                            <i class="fas fa-times"></i> <span data-i18n="report.reset">✕ Reset</span>
                         </a>
                     </div>
                 </div>
@@ -340,7 +341,7 @@
                 @if (activeFilters.Any())
                 {
                     <div class="mt-2 pt-2 border-top d-flex gap-2 flex-wrap align-items-center">
-                        <small class="text-muted fw-bold"><i class="fas fa-filter"></i> Active Filters:</small>
+                        <small class="text-muted fw-bold"><i class="fas fa-filter"></i> <span data-i18n="report.activeFilters">Active Filters:</span></small>
                         @foreach (var f in activeFilters)
                         {
                             <span class="badge bg-@f.Color">@f.Label: @f.Value</span>
@@ -365,19 +366,19 @@
             <div class="row mb-3">
                 <div class="col-md-3">
                     <div class="stats-card">
-                        <h5 class="text-muted mb-1"><i class="fas fa-cogs"></i> Total Lines</h5>
+                        <h5 class="text-muted mb-1"><i class="fas fa-cogs"></i> <span data-i18n="report.totalLines">Total Lines</span></h5>
                         <h2 class="text-primary mb-0">@allData.Count</h2>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="stats-card">
-                        <h5 class="text-muted mb-1"><i class="fas fa-exclamation-triangle"></i> Total Downtime Events</h5>
+                        <h5 class="text-muted mb-1"><i class="fas fa-exclamation-triangle"></i> <span data-i18n="report.totalDowntimeEvents">Total Downtime Events</span></h5>
                         <h2 class="text-danger mb-0">@allData.Sum(x => x.TotalDowntimeCount)</h2>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="stats-card">
-                        <h5 class="text-muted mb-1"><i class="fas fa-clock"></i> Total Downtime Duration</h5>
+                        <h5 class="text-muted mb-1"><i class="fas fa-clock"></i> <span data-i18n="report.totalDowntime">Total Downtime</span></h5>
                         <h2 class="text-warning mb-0">
                             @{ var totalMinutes = allData.Sum(x => x.TotalDowntimeMinutes);
                                var hours = (int)(totalMinutes / 60);
@@ -388,7 +389,7 @@
                 </div>
                 <div class="col-md-3">
                     <div class="stats-card">
-                        <h5 class="text-muted mb-1"><i class="fas fa-microchip"></i> Affected Machines</h5>
+                        <h5 class="text-muted mb-1"><i class="fas fa-microchip"></i> <span data-i18n="report.affectedMachines">Affected Machines</span></h5>
                         <h2 class="text-info mb-0">@(machineData?.Count ?? 0)</h2>
                     </div>
                 </div>
@@ -397,7 +398,7 @@
             <div class="mb-3 text-end">
                 <a href="@Url.Action("ExportDowntimeReportToExcel", new { fromDate = ViewBag.FromDate, toDate = ViewBag.ToDate, operation = ViewBag.Operation, reason = ViewBag.Reason, location = ViewBag.Location, machine = ViewBag.Machine, effect = ViewBag.Effect, station = ViewBag.Station })"
                     class="btn-export">
-                    <i class="fas fa-file-excel"></i> Export Excel (2 sheets)
+                    <i class="fas fa-file-excel"></i> <span data-i18n="report.exportExcel">📥 Export Excel</span>
                 </a>
             </div>
 
@@ -405,19 +406,19 @@
             <div class="row">
                 <div class="col-md-4">
                     <div class="chart-container">
-                        <h4 class="mb-2"><i class="fas fa-chart-bar"></i> Downtime by Line </h4>
+                        <h4 class="mb-2"><i class="fas fa-chart-bar"></i> <span data-i18n="report.byLine">By Line</span></h4>
                         <canvas id="operationChart"></canvas>
                     </div>
                 </div>
                 <div class="col-md-4">
                     <div class="chart-container">
-                        <h4 class="mb-2"><i class="fas fa-chart-pie"></i> Downtime Distribution</h4>
+                        <h4 class="mb-2"><i class="fas fa-chart-pie"></i> <span data-i18n="report.downtimeDistribution">Downtime Distribution</span></h4>
                         <canvas id="pieChart"></canvas>
                     </div>
                 </div>
                 <div class="col-md-4">
                     <div class="chart-container">
-                        <h4 class="mb-2"><i class="fas fa-exclamation-triangle"></i> Downtime by Reason</h4>
+                        <h4 class="mb-2"><i class="fas fa-exclamation-triangle"></i> <span data-i18n="report.downtimeByReason">Downtime by Reason</span></h4>
                         <canvas id="issCodeChart"></canvas>
                     </div>
                 </div>
@@ -429,7 +430,7 @@
                 <div class="row mt-3">
                     <div class="col-md-12">
                         <div class="daily-chart-container" style="height:380px">
-                            <h4 class="mb-2"><i class="fas fa-microchip"></i> Downtime by Machine (minutes)</h4>
+                            <h4 class="mb-2"><i class="fas fa-microchip"></i> <span data-i18n="report.byMachine">By Machine</span></h4>
                             <canvas id="machineChart"></canvas>
                         </div>
                     </div>
@@ -442,7 +443,7 @@
                 <div class="row mt-3">
                     <div class="col-md-12">
                         <div class="daily-chart-container">
-                            <h4 class="mb-3"><i class="fas fa-chart-line"></i> Daily Downtime Trend</h4>
+                            <h4 class="mb-3"><i class="fas fa-chart-line"></i> <span data-i18n="report.dailyTrend">Daily Downtime Trend</span></h4>
                             <canvas id="dailyTrendChart"></canvas>
                         </div>
                     </div>
@@ -462,7 +463,7 @@
                             labels: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(dailyChartData.Dates)),
                             datasets: [
                                 {
-                                    label: 'Downtime Minutes',
+                                    label: window.i18nT('report.totalMinutes') || 'Downtime Minutes',
                                     data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(dailyChartData.DowntimeMinutes)),
                                     borderColor: 'rgba(54, 162, 235, 1)',
                                     backgroundColor: gradient,
@@ -472,7 +473,7 @@
                                     yAxisID: 'y'
                                 },
                                 {
-                                    label: 'Downtime Count',
+                                    label: window.i18nT('report.downtimeCount') || 'Downtime Count',
                                     data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(dailyChartData.DowntimeCounts)),
                                     borderColor: 'rgba(255, 99, 132, 1)',
                                     backgroundColor: gradient2,
@@ -488,8 +489,8 @@
                             plugins: { legend: { display: true, position: 'top' } },
                             scales: {
                                 x: { title: { display: true, text: 'Date' } },
-                                y: { position: 'left', title: { display: true, text: 'Minutes' } },
-                                y1: { position: 'right', title: { display: true, text: 'Count' }, grid: { drawOnChartArea: false }, ticks: { stepSize: 1, precision: 0 } }
+                                y: { position: 'left', title: { display: true, text: window.i18nT('report.totalMinutes') || 'Minutes' } },
+                                y1: { position: 'right', title: { display: true, text: window.i18nT('report.downtimeCount') || 'Count' }, grid: { drawOnChartArea: false }, ticks: { stepSize: 1, precision: 0 } }
                             },
                             animation: { duration: 2000, easing: 'easeOutQuart' }
                         }
@@ -503,7 +504,7 @@
                 <div class="row mt-3">
                     <div class="col-md-6">
                         <div class="chart-container" style="height:360px">
-                            <h4 class="mb-2">🔧 MTTR — Mean Time To Repair (min)</h4>
+                            <h4 class="mb-2" data-i18n="report.mttr">🔧 MTTR — Mean Time To Repair (min)</h4>
                             <canvas id="mttrChart"></canvas>
                         </div>
                     </div>
@@ -512,7 +513,7 @@
                         <div class="col-md-6">
                             <div class="chart-container" style="height:360px">
                                 <div class="d-flex align-items-center justify-content-between mb-2">
-                                    <h4 class="mb-0">⚡ Response Time by Technician</h4>
+                                    <h4 class="mb-0">⚡ <span data-i18n="report.responseTimeByTech">Response Time by Technician</span></h4>
                                     <div style="font-size:12px;color:#6c757d">
                                         Avg: <strong style="color:#0d6efd">@responseTimeData.OverallAvgMins min</strong>
                                         &nbsp;|&nbsp; <strong>@responseTimeData.TotalResponded</strong> times
@@ -531,16 +532,16 @@
                     const counts = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(mttrData.Select(x => x.RepairCount).ToList()));
                     new Chart(ctx, {
                         type: 'bar',
-                        data: { labels, datasets: [{ label: 'MTTR (min)', data: avgs,
+                        data: { labels, datasets: [{ label: window.i18nT('report.mttr') || 'MTTR (min)', data: avgs,
                             backgroundColor: avgs.map(v => v > 60 ? 'rgba(239,68,68,0.8)' : v > 30 ? 'rgba(245,158,11,0.8)' : 'rgba(34,197,94,0.8)'),
                             borderWidth: 2 }]
                         },
                         options: {
                             responsive: true, maintainAspectRatio: false,
                             plugins: { legend: { display: false },
-                                tooltip: { callbacks: { label: c => { const m=c.parsed.y; return [`MTTR: ${Math.floor(m/60)}h ${Math.round(m%60)}min`, `Times: ${counts[c.dataIndex]}`]; }}}
+                                tooltip: { callbacks: { label: c => { const m=c.parsed.y; return [`${window.i18nT('report.mttr')||'MTTR'}: ${Math.floor(m/60)}h ${Math.round(m%60)}min`, `${window.i18nT('report.repairCount')||'Times'}: ${counts[c.dataIndex]}`]; }}}
                             },
-                            scales: { y: { beginAtZero: true, title: { display: true, text: 'Minutes' } }, x: { ticks: { maxRotation: 40 } } },
+                            scales: { y: { beginAtZero: true, title: { display: true, text: window.i18nT('report.totalMinutes') || 'Minutes' } }, x: { ticks: { maxRotation: 40 } } },
                             animation: { duration: 1500 }
                         }
                     });
@@ -587,13 +588,13 @@
                     <div class="col-12">
                         <div class="operation-section">
                             <div class="d-flex align-items-center justify-content-between mb-3">
-                                <h5 class="mb-0">🏆 Top 5 — Most Downtime Machines (@_periodLabel)</h5>
+                                <h5 class="mb-0"><span data-i18n="report.top5Title">🏆 Top 5 — Most Downtime Machines</span> (@_periodLabel)</h5>
                                 <a href="@Url.Action("ExportTop5ToExcel","Status", new { fromDate=_fromQ, toDate=_toQ, operation=_opQ, location=_locQ, machine=_mcQ })"
                                    class="btn btn-sm btn-success">
-                                    <i class="fas fa-file-excel"></i> Top 5 Downtime by Time Period
+                                    <i class="fas fa-file-excel"></i> <span data-i18n="report.top5ExportBtn">Top 5 Downtime by Time Period</span>
                                 </a>
                             </div>
-                            <div class="row g-3">
+                            <div class="row g-2 flex-nowrap">
                                 @{ var _rank = 0; }
                                 @foreach (var _m in top5Data)
                                 {
@@ -602,18 +603,24 @@
                                     var _ri = _rank == 1 ? "🥇" : _rank == 2 ? "🥈" : _rank == 3 ? "🥉" : $"#{_rank}";
                                     var _trendJson = System.Text.Json.JsonSerializer.Serialize(_m.DailyTrend);
                                     var _dateJson  = System.Text.Json.JsonSerializer.Serialize(_m.TrendDates);
-                                    <div class="col-md-4 col-lg-@(top5Data.Count <= 3 ? 4 : top5Data.Count == 4 ? 3 : 2)">
-                                        <div style="border:2px solid @_rc;border-radius:12px;padding:14px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.06);height:150px;">
+                                    <div class="col" style="min-width:0;">
+                                        <div style="border:2px solid @_rc;border-radius:12px;padding:14px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.06);height:175px;">
                                             <div class="d-flex align-items-center gap-2 mb-2">
                                                 <span style="font-size:22px">@_ri</span>
-                                                <div>
-                                                    <div style="font-weight:700;font-size:13px;color:#111">@_m.MachineCode</div>
+                                                <div style="min-width:0;flex:1;">
+                                                    <div style="font-weight:700;font-size:13px;color:#111;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;"
+                                                         title="@_m.MachineCode">@_m.MachineCode</div>
+                                                    @if (!string.IsNullOrEmpty(_m.ChineseName))
+                                                    {
+                                                        <div style="font-size:11px;color:#2563eb;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"
+                                                             title="@_m.ChineseName">@_m.ChineseName</div>
+                                                    }
                                                     <div style="font-size:11px;color:#6b7280">@_m.Operation</div>
                                                 </div>
                                                 <div class="ms-auto text-end">
                                                     <div style="font-size:22px;font-weight:800;color:@_rc">@_m.DowntimeCount</div>
-                                                    <div style="font-size:10px;color:#6b7280">STOP(s) — period</div>
-                                                    <div style="font-size:10px;color:#9ca3af">@_m.MonthlyCount STOP(s) — month</div>
+                                                    <div style="font-size:10px;color:#6b7280" data-i18n="report.stopPeriod">STOP(s) — period</div>
+                                                    <div style="font-size:10px;color:#9ca3af">@_m.MonthlyCount <span data-i18n="report.stopMonth">STOP(s) — month</span></div>
                                                 </div>
                                             </div>
                                             <div style="height:60px;position:relative;">
@@ -653,13 +660,13 @@
             <ul class="nav nav-tabs mt-4" id="reportTab" role="tablist">
                 <li class="nav-item">
                     <button class="nav-link active" id="line-tab" data-bs-toggle="tab" data-bs-target="#tabLine" type="button">
-                        <i class="fas fa-industry"></i> By Line
+                        <i class="fas fa-industry"></i> <span data-i18n="report.byLine">By Line</span>
                         <span class="badge bg-primary ms-1">@(allDataPct?.Count ?? 0)</span>
                     </button>
                 </li>
                 <li class="nav-item">
                     <button class="nav-link" id="eq-tab" data-bs-toggle="tab" data-bs-target="#tabEQ" type="button">
-                        <i class="fas fa-microchip"></i> By Machine
+                        <i class="fas fa-microchip"></i> <span data-i18n="report.byMachine">By Machine</span>
                         <span class="badge bg-info ms-1">@(machineData?.Count ?? 0)</span>
                     </button>
                 </li>
@@ -673,15 +680,15 @@
                     {
                         <!-- Summary table By Line -->
                         <div class="operation-section mb-3">
-                            <h5 class="mb-2"><i class="fas fa-table"></i> Summary — Downtime by Line</h5>
+                            <h5 class="mb-2"><i class="fas fa-table"></i> <span data-i18n="report.summaryLine">Summary by Line</span></h5>
                             <div class="table-responsive">
                                 <table class="table table-bordered table-hover table-sm" style="font-size:13px">
                                     <thead class="table-dark">
                                         <tr>
                                             <th>#</th>
-                                            <th>Line</th>
-                                            <th class="text-center">Downtime Count</th>
-                                            <th class="text-center">Downtime Duration</th>
+                                            <th data-i18n="report.operation">Line</th>
+                                            <th class="text-center" data-i18n="report.downtimeCount">Downtime Count</th>
+                                            <th class="text-center" data-i18n="report.totalDowntime">Total Downtime</th>
                                             <th>% Bar</th>
                                         </tr>
                                     </thead>
@@ -723,7 +730,7 @@
                         <!-- Detail per Line (paged) -->
                         @if (Model != null && Model.Any())
                         {
-                            <h5 class="mb-2"><i class="fas fa-list"></i> Detail by Line (@Model.Count / @totalRecords)</h5>
+                            <h5 class="mb-2"><i class="fas fa-list"></i> <span data-i18n="report.detailByLine">Detail by Line</span> (@Model.Count / @totalRecords)</h5>
                             @foreach (var operation in Model)
                             {
                                 var lineId = $"line_{operation.Operation.Replace(" ","_").Replace("-","_").Replace(".","_")}";
@@ -902,16 +909,16 @@
                     {
                         <!-- Summary table By EQ -->
                         <div class="operation-section mb-3">
-                            <h5 class="mb-2"><i class="fas fa-table"></i> Summary — Downtime by Machine</h5>
+                            <h5 class="mb-2"><i class="fas fa-table"></i> <span data-i18n="report.summaryMachine">Summary by Machine</span></h5>
                             <div class="table-responsive">
                                 <table class="table table-bordered table-hover table-sm" style="font-size:13px">
                                     <thead class="table-dark">
                                         <tr>
                                             <th>#</th>
-                                            <th>Machine No.</th>
-                                            <th>Line</th>
-                                            <th class="text-center">Downtime Count</th>
-                                            <th class="text-center">Total Downtime</th>
+                                            <th data-i18n="report.machine">Machine</th>
+                                            <th data-i18n="report.operation">Line</th>
+                                            <th class="text-center" data-i18n="report.downtimeCount">Downtime Count</th>
+                                            <th class="text-center" data-i18n="report.totalDowntime">Total Downtime</th>
                                             <th class="text-center">% of All Machines</th>
                                             <th>% Bar</th>
                                         </tr>
@@ -956,7 +963,7 @@
                         </div>
 
                         <!-- Detail per EQ -->
-                        <h5 class="mb-2"><i class="fas fa-list"></i> Machine Detail</h5>
+                        <h5 class="mb-2"><i class="fas fa-list"></i> <span data-i18n="report.machineDetail">Machine Detail</span></h5>
                         @foreach (var m in machineData)
                         {
                             var mId = $"eq_{m.MachineCode.Replace(" ","_").Replace("-","_").Replace(".","_")}";
@@ -1056,7 +1063,7 @@
                                     }
                                     else
                                     {
-                                        <div class="text-muted p-2" style="font-size:13px;"><i class="fas fa-info-circle"></i> No response records found.</div>
+                                        <div class="text-muted p-2" style="font-size:13px;"><i class="fas fa-info-circle"></i> <span data-i18n="report.noResponseRecords">No response records found.</span></div>
                                     }
                                 </div>
                             </div>
@@ -1064,7 +1071,7 @@
                     }
                     else
                     {
-                        <div class="alert alert-info"><i class="fas fa-info-circle"></i> No machine downtime data for the selected period.</div>
+                        <div class="alert alert-info"><i class="fas fa-info-circle"></i> <span data-i18n="report.noMachineData">No machine downtime data for the selected period.</span></div>
                     }
                 </div>
             </div>
@@ -1072,9 +1079,9 @@
             <!-- ══ DETAIL RECORDS TABLE ══ -->
             <div class="operation-section mt-4" id="detailRecordsSection">
                 <div class="d-flex align-items-center justify-content-between mb-3">
-                    <h5 class="mb-0">📋 Detail Records</h5>
+                    <h5 class="mb-0">📋 <span data-i18n="report.detailRecords">Detail Records</span></h5>
                     <div class="d-flex gap-2 align-items-center">
-                        <input type="text" id="detailSearch" class="form-control form-control-sm" style="width:200px" placeholder="🔍 Search..." oninput="filterDetailTable()">
+                        <input type="text" id="detailSearch" class="form-control form-control-sm" style="width:200px" data-i18n-ph="report.searchPlaceholder" placeholder="🔍 Search..." oninput="filterDetailTable()">
                         <span id="detailCount" class="text-muted" style="font-size:12px;white-space:nowrap;"></span>
                     </div>
                 </div>
@@ -1084,9 +1091,9 @@
                         <thead style="position:sticky;top:0;z-index:2;">
                             <tr style="background:#1E8449;color:#fff;">
                                 <th onclick="sortDetailTable(0)" style="cursor:pointer;white-space:nowrap;min-width:140px;">Datetime ⇅</th>
-                                <th onclick="sortDetailTable(1)" style="cursor:pointer;min-width:120px;">Operation ⇅</th>
-                                <th onclick="sortDetailTable(2)" style="cursor:pointer;min-width:180px;">Machine ⇅</th>
-                                <th onclick="sortDetailTable(3)" style="cursor:pointer;min-width:90px;">Location ⇅</th>
+                                <th onclick="sortDetailTable(1)" style="cursor:pointer;min-width:120px;" data-i18n="report.operation">Line ⇅</th>
+                                <th onclick="sortDetailTable(2)" style="cursor:pointer;min-width:180px;" data-i18n="report.machine">Machine ⇅</th>
+                                <th onclick="sortDetailTable(3)" style="cursor:pointer;min-width:90px;" data-i18n="report.location">Location ⇅</th>
                                 <th onclick="sortDetailTable(4)" style="cursor:pointer;min-width:120px;">Reason ⇅</th>
                                 <th style="min-width:90px;">Station</th>
                                 <th style="min-width:160px;">Fix Description</th>
@@ -1094,12 +1101,12 @@
                                 <th onclick="sortDetailTable(8)" style="cursor:pointer;white-space:nowrap;min-width:120px;">Start Time ⇅</th>
                                 <th style="white-space:nowrap;min-width:120px;">Response Time</th>
                                 <th style="white-space:nowrap;min-width:120px;">End Time</th>
-                                <th class="text-center" onclick="sortDetailTable(11)" style="cursor:pointer;white-space:nowrap;min-width:90px;">Response Time Duration (min) ⇅</th>
-                                <th class="text-center" onclick="sortDetailTable(12)" style="cursor:pointer;white-space:nowrap;min-width:80px;">Downtime (min) ⇅</th>
+                                <th class="text-center" onclick="sortDetailTable(11)" style="cursor:pointer;white-space:nowrap;min-width:90px;" data-i18n="report.avgRepair">Avg Repair (min) ⇅</th>
+                                <th class="text-center" onclick="sortDetailTable(12)" style="cursor:pointer;white-space:nowrap;min-width:80px;" data-i18n="report.totalMinutes">Total (min) ⇅</th>
                                 <th style="min-width:140px;">Action</th>
                                 <th style="min-width:110px;">Spare Parts</th>
                                 <th onclick="sortDetailTable(15)" style="cursor:pointer;min-width:120px;">Technician ⇅</th>
-                                <th class="text-center" style="min-width:80px;">Effect</th>
+                                <th class="text-center" style="min-width:80px;" data-i18n="report.effect">Effect</th>
                             </tr>
                         </thead>
                         <tbody id="detailTableBody">
@@ -1164,7 +1171,7 @@
                         </tbody>
                     </table>
                 </div>
-                <div id="detailNoResult" style="display:none;text-align:center;padding:20px;color:#6b7280;">
+                <div id="detailNoResult" style="display:none;text-align:center;padding:20px;color:#6b7280;" data-i18n="report.noRecordsMatch">
                     No records match the filter.
                 </div>
             </div>
@@ -1173,7 +1180,7 @@
         {
             <div class="alert alert-info">
                 <i class="fas fa-info-circle"></i>
-                No downtime data for the selected period.
+                <span data-i18n="report.noDowntimeData">No downtime data for the selected period.</span>
             </div>
         }
     </div>
@@ -1209,11 +1216,11 @@
         const operationCtx = document.getElementById('operationChart').getContext('2d');
         new Chart(operationCtx, {
             type: 'bar',
-            data: { labels: finalLabels, datasets: [{ label: 'Downtime (min)', data: finalData, backgroundColor: 'rgba(102,126,234,0.8)', borderColor: 'rgba(102,126,234,1)', borderWidth: 2 }] },
+            data: { labels: finalLabels, datasets: [{ label: window.i18nT('report.totalMinutes') || 'Downtime (min)', data: finalData, backgroundColor: 'rgba(102,126,234,0.8)', borderColor: 'rgba(102,126,234,1)', borderWidth: 2 }] },
             options: {
                 responsive: true, maintainAspectRatio: false,
                 plugins: { legend: { display: true, position: 'top' }, tooltip: { callbacks: { label: ctx => { let m=ctx.parsed.y; return `${Math.floor(m/60)}h ${Math.round(m%60)}min (${m.toFixed(1)} min)`; } } } },
-                scales: { y: { beginAtZero: true, title: { display: true, text: 'Minutes' } }, x: { title: { display: true, text: 'Line' } } },
+                scales: { y: { beginAtZero: true, title: { display: true, text: window.i18nT('report.totalMinutes') || 'Minutes' } }, x: { title: { display: true, text: window.i18nT('report.operation') || 'Line' } } },
                 animation: { duration: 1500, easing: 'easeOutQuart' }
             }
         });
@@ -1250,11 +1257,11 @@
                 const issCodeCounts = @Html.Raw(issCountsJson);
                 new Chart(issCodeCtx, {
                     type: 'bar',
-                    data: { labels: issCodeLabels, datasets: [{ label: 'Downtime (min)', data: issCodeMins, backgroundColor: 'rgba(255,99,132,0.8)', borderColor: 'rgba(255,99,132,1)', borderWidth: 2 }] },
+                    data: { labels: issCodeLabels, datasets: [{ label: window.i18nT('report.totalMinutes') || 'Downtime (min)', data: issCodeMins, backgroundColor: 'rgba(255,99,132,0.8)', borderColor: 'rgba(255,99,132,1)', borderWidth: 2 }] },
                     options: {
                         indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-                        plugins: { legend: { display: true, position: 'top' }, tooltip: { callbacks: { label: ctx => { let m=ctx.parsed.x; return [`Duration: ${Math.floor(m/60)}h ${Math.round(m%60)}min`, `Times: ${issCodeCounts[ctx.dataIndex]||0}`]; } } } },
-                        scales: { x: { beginAtZero: true, title: { display: true, text: 'Minutes' } }, y: { title: { display: true, text: 'Reason' } } },
+                        plugins: { legend: { display: true, position: 'top' }, tooltip: { callbacks: { label: ctx => { let m=ctx.parsed.x; return [`Duration: ${Math.floor(m/60)}h ${Math.round(m%60)}min`, `${window.i18nT('report.repairCount')||'Times'}: ${issCodeCounts[ctx.dataIndex]||0}`]; } } } },
+                        scales: { x: { beginAtZero: true, title: { display: true, text: window.i18nT('report.totalMinutes') || 'Minutes' } }, y: { title: { display: true, text: 'Reason' } } },
                         animation: { duration: 1800, easing: 'easeOutQuart' }
                     }
                 });
@@ -1265,7 +1272,7 @@
             <text>
                 const issCodeCtx = document.getElementById('issCodeChart').getContext('2d');
                 issCodeCtx.fillStyle='#6c757d'; issCodeCtx.font='14px Arial'; issCodeCtx.textAlign='center';
-                issCodeCtx.fillText('No fault code data', 150, 100);
+                issCodeCtx.fillText(window.i18nT('report.noFaultCodeData') || 'No fault code data', 150, 100);
             </text>
         }
 
@@ -1280,34 +1287,55 @@
                 const mcLabels      = @Html.Raw(mcLabels);
                 const mcMins        = @Html.Raw(mcMins);
                 const mcCounts      = @Html.Raw(mcCounts);
+                // Extract just the serial number (part after last " - ", before " (") for tick display
+                const mcShortLabels = mcLabels.map(label => {
+                    const dash = label.lastIndexOf(' - ');
+                    if (dash >= 0) {
+                        let part = label.substring(dash + 3);
+                        const paren = part.indexOf(' (');
+                        return (paren >= 0 ? part.substring(0, paren) : part).trim();
+                    }
+                    return label.length > 18 ? label.substring(0, 16) + '…' : label;
+                });
                 new Chart(machineCtx, {
                     type: 'bar',
                     data: {
-                        labels: mcLabels,
+                        labels: mcShortLabels,
                         datasets: [
-                            { label: 'Downtime (min)', data: mcMins, backgroundColor: 'rgba(255,159,64,0.8)', borderColor: 'rgba(255,159,64,1)', borderWidth: 2, yAxisID: 'y' },
-                            { label: 'Downtime Count', data: mcCounts, type: 'line', borderColor: 'rgba(54,162,235,1)', backgroundColor: 'rgba(54,162,235,0.1)', borderWidth: 3, pointRadius: 6, fill: false, yAxisID: 'y1' }
+                            { label: window.i18nT('report.totalMinutes') || 'Downtime (min)', data: mcMins, backgroundColor: 'rgba(255,159,64,0.8)', borderColor: 'rgba(255,159,64,1)', borderWidth: 2, yAxisID: 'y' },
+                            { label: window.i18nT('report.downtimeCount') || 'Downtime Count', data: mcCounts, type: 'line', borderColor: 'rgba(54,162,235,1)', backgroundColor: 'rgba(54,162,235,0.1)', borderWidth: 3, pointRadius: 6, fill: false, yAxisID: 'y1' }
                         ]
                     },
                     options: {
                         responsive: true, maintainAspectRatio: false,
                         plugins: {
                             legend: { display: true, position: 'top' },
-                            tooltip: { callbacks: { label: ctx => { if(ctx.dataset.yAxisID==='y'){let m=ctx.parsed.y;return `Downtime: ${Math.floor(m/60)}h ${Math.round(m%60)}min (${m.toFixed(1)} min)`;}return `Count: ${ctx.parsed.y}`; } } }
+                            tooltip: {
+                                callbacks: {
+                                    title: items => mcLabels[items[0].dataIndex],
+                                    label: ctx => {
+                                        if (ctx.dataset.yAxisID === 'y') {
+                                            let m = ctx.parsed.y;
+                                            return `${window.i18nT('report.totalDowntime')||'Downtime'}: ${Math.floor(m/60)}h ${Math.round(m%60)}min (${m.toFixed(1)} min)`;
+                                        }
+                                        return `${window.i18nT('report.downtimeCount')||'Count'}: ${ctx.parsed.y}`;
+                                    }
+                                }
+                            }
                         },
                         scales: {
-                            x: { title: { display: true, text: 'Machine No.' }, ticks: { maxRotation: 45 } },
-                            y: { position: 'left', beginAtZero: true, title: { display: true, text: 'Downtime (min)' } },
-                            y1: { 
-                                    position: 'right', 
-                                    beginAtZero: true, 
-                                    title: { display: true, text: 'Count' }, 
-                                    grid: { drawOnChartArea: false },
-                                    ticks: { 
-                                        stepSize: 1, 
-                                        precision: 0    // ← thêm dòng này
-                                    }
-                                },
+                            x: {
+                                title: { display: true, text: window.i18nT('report.machine') || 'Machine No.' },
+                                ticks: { maxRotation: 45, minRotation: 0 }
+                            },
+                            y: { position: 'left', beginAtZero: true, title: { display: true, text: window.i18nT('report.totalMinutes') || 'Downtime (min)' } },
+                            y1: {
+                                position: 'right',
+                                beginAtZero: true,
+                                title: { display: true, text: window.i18nT('report.downtimeCount') || 'Count' },
+                                grid: { drawOnChartArea: false },
+                                ticks: { stepSize: 1, precision: 0 }
+                            }
                         },
                         animation: { duration: 1500, easing: 'easeOutQuart' }
                     }

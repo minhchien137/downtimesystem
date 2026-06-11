@@ -607,18 +607,18 @@
 
 <div class="confirmation-modal" id="confirmationModal">
     <div class="modal-content">
-        <div class="modal-text">您要确认保存停机时间吗？ (Do you want to confirm saving downtime?)</div>
+        <div class="modal-text" data-i18n="createDowntime.confirmSave">Confirm saving downtime?</div>
         <div class="modal-buttons">
-            <button class="btn-yes" id="btnConfirmYes">是 (Yes)</button>
-            <button class="btn-no" id="btnConfirmNo">否 (No)</button>
+            <button class="btn-yes" id="btnConfirmYes" data-i18n="common.yes">Yes</button>
+            <button class="btn-no" id="btnConfirmNo" data-i18n="common.no">No</button>
         </div>
     </div>
 </div>
 
 <div class="status-form-container">
     <div class="form-header">
-        <h1 class="form-title">Downtime Input</h1>
-        <div class="form-sub">System for managing machine downtime in production.</div>
+        <h1 class="form-title" data-i18n="createDowntime.pageTitle">Downtime Input</h1>
+        <div class="form-sub" data-i18n="createDowntime.subtitle">System for managing machine downtime in production.</div>
     </div>
 
     <form id="downtimeForm" asp-controller="Status" asp-action="CreateDownTime" method="post"
@@ -630,7 +630,7 @@
 
             <!-- ===== Employee ID — Searchable Dropdown ===== -->
             <div class="form-group">
-                <label class="form-label">Employee ID no.</label>
+                <label class="form-label" data-i18n="createDowntime.employee">Employee ID no.</label>
                 <div class="select-search-wrapper">
                     <!-- ✅ FIX: id đúng là EmployeeCode và EmployeeName -->
                     <input type="hidden" id="EmployeeCode" name="EmployeeCode" />
@@ -657,13 +657,14 @@
                             </svg>
                             <input type="text" id="empSearchInput"
                                    placeholder="Search name... (Search name...)"
+                                   data-i18n-ph="createDowntime.selectEmployee"
                                    oninput="filterEmpOptions(this.value)"
                                    onkeydown="handleEmpSearchKey(event)"
                                    autocomplete="off"
                                    aria-label="Search employees" />
                         </div>
                         <div class="select-search-list" id="empOptionList">
-                            <div class="select-search-option placeholder-opt" data-value="" data-label="">
+                            <div class="select-search-option placeholder-opt" data-value="" data-label="" data-i18n="createDowntime.selectEmployee">
                                 -- Select employee --
                             </div>
                             @foreach (var emp in employees)
@@ -684,7 +685,7 @@
 
              <!-- Operation / Location dropdown -->
             <div class="form-group">
-                <label class="form-label">Location</label>
+                <label class="form-label" data-i18n="createDowntime.location">Location</label>
                 <input type="hidden" id="OperationValue" name="Location" />
                 <div class="select-search-wrapper">
                     <div class="select-search-trigger" id="opTrigger"
@@ -706,12 +707,13 @@
                             </svg>
                             <input type="text" id="opSearchInput"
                                 placeholder="Search location... (Search location...)"
+                                data-i18n-ph="createDowntime.selectLocation"
                                 oninput="filterOpOptions(this.value)"
                                 onkeydown="handleOpSearchKey(event)"
                                 autocomplete="off" />
                         </div>
                         <div class="select-search-list" id="opOptionList">
-                            <div class="select-search-option placeholder-opt" data-value="" data-label="">
+                            <div class="select-search-option placeholder-opt" data-value="" data-label="" data-i18n="createDowntime.selectLocation">
                                 -- Select Location --
                             </div>
                             @foreach (var op in smOps)
@@ -727,7 +729,7 @@
 
             <!-- Machine/Fixture dropdown -->
             <div class="form-group">
-                <label class="form-label">Machine/Fixture no.</label>
+                <label class="form-label" data-i18n="createDowntime.machine">Machine/Fixture no.</label>
                 <input type="hidden" id="MachineNo" name="MachineCode" />
                 <div class="select-search-wrapper">
                     <div class="select-search-trigger" id="machineTrigger"
@@ -752,20 +754,22 @@
                             </svg>
                             <input type="text" id="machineSearchInput"
                                 placeholder="Search machine... (Search machine...)"
+                                data-i18n-ph="createDowntime.searchMachine"
                                 oninput="filterMachineOptions(this.value)"
                                 onkeydown="handleMachineSearchKey(event)"
                                 autocomplete="off"
                                 aria-label="Search machines" />
                         </div>
                         <div class="select-search-list" id="machineOptionList">
-                            <div class="select-search-option placeholder-opt" data-value="" data-label="">
+                            <div class="select-search-option placeholder-opt" data-value="" data-label="" data-i18n="createDowntime.selectMachine">
                                 -- Select machine/fixture no. --
                             </div>
                             @{ var smeqs = (ViewBag.SMEQs as IEnumerable<dynamic>) ?? Enumerable.Empty<dynamic>(); }
                             @foreach (var eq in smeqs)
                             {
-                                var serialPart = !string.IsNullOrEmpty((string)eq.serialnumber) ? $" - {eq.serialnumber}" : "";
-                                var label = $"{eq.name}{serialPart}";
+                                var serialPart  = !string.IsNullOrEmpty((string)eq.serialnumber)  ? $" - {eq.serialnumber}"   : "";
+                                var chinesePart = !string.IsNullOrEmpty((string)eq.namechinese)   ? $" ({eq.namechinese})"    : "";
+                                var label = $"{eq.name}{serialPart}{chinesePart}";
                                 <div class="select-search-option"
                                      data-value="@label"
                                      data-label="@label">
@@ -781,10 +785,10 @@
 
             <!-- Production Line dropdown -->
             <div class="form-group">
-                <label class="form-label">Operation</label>
+                <label class="form-label" data-i18n="createDowntime.operation">Operation</label>
                 <div class="select-arrow-wrapper">
                     <select id="Operation" name="Operation" class="form-control" required>
-                        <option value="">-- Select Operation --</option>
+                        <option value="" data-i18n="createDowntime.selectOperation">-- Select Operation --</option>
                         @foreach (var op in ops)
                         {
                             var opDesc = op switch
@@ -809,11 +813,11 @@
 
             <!-- ISS code / Reason — CHỈ PIE/Admin mới thấy và điền -->
             <div class="form-group" id="fieldReason" @(_isProduction ? "style=display:none" : "")>
-                <label class="form-label" for="IssCode">Reason</label>
+                <label class="form-label" for="IssCode" data-i18n="createDowntime.category">Reason</label>
                 <div class="select-arrow-wrapper">
                     <select id="IssCode" name="Reason" class="form-control"
                             @(_isProduction ? "" : "required")>
-                        <option value="">-- Select reason --</option>
+                        <option value="" data-i18n="createDowntime.selectCategory">-- Select reason --</option>
                         @foreach (var r in (IEnumerable<dynamic>)ViewBag.ReasonOptions)
                         {
                             <option value="@r.Reason_Name">@r.Reason_Name (@r.Reason_Code)</option>
@@ -824,12 +828,12 @@
 
             <!-- Effect — CHỈ PIE/Admin mới thấy -->
             <div class="form-group" id="fieldEffect" @(_isProduction ? "style=display:none" : "")>
-                <label class="form-label">Effect</label>
+                <label class="form-label" data-i18n="createDowntime.effect">Effect</label>
                 <div class="select-arrow-wrapper">
                     <select id="Effect" name="Effect" class="form-control">
-                        <option value="" selected>-- Is there any effect? --</option>
-                        <option value="1">Affects Production</option>
-                        <option value="2">Does Not Affect Production</option>
+                        <option value="" selected data-i18n="createDowntime.selectEffect">-- Is there any effect? --</option>
+                        <option value="1" data-i18n="createDowntime.affectsProduction">Affects Production</option>
+                        <option value="2" data-i18n="createDowntime.noEffect">Does Not Affect Production</option>
                     </select>
                 </div>
             </div>
@@ -852,47 +856,52 @@
 
             <!-- Problem Description -->
             <div class="form-group">
-                <label class="form-label" for="Description">Description (Optional)</label>
+                <label class="form-label" for="Description" data-i18n="createDowntime.description">Description (Optional)</label>
                 <input asp-for="Description" id="Description" name="Description" class="form-control"
-                       placeholder="Enter a problem description..." />
+                       placeholder="Enter a problem description..."
+                       data-i18n-ph="createDowntime.descriptionPH" />
                 <span asp-validation-for="Description" class="text-danger"></span>
             </div>
 
             <!-- Station -->
             <div class="form-group">
-                <label class="form-label" for="Station">Station (Optional)</label>
+                <label class="form-label" for="Station" data-i18n="createDowntime.station">Station (Optional)</label>
                 <input id="Station" name="Station" class="form-control"
-                       placeholder="Enter station..." />
+                       placeholder="Enter station..."
+                       data-i18n-ph="createDowntime.stationPH" />
             </div>
 
             <!-- Action — CHỈ PIE/Admin mới thấy -->
             <div class="form-group" @(_isProduction ? "style=display:none" : "")>
-                <label class="form-label" for="Action">Action (Optional)</label>
+                <label class="form-label" for="Action" data-i18n="createDowntime.actionTaken">Action (Optional)</label>
                 <input id="Action" name="Action" class="form-control"
-                       placeholder="Enter action taken..." />
+                       placeholder="Enter action taken..."
+                       data-i18n-ph="createDowntime.actionTakenPH" />
             </div>
 
             <!-- Root Cause — CHỈ PIE/Admin mới thấy -->
             <div class="form-group" @(_isProduction ? "style=display:none" : "")>
-                <label class="form-label" for="RootCause">Root Cause (Optional)</label>
+                <label class="form-label" for="RootCause" data-i18n="createDowntime.rootCause">Root Cause (Optional)</label>
                 <input id="RootCause" name="RootCause" class="form-control"
-                       placeholder="Enter root cause..." />
+                       placeholder="Enter root cause..."
+                       data-i18n-ph="createDowntime.rootCausePH" />
             </div>
 
             <!-- Spare Parts — CHỈ PIE/Admin mới thấy -->
             <div class="form-group" @(_isProduction ? "style=display:none" : "")>
-                <label class="form-label" for="SpareParts">Spare parts use (For future)</label>
+                <label class="form-label" for="SpareParts" data-i18n="createDowntime.spareParts">Spare parts use (For future)</label>
                 <input id="SpareParts" name="SpareParts" class="form-control"
-                       placeholder="Enter notes or details..." />
+                       placeholder="Enter notes or details..."
+                       data-i18n-ph="createDowntime.sparePartsPH" />
             </div>
 
             <!-- Image (optional) -->
             <div class="form-group full-width">
-                <label class="form-label">Image (Optional)</label>
+                <label class="form-label" data-i18n="createDowntime.image">Image (Optional)</label>
                 <div class="image-upload-container">
                     <div class="image-upload-area" id="imageUploadAreaDT"
                          onclick="document.getElementById('imageInputDT').click()">
-                        <div class="upload-text">Click to select image</div>
+                        <div class="upload-text" data-i18n="createDowntime.uploadImage">Click to select image</div>
                         <div class="upload-hint">Supported formats: JPG, PNG, GIF, BMP (Max 5MB)</div>
                     </div>
                     <input type="file" id="imageInputDT" name="imageFile" accept="image/*" />
@@ -900,7 +909,7 @@
                         <img id="previewImgDT" class="image-preview" alt="Preview" />
                         <div class="file-info" id="fileInfoDT"></div>
                         <div class="image-actions">
-                            <button type="button" class="btn tiny-btn" onclick="removeImageDT()">
+                            <button type="button" class="btn tiny-btn" onclick="removeImageDT()" data-i18n="createDowntime.removeImage">
                                 Remove image
                             </button>
                         </div>
@@ -915,20 +924,20 @@
             @if (_showCall)
             {
                 <button type="button" id="btnCall" class="btn-call">
-                    ☎️ @(_isProduction ? "Call" : "Response")
+                    ☎️ <span data-i18n="createDowntime.callBtn">@(_isProduction ? "Call" : "Response")</span>
                 </button>
             }
             @if (_showResponse)
             {
                 <button type="button" id="btnStop" class="btn-response">
-                    🔔 Response
+                    🔔 <span data-i18n="createDowntime.responseBtn">Response</span>
                 </button>
             }
             @if (_showRun)
             {
                 <button type="button" id="btnRun" class="btn-run" disabled style="opacity:0.5;"
                         title="Please select a machine and wait for the technician to accept">
-                    ▶ Run
+                    ▶ <span data-i18n="createDowntime.runBtn">Run</span>
                 </button>
             }
         </div>
@@ -1047,7 +1056,7 @@
             if (!emptyEl) {
                 emptyEl = document.createElement('div');
                 emptyEl.className = 'select-search-empty';
-                emptyEl.textContent = '没有找到结果 (No results found)';
+                emptyEl.textContent = window.i18nT('common.noData');
                 empOptionList.appendChild(emptyEl);
             }
         } else if (emptyEl) {
@@ -1076,7 +1085,7 @@
         if (isPlaceholder || !value) {
             employeeCodeEl.value = '';
             employeeNameEl.value = '';
-            empTriggerText.textContent = '-- 选择员工 (Select employee) --';
+            empTriggerText.textContent = window.i18nT('createDowntime.selectEmployee');
             empTriggerText.classList.remove('has-value');
         } else {
             employeeCodeEl.value = value;
@@ -1097,7 +1106,7 @@
         // ✅ FIX: reset đúng field
         employeeCodeEl.value = '';
         employeeNameEl.value = '';
-        empTriggerText.textContent = '-- 选择员工 (Select employee) --';
+        empTriggerText.textContent = window.i18nT('createDowntime.selectEmployee');
         empTriggerText.classList.remove('has-value');
         empOptionList.querySelectorAll('.select-search-option').forEach(o =>
             o.classList.remove('selected')
@@ -1208,7 +1217,7 @@
             if (!emptyEl) {
                 emptyEl = document.createElement('div');
                 emptyEl.className = 'select-search-empty';
-                emptyEl.textContent = '没有找到结果 (No results found)';
+                emptyEl.textContent = window.i18nT('common.noData');
                 opOptionList.appendChild(emptyEl);
             }
         } else if (emptyEl) {
@@ -1235,7 +1244,7 @@
     opValueInput.value = value;
 
     if (isPlaceholder || !value) {
-        opTriggerText.textContent = '-- 选择工序 (Select Location) --';
+        opTriggerText.textContent = window.i18nT('createDowntime.selectLocation');
         opTriggerText.classList.remove('has-value');
     } else {
         opTriggerText.textContent = label;
@@ -1295,7 +1304,7 @@
                 ph.className = 'select-search-option placeholder-opt';
                 ph.dataset.value = '';
                 ph.dataset.label = '';
-                ph.textContent = '-- 选择设备编号 (Select machine/fixture no.) --';
+                ph.textContent = window.i18nT('createDowntime.selectMachine');
                 machineOptionList.appendChild(ph);
             }
 
@@ -1317,8 +1326,10 @@
             const allOriginalOptions = @Html.Raw(
                 System.Text.Json.JsonSerializer.Serialize(
                     (ViewBag.SMEQs as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>())
-                    .Select(e => new { 
-                        label = (string)e.name + (!string.IsNullOrEmpty((string)e.serialnumber) ? $" - {e.serialnumber}" : "") 
+                    .Select(e => new {
+                        label = (string)e.name
+                            + (!string.IsNullOrEmpty((string)e.serialnumber) ? $" - {e.serialnumber}"  : "")
+                            + (!string.IsNullOrEmpty((string)e.namechinese)  ? $" ({e.namechinese})"   : "")
                     })
                 )
             );
@@ -1365,7 +1376,7 @@
 
     function resetOpDropdown() {
         opValueInput.value = '';
-        opTriggerText.textContent = '-- 选择工序 (Select Operation) --';
+        opTriggerText.textContent = window.i18nT('createDowntime.selectLocation');
         opTriggerText.classList.remove('has-value');
         opOptionList.querySelectorAll('.select-search-option').forEach(o =>
             o.classList.remove('selected')
@@ -2046,7 +2057,7 @@
             if (!emptyEl) {
                 emptyEl = document.createElement('div');
                 emptyEl.className = 'select-search-empty';
-                emptyEl.textContent = '没有找到结果 (No results found)';
+                emptyEl.textContent = window.i18nT('common.noData');
                 machineOptionList.appendChild(emptyEl);
             }
         } else if (emptyEl) {
@@ -2074,7 +2085,7 @@
         machineValueInput.value = value;
 
         if (isPlaceholder || !value) {
-            machineTriggerText.textContent = '-- 选择设备编号 (Select machine/fixture no.) --';
+            machineTriggerText.textContent = window.i18nT('createDowntime.selectMachine');
             machineTriggerText.classList.remove('has-value');
         } else {
             machineTriggerText.textContent = label;
@@ -2218,7 +2229,7 @@
 
     function resetMachineDropdown() {
         machineValueInput.value = '';
-        machineTriggerText.textContent = '-- 选择设备编号 (Select machine/fixture no.) --';
+        machineTriggerText.textContent = window.i18nT('createDowntime.selectMachine');
         machineTriggerText.classList.remove('has-value');
         machineOptionList.querySelectorAll('.select-search-option').forEach(o =>
             o.classList.remove('selected')

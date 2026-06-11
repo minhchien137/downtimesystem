@@ -176,10 +176,10 @@
     <!-- Header -->
     <div class="ai-header">
         <div class="position-relative">
-            <h1><i class="fas fa-brain me-2"></i>Phát Hiện Bất Thường</h1>
+            <h1><i class="fas fa-brain me-2"></i><span data-i18n="anomaly.pageTitle">Phát Hiện Bất Thường</span></h1>
             <p>
                 <span class="pulse-dot"></span>
-                Phân tích tự động dựa trên lịch sử 5 tháng — so sánh Z-score, tần suất và mức độ nghiêm trọng
+                <span data-i18n="anomaly.subtitle">Phân tích tự động dựa trên lịch sử 5 tháng — so sánh Z-score, tần suất và mức độ nghiêm trọng</span>
             </p>
         </div>
     </div>
@@ -188,54 +188,54 @@
     <div class="stat-bar" id="statBar" style="display:none!important">
         <div class="stat-chip">
             <div class="icon">🔴</div>
-            <div><div class="num" id="statCritical">0</div><div class="lbl">Nghiêm trọng</div></div>
+            <div><div class="num" id="statCritical">0</div><div class="lbl" data-i18n="anomaly.critical">Nghiêm trọng</div></div>
         </div>
         <div class="stat-chip">
             <div class="icon">🟠</div>
-            <div><div class="num" id="statWarning">0</div><div class="lbl">Cảnh báo</div></div>
+            <div><div class="num" id="statWarning">0</div><div class="lbl" data-i18n="anomaly.warning">Cảnh báo</div></div>
         </div>
         <div class="stat-chip">
             <div class="icon">📊</div>
-            <div><div class="num" id="statTotal">0</div><div class="lbl">Tổng phát hiện</div></div>
+            <div><div class="num" id="statTotal">0</div><div class="lbl" data-i18n="anomaly.totalDetected">Tổng phát hiện</div></div>
         </div>
         <div class="stat-chip" style="flex:2">
             <div class="icon">🕐</div>
-            <div><div class="num" style="font-size:1rem" id="statTime">--:--</div><div class="lbl">Cập nhật lần cuối</div></div>
+            <div><div class="num" style="font-size:1rem" id="statTime">--:--</div><div class="lbl" data-i18n="common.lastUpdated">Cập nhật lần cuối</div></div>
         </div>
     </div>
 
     <!-- Controls -->
     <div class="d-flex justify-content-between align-items-center mb-2" id="controlBar" style="display:none!important">
         <div class="filter-tabs">
-            <button class="filter-tab active" onclick="filterCards('all', this)">Tất cả</button>
-            <button class="filter-tab" onclick="filterCards('Spike', this)">🔴 Spike</button>
-            <button class="filter-tab" onclick="filterCards('Frequency', this)">🟠 Tần suất</button>
-            <button class="filter-tab" onclick="filterCards('Severity', this)">🔵 Mức độ</button>
+            <button class="filter-tab active" onclick="filterCards('all', this)" data-i18n="common.all">Tất cả</button>
+            <button class="filter-tab" onclick="filterCards('Spike', this)">🔴 <span data-i18n="anomaly.spike">Spike</span></button>
+            <button class="filter-tab" onclick="filterCards('Frequency', this)">🟠 <span data-i18n="anomaly.frequency">Tần suất</span></button>
+            <button class="filter-tab" onclick="filterCards('Severity', this)">🔵 <span data-i18n="anomaly.severity">Mức độ</span></button>
         </div>
         <button class="btn-refresh" id="refreshBtn" onclick="loadAnomalies()">
-            <i class="fas fa-sync-alt me-1"></i>Làm mới
+            <i class="fas fa-sync-alt me-1"></i><span data-i18n="common.refresh">Làm mới</span>
         </button>
     </div>
 
     <!-- Loading -->
     <div id="loadingBlock">
         <div class="spinner-ring"></div>
-        <div style="color:#718096">Đang phân tích dữ liệu lịch sử...</div>
-        <div style="font-size:.8rem;color:#a0aec0;margin-top:.4rem">So sánh Z-score · Tần suất · Mức độ nghiêm trọng</div>
+        <div style="color:#718096" data-i18n="anomaly.analyzing">Đang phân tích dữ liệu lịch sử...</div>
+        <div style="font-size:.8rem;color:#a0aec0;margin-top:.4rem" data-i18n="anomaly.analyzingDetail">So sánh Z-score · Tần suất · Mức độ nghiêm trọng</div>
     </div>
 
     <!-- Error -->
     <div id="errorBlock">
         <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
-        <div id="errorMsg">Không thể tải dữ liệu.</div>
-        <button class="btn-refresh mt-2" onclick="loadAnomalies()">Thử lại</button>
+        <div id="errorMsg" data-i18n="common.errorLoad">Không thể tải dữ liệu.</div>
+        <button class="btn-refresh mt-2" onclick="loadAnomalies()" data-i18n="common.retry">Thử lại</button>
     </div>
 
     <!-- Empty -->
     <div id="emptyBlock">
         <div class="big-icon">✅</div>
-        <h5 style="color:#2d3748">Không phát hiện bất thường hôm nay</h5>
-        <p style="color:#718096">Tất cả operation đang hoạt động trong ngưỡng bình thường so với lịch sử.</p>
+        <h5 style="color:#2d3748" data-i18n="anomaly.noAnomalies">Không phát hiện bất thường hôm nay</h5>
+        <p style="color:#718096" data-i18n="anomaly.noAnomaliesDetail">Tất cả operation đang hoạt động trong ngưỡng bình thường so với lịch sử.</p>
         <div id="lastUpdated"></div>
     </div>
 
@@ -270,7 +270,7 @@
             if (btn) btn.classList.remove('spinning');
 
             if (!json.success) {
-                document.getElementById('errorMsg').textContent = json.message || 'Lỗi không xác định.';
+                document.getElementById('errorMsg').textContent = json.message || window.i18nT('common.unknownError');
                 document.getElementById('errorBlock').style.display = 'block';
                 return;
             }
@@ -280,7 +280,7 @@
             if (allData.length === 0) {
                 document.getElementById('emptyBlock').style.display = 'block';
                 document.getElementById('lastUpdated').textContent =
-                    'Kiểm tra lúc: ' + new Date().toLocaleTimeString('vi-VN');
+                    window.i18nT('common.checkedAt') + ': ' + new Date().toLocaleTimeString();
                 return;
             }
 
@@ -290,7 +290,7 @@
             document.getElementById('statCritical').textContent = nCritical;
             document.getElementById('statWarning').textContent  = nWarning;
             document.getElementById('statTotal').textContent    = allData.length;
-            document.getElementById('statTime').textContent     = new Date().toLocaleTimeString('vi-VN');
+            document.getElementById('statTime').textContent     = new Date().toLocaleTimeString();
             document.getElementById('statBar').style.display    = 'flex';
             document.getElementById('controlBar').style.display = 'flex';
 
@@ -298,7 +298,7 @@
 
         } catch (err) {
             document.getElementById('loadingBlock').style.display = 'none';
-            document.getElementById('errorMsg').textContent = 'Lỗi kết nối: ' + err.message;
+            document.getElementById('errorMsg').textContent = window.i18nT('common.connectionError') + ': ' + err.message;
             document.getElementById('errorBlock').style.display = 'block';
             if (btn) btn.classList.remove('spinning');
         }
@@ -311,9 +311,13 @@
         data.forEach((item, idx) => {
             const isCritical = item.severity === 'Critical';
 
-            const typeLabel = { Spike: '🔴 Spike', Frequency: '🟠 Tần suất tăng', Severity: '🔵 Mức độ nặng hơn' };
+            const typeLabel = {
+                Spike:     '🔴 ' + window.i18nT('anomaly.spike'),
+                Frequency: '🟠 ' + window.i18nT('anomaly.frequency'),
+                Severity:  '🔵 ' + window.i18nT('anomaly.severity')
+            };
             const typeClass = { Spike: 'badge-spike', Frequency: 'badge-frequency', Severity: 'badge-severity' };
-            const sevLabel  = isCritical ? '🚨 Nghiêm trọng' : '⚠️ Cảnh báo';
+            const sevLabel  = isCritical ? '🚨 ' + window.i18nT('anomaly.critical') : '⚠️ ' + window.i18nT('anomaly.warning');
             const sevClass  = isCritical ? 'badge-sev-critical' : 'badge-sev-warning';
 
             const card = document.createElement('div');
@@ -332,7 +336,7 @@
                     </div>
                     <div class="insight-text">${item.insightText}</div>
                     <div class="card-meta">
-                        <span><i class="fas fa-cog"></i>${item.operation}</span>
+                        <span><i class="fas fa-cog"></i><span title="${window.i18nT('anomaly.machine')}">${item.operation}</span></span>
                         <span><i class="fas fa-tag"></i>${item.issCode} — ${item.errorName}</span>
                     </div>
                 </div>`;
@@ -360,7 +364,7 @@
         if (!btn) return;
         const m = Math.floor(countdown / 60);
         const s = countdown % 60;
-        btn.innerHTML = `<i class="fas fa-sync-alt me-1"></i>Làm mới (${m}:${s.toString().padStart(2,'0')})`;
+        btn.innerHTML = `<i class="fas fa-sync-alt me-1"></i>${window.i18nT('common.refresh')} (${m}:${s.toString().padStart(2,'0')})`;
         countdown--;
         if (countdown < 0) countdown = REFRESH_INTERVAL / 1000;
     }
@@ -374,7 +378,7 @@
             border-radius:12px;font-size:14px;font-weight:600;
             box-shadow:0 8px 24px rgba(252,77,109,.4);
             animation:slideUp .3s ease;`;
-        toast.innerHTML = `🚨 Phát hiện ${n} bất thường mới!`;
+        toast.innerHTML = `🚨 ${window.i18nT('anomaly.newAnomaliesDetected').replace('{n}', n)}`;
         document.body.appendChild(toast);
         setTimeout(() => toast.remove(), 4000);
     }
@@ -395,7 +399,7 @@
                 document.getElementById('statCritical').textContent = allData.filter(d => d.severity === 'Critical').length;
                 document.getElementById('statWarning').textContent  = allData.filter(d => d.severity === 'Warning').length;
                 document.getElementById('statTotal').textContent    = newCount;
-                document.getElementById('statTime').textContent     = new Date().toLocaleTimeString('vi-VN');
+                document.getElementById('statTime').textContent     = new Date().toLocaleTimeString();
                 if (newCount > 0) {
                     document.getElementById('statBar').style.display    = 'flex';
                     document.getElementById('controlBar').style.display = 'flex';

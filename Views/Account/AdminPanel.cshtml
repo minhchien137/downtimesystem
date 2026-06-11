@@ -288,17 +288,17 @@
 <!-- ── Page header ── -->
 <div class="admin-header">
     <div>
-        <h1>🛡 Admin Panel</h1>
-        <p>Downtime · Employee · Account Management</p>
+        <h1 data-i18n="admin.pageTitle">🛡 Admin Panel</h1>
+        <p data-i18n="admin.subtitle">Downtime · Employee · Account Management</p>
     </div>
-    <span class="admin-badge">🔐 ADMIN ONLY</span>
+    <span class="admin-badge" data-i18n="admin.badge">🔐 ADMIN ONLY</span>
 </div>
 
 <!-- ── Main Tabs ── -->
 <div class="main-tabs">
-    <button class="main-tab active" onclick="switchTab('downtime', this)">📋 Downtime</button>
-    <button class="main-tab"        onclick="switchTab('employee', this)">👤 Employee</button>
-    <button class="main-tab"        onclick="switchTab('account',  this)">🔑 Account</button>
+    <button class="main-tab active" onclick="switchTab('downtime', this)" data-i18n="admin.downtimeTab">📋 Downtime</button>
+    <button class="main-tab"        onclick="switchTab('employee', this)" data-i18n="admin.employeeTab">👤 Employee</button>
+    <button class="main-tab"        onclick="switchTab('account',  this)" data-i18n="admin.accountTab">🔑 Account</button>
 </div>
 
 <!-- ══════════════════════════════════════════════════════════
@@ -308,42 +308,50 @@
 
     <div class="filter-bar">
         <div>
-            <label>Operation</label>
-            <input type="text" id="fOp" placeholder="e.g. SM-01" style="width:140px" />
+            <label data-i18n="admin.filterOperation">Operation</label>
+            <input type="text" id="fOp" placeholder="e.g. SM-01" data-i18n-ph="admin.filterOperationPh" style="width:140px" />
         </div>
         <div>
-            <label>State</label>
+            <label data-i18n="admin.filterState">State</label>
             <select id="fState" style="width:130px">
-                <option value="">All States</option>
+                <option value="" data-i18n="admin.allStates">All States</option>
                 <option value="STOP">STOP</option>
                 <option value="RESPONSE">RESPONSE</option>
                 <option value="RUN">RUN</option>
             </select>
         </div>
         <div>
-            <label>From</label>
+            <label data-i18n="admin.filterFrom">From</label>
             <input type="date" id="fFrom" />
         </div>
         <div>
-            <label>To</label>
+            <label data-i18n="admin.filterTo">To</label>
             <input type="date" id="fTo" />
         </div>
-        <button class="btn-search" onclick="loadRecords(1)">🔍 Search</button>
-        <button class="btn-search" style="background:#7A6F6F;" onclick="clearFilters()">↺ Reset</button>
+        <button class="btn-search" onclick="loadRecords(1)" data-i18n="admin.search">🔍 Search</button>
+        <button class="btn-search" style="background:#7A6F6F;" onclick="clearFilters()" data-i18n="admin.reset">↺ Reset</button>
     </div>
 
     <div class="table-card">
         <table>
             <thead>
                 <tr>
-                    <th>ID</th><th>State</th><th>Operation</th><th>Employee</th>
-                    <th>Machine</th><th>Location</th><th>Reason</th><th>Effect</th>
-                    <th>Station</th><th>Description</th><th>Datetime</th>
-                    <th style="text-align:center">Action</th>
+                    <th data-i18n="admin.colId">ID</th>
+                    <th data-i18n="admin.colState">State</th>
+                    <th data-i18n="admin.filterOperation">Operation</th>
+                    <th data-i18n="admin.colEmployee">Employee</th>
+                    <th data-i18n="admin.colMachine">Machine</th>
+                    <th data-i18n="admin.colLocation">Location</th>
+                    <th data-i18n="admin.colReason">Reason</th>
+                    <th data-i18n="admin.colEffect">Effect</th>
+                    <th data-i18n="admin.colStation">Station</th>
+                    <th data-i18n="admin.colDescription">Description</th>
+                    <th data-i18n="admin.colDatetime">Datetime</th>
+                    <th style="text-align:center" data-i18n="admin.colAction">Action</th>
                 </tr>
             </thead>
             <tbody id="recordsTbody">
-                <tr><td colspan="12" style="text-align:center;padding:30px;color:#aaa;">Loading...</td></tr>
+                <tr><td colspan="12" style="text-align:center;padding:30px;color:#aaa;" data-i18n="common.loading">Loading...</td></tr>
             </tbody>
         </table>
         <div class="pager" id="pagerBar"></div>
@@ -357,31 +365,31 @@
 
     <div class="filter-bar">
         <div>
-            <label>Employee ID</label>
-            <input type="text" id="eSearch" placeholder="Employee ID or Name" style="width:220px"
+            <label data-i18n="admin.filterEmpId">Employee ID</label>
+            <input type="text" id="eSearch" placeholder="Employee ID or Name" data-i18n-ph="admin.filterEmpIdPh" style="width:220px"
                    oninput="filterEmployees()" />
         </div>
-        <button class="btn-search" onclick="filterEmployees()">🔍 Search</button>
-        <button class="btn-search" style="background:#7A6F6F;" onclick="document.getElementById('eSearch').value='';filterEmployees()">↺ Reset</button>
+        <button class="btn-search" onclick="filterEmployees()" data-i18n="admin.search">🔍 Search</button>
+        <button class="btn-search" style="background:#7A6F6F;" onclick="document.getElementById('eSearch').value='';filterEmployees()" data-i18n="admin.reset">↺ Reset</button>
     </div>
 
     <div class="toolbar">
-        <button class="btn-add" onclick="openEmpModal()">➕ Add Employee</button>
+        <button class="btn-add" onclick="openEmpModal()" data-i18n="admin.addEmployee">➕ Add Employee</button>
     </div>
 
     <div class="table-card">
         <table>
             <thead>
                 <tr>
-                    <th>ID</th>
-                    <th>Employee ID</th>
-                    <th>Chinese Name</th>
-                    <th>English Name</th>
-                    <th style="text-align:center">Action</th>
+                    <th data-i18n="admin.colId">ID</th>
+                    <th data-i18n="admin.colEmpId">Employee ID</th>
+                    <th data-i18n="admin.colChineseName">Chinese Name</th>
+                    <th data-i18n="admin.colEnglishName">English Name</th>
+                    <th style="text-align:center" data-i18n="admin.colAction">Action</th>
                 </tr>
             </thead>
             <tbody id="empTbody">
-                <tr><td colspan="5" style="text-align:center;padding:30px;color:#aaa;">Loading...</td></tr>
+                <tr><td colspan="5" style="text-align:center;padding:30px;color:#aaa;" data-i18n="common.loading">Loading...</td></tr>
             </tbody>
         </table>
         <div class="pager" id="empPagerBar"></div>
@@ -395,31 +403,31 @@
 
     <div class="filter-bar">
         <div>
-            <label>Username</label>
-            <input type="text" id="aSearch" placeholder="Username or Role" style="width:220px"
+            <label data-i18n="admin.username">Username</label>
+            <input type="text" id="aSearch" placeholder="Username or Role" data-i18n-ph="admin.filterAccPh" style="width:220px"
                    oninput="filterAccounts()" />
         </div>
-        <button class="btn-search" onclick="filterAccounts()">🔍 Search</button>
-        <button class="btn-search" style="background:#7A6F6F;" onclick="document.getElementById('aSearch').value='';filterAccounts()">↺ Reset</button>
+        <button class="btn-search" onclick="filterAccounts()" data-i18n="admin.search">🔍 Search</button>
+        <button class="btn-search" style="background:#7A6F6F;" onclick="document.getElementById('aSearch').value='';filterAccounts()" data-i18n="admin.reset">↺ Reset</button>
     </div>
 
     <div class="toolbar">
-        <button class="btn-add" onclick="openAccModal()">➕ Add Account</button>
+        <button class="btn-add" onclick="openAccModal()" data-i18n="admin.addAccount">➕ Add Account</button>
     </div>
 
     <div class="table-card">
         <table>
             <thead>
                 <tr>
-                    <th>ID</th>
-                    <th>Username</th>
-                    <th>Password</th>
-                    <th>Role</th>
-                    <th style="text-align:center">Action</th>
+                    <th data-i18n="admin.colId">ID</th>
+                    <th data-i18n="admin.username">Username</th>
+                    <th data-i18n="admin.password">Password</th>
+                    <th data-i18n="admin.role">Role</th>
+                    <th style="text-align:center" data-i18n="admin.colAction">Action</th>
                 </tr>
             </thead>
             <tbody id="accTbody">
-                <tr><td colspan="5" style="text-align:center;padding:30px;color:#aaa;">Loading...</td></tr>
+                <tr><td colspan="5" style="text-align:center;padding:30px;color:#aaa;" data-i18n="common.loading">Loading...</td></tr>
             </tbody>
         </table>
         <div class="pager" id="accPagerBar"></div>
@@ -433,37 +441,37 @@
 <div class="modal-overlay" id="editModal">
     <div class="modal-box">
         <div class="modal-head">
-            <h3>✏️ Edit Record — ID: <span id="modalId">-</span></h3>
+            <h3>✏️ <span data-i18n="admin.editRecord">Edit Record</span> — ID: <span id="modalId">-</span></h3>
             <button class="modal-close" onclick="closeEdit()">✕</button>
         </div>
         <div class="modal-body">
             <input type="hidden" id="editId" />
-            <div class="modal-field"><label>Employee Code</label><input type="text" id="editEmpCode" /></div>
-            <div class="modal-field"><label>Employee Name</label><input type="text" id="editEmpName" /></div>
-            <div class="modal-field"><label>Machine Code</label><input type="text" id="editMachine" /></div>
-            <div class="modal-field"><label>Location</label><input type="text" id="editLocation" /></div>
-            <div class="modal-field"><label>Operation</label><input type="text" id="editOperation" /></div>
+            <div class="modal-field"><label data-i18n="admin.empCode">Employee Code</label><input type="text" id="editEmpCode" /></div>
+            <div class="modal-field"><label data-i18n="admin.empName">Employee Name</label><input type="text" id="editEmpName" /></div>
+            <div class="modal-field"><label data-i18n="admin.machineCode">Machine Code</label><input type="text" id="editMachine" /></div>
+            <div class="modal-field"><label data-i18n="admin.colLocation">Location</label><input type="text" id="editLocation" /></div>
+            <div class="modal-field"><label data-i18n="admin.filterOperation">Operation</label><input type="text" id="editOperation" /></div>
             <div class="modal-field">
-                <label>State</label>
+                <label data-i18n="admin.colState">State</label>
                 <select id="editState">
                     <option value="STOP">STOP</option>
                     <option value="RESPONSE">RESPONSE</option>
                     <option value="RUN">RUN</option>
                 </select>
             </div>
-            <div class="modal-field"><label>Reason</label><input type="text" id="editReason" /></div>
-            <div class="modal-field"><label>Effect</label><input type="text" id="editEffect" /></div>
-            <div class="modal-field"><label>Station</label><input type="text" id="editStation" /></div>
-            <div class="modal-field"><label>Action</label><input type="text" id="editAction" /></div>
-            <div class="modal-field"><label>Root Cause</label><input type="text" id="editRootCause" /></div>
-            <div class="modal-field"><label>Spare Parts</label><input type="text" id="editSpareParts" /></div>
-            <div class="modal-field"><label>Estimate Time</label><input type="text" id="editEstimate" /></div>
-            <div class="modal-field"><label>Datetime</label><input type="datetime-local" id="editDatetime" /></div>
-            <div class="modal-field span2"><label>Description</label><textarea id="editDesc" rows="3"></textarea></div>
+            <div class="modal-field"><label data-i18n="admin.colReason">Reason</label><input type="text" id="editReason" /></div>
+            <div class="modal-field"><label data-i18n="admin.colEffect">Effect</label><input type="text" id="editEffect" /></div>
+            <div class="modal-field"><label data-i18n="admin.colStation">Station</label><input type="text" id="editStation" /></div>
+            <div class="modal-field"><label data-i18n="admin.colAction">Action</label><input type="text" id="editAction" /></div>
+            <div class="modal-field"><label data-i18n="admin.rootCause">Root Cause</label><input type="text" id="editRootCause" /></div>
+            <div class="modal-field"><label data-i18n="admin.spareParts">Spare Parts</label><input type="text" id="editSpareParts" /></div>
+            <div class="modal-field"><label data-i18n="admin.estimateTime">Estimate Time</label><input type="text" id="editEstimate" /></div>
+            <div class="modal-field"><label data-i18n="admin.colDatetime">Datetime</label><input type="datetime-local" id="editDatetime" /></div>
+            <div class="modal-field span2"><label data-i18n="admin.colDescription">Description</label><textarea id="editDesc" rows="3"></textarea></div>
         </div>
         <div class="modal-footer">
-            <button class="btn-cancel" onclick="closeEdit()">Cancel</button>
-            <button class="btn-save"   onclick="saveEdit()">Save</button>
+            <button class="btn-cancel" onclick="closeEdit()" data-i18n="common.cancel">Cancel</button>
+            <button class="btn-save"   onclick="saveEdit()" data-i18n="common.save">Save</button>
         </div>
     </div>
 </div>
@@ -472,18 +480,18 @@
 <div class="modal-overlay" id="empModal">
     <div class="modal-box sm">
         <div class="modal-head">
-            <h3 id="empModalTitle">👤 Add Employee</h3>
+            <h3 id="empModalTitle" data-i18n="admin.addEmployee">👤 Add Employee</h3>
             <button class="modal-close" onclick="closeEmpModal()">✕</button>
         </div>
         <div class="modal-body single-col">
             <input type="hidden" id="empId" />
-            <div class="modal-field"><label>Employee ID <span style="color:red">*</span></label><input type="text" id="empEmpID" /></div>
-            <div class="modal-field"><label>Chinese Name</label><input type="text" id="empChinese" /></div>
-            <div class="modal-field"><label>English Name</label><input type="text" id="empEnglish" /></div>
+            <div class="modal-field"><label data-i18n="admin.colEmpId">Employee ID <span style="color:red">*</span></label><input type="text" id="empEmpID" /></div>
+            <div class="modal-field"><label data-i18n="admin.colChineseName">Chinese Name</label><input type="text" id="empChinese" /></div>
+            <div class="modal-field"><label data-i18n="admin.colEnglishName">English Name</label><input type="text" id="empEnglish" /></div>
         </div>
         <div class="modal-footer">
-            <button class="btn-cancel" onclick="closeEmpModal()">Cancel</button>
-            <button class="btn-save"   onclick="saveEmployee()">💾 Save</button>
+            <button class="btn-cancel" onclick="closeEmpModal()" data-i18n="common.cancel">Cancel</button>
+            <button class="btn-save"   onclick="saveEmployee()" data-i18n="common.save">💾 Save</button>
         </div>
     </div>
 </div>
@@ -492,18 +500,18 @@
 <div class="modal-overlay" id="accModal">
     <div class="modal-box sm">
         <div class="modal-head">
-            <h3 id="accModalTitle">🔑 Add Account</h3>
+            <h3 id="accModalTitle" data-i18n="admin.addAccount">🔑 Add Account</h3>
             <button class="modal-close" onclick="closeAccModal()">✕</button>
         </div>
         <div class="modal-body single-col">
             <input type="hidden" id="accId" />
-            <div class="modal-field"><label>Username <span style="color:red">*</span></label><input type="text" id="accUsername" /></div>
+            <div class="modal-field"><label data-i18n="admin.username">Username <span style="color:red">*</span></label><input type="text" id="accUsername" /></div>
             <div class="modal-field">
-                <label>Password <span style="color:red">*</span></label>
-                <input type="text" id="accPassword" placeholder="Enter password" />
+                <label data-i18n="admin.password">Password <span style="color:red">*</span></label>
+                <input type="text" id="accPassword" placeholder="Enter password" data-i18n-ph="admin.passwordPh" />
             </div>
             <div class="modal-field">
-                <label>Role <span style="color:red">*</span></label>
+                <label data-i18n="admin.role">Role <span style="color:red">*</span></label>
                 <select id="accRole">
                     <option value="Production">Production</option>
                     <option value="Technical">Technical</option>
@@ -512,8 +520,8 @@
             </div>
         </div>
         <div class="modal-footer">
-            <button class="btn-cancel" onclick="closeAccModal()">Cancel</button>
-            <button class="btn-save"   onclick="saveAccount()">💾 Save</button>
+            <button class="btn-cancel" onclick="closeAccModal()" data-i18n="common.cancel">Cancel</button>
+            <button class="btn-save"   onclick="saveAccount()" data-i18n="common.save">💾 Save</button>
         </div>
     </div>
 </div>
@@ -522,35 +530,36 @@
 <div class="modal-overlay" id="resetPwModal">
     <div class="modal-box sm">
         <div class="modal-head" style="background:#1D4ED8;">
-            <h3>🔒 Reset Password</h3>
+            <h3 data-i18n="admin.resetPassword">🔒 Reset Password</h3>
             <button class="modal-close" onclick="closeResetPw()">✕</button>
         </div>
         <div class="modal-body single-col">
             <input type="hidden" id="resetPwId" />
             <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:12px 14px;margin-bottom:4px;">
-                <div style="font-size:12px;color:#1D4ED8;font-weight:600;margin-bottom:2px;">👤 Account</div>
+                <div style="font-size:12px;color:#1D4ED8;font-weight:600;margin-bottom:2px;" data-i18n="admin.accountLabel">👤 Account</div>
                 <div id="resetPwUsername" style="font-size:16px;font-weight:700;color:#1e3a8a;"></div>
             </div>
             <div class="modal-field">
-                <label>New Password <span style="color:red">*</span></label>
+                <label data-i18n="admin.newPassword">New Password <span style="color:red">*</span></label>
                 <div style="position:relative;">
-                    <input type="text" id="resetPwNew" placeholder="Enter new password"
+                    <input type="text" id="resetPwNew" placeholder="Enter new password" data-i18n-ph="admin.newPasswordPh"
                            style="padding-right:80px;" />
                     <button type="button" onclick="genPassword()"
                             style="position:absolute;right:6px;top:50%;transform:translateY(-50%);
                                    background:#e0f2fe;border:1px solid #bae6fd;border-radius:5px;
-                                   padding:3px 8px;font-size:11px;font-weight:600;color:#0369a1;cursor:pointer;">
+                                   padding:3px 8px;font-size:11px;font-weight:600;color:#0369a1;cursor:pointer;"
+                            data-i18n="admin.generateBtn">
                         🎲 Generate
                     </button>
                 </div>
             </div>
-            <div style="font-size:11px;color:var(--muted);margin-top:-6px;">
+            <div style="font-size:11px;color:var(--muted);margin-top:-6px;" data-i18n="admin.generateTip">
                 💡 Tip: Click 🎲 to generate a random password.
             </div>
         </div>
         <div class="modal-footer">
-            <button class="btn-cancel" onclick="closeResetPw()">Cancel</button>
-            <button class="btn-save" style="background:#1D4ED8;" onclick="confirmResetPw()">🔒 Confirm Reset</button>
+            <button class="btn-cancel" onclick="closeResetPw()" data-i18n="common.cancel">Cancel</button>
+            <button class="btn-save" style="background:#1D4ED8;" onclick="confirmResetPw()" data-i18n="admin.confirmReset">🔒 Confirm Reset</button>
         </div>
     </div>
 </div>
@@ -559,11 +568,11 @@
 <div class="confirm-overlay" id="confirmModal">
     <div class="confirm-box">
         <div class="confirm-icon">🗑</div>
-        <h4>Confirm Delete</h4>
-        <p>This action cannot be undone.<br>ID: <strong id="confirmId">-</strong></p>
+        <h4 data-i18n="admin.confirmDeleteTitle">Confirm Delete</h4>
+        <p><span data-i18n="admin.confirmDeleteMsg">This action cannot be undone.</span><br>ID: <strong id="confirmId">-</strong></p>
         <div class="confirm-btns">
-            <button class="btn-cancel" onclick="closeConfirm()">Cancel</button>
-            <button class="btn-del" style="padding:10px 20px;font-size:14px;" onclick="confirmDelete()">Confirm Delete</button>
+            <button class="btn-cancel" onclick="closeConfirm()" data-i18n="common.cancel">Cancel</button>
+            <button class="btn-del" style="padding:10px 20px;font-size:14px;" onclick="confirmDelete()" data-i18n="common.delete">Confirm Delete</button>
         </div>
     </div>
 </div>
@@ -633,14 +642,14 @@ async function confirmDelete() {
         const data = await res.json();
         if (data.success) {
             closeConfirm();
-            showToast('🗑 Deleted');
+            showToast('🗑 ' + window.i18nT('common.delete'));
             if (type === 'downtime') loadRecords(currentPage);
             if (type === 'employee') loadEmployees();
             if (type === 'account')  loadAccounts();
         } else {
-            showToast('⚠ ' + (data.message || 'Delete failed'));
+            showToast('⚠ ' + (data.message || window.i18nT('admin.deleteFailed')));
         }
-    } catch { showToast('⚠ Request failed'); }
+    } catch { showToast('⚠ ' + window.i18nT('admin.requestFailed')); }
 }
 
 // ════════════════════════════════════════
@@ -666,13 +675,13 @@ async function loadRecords(page = 1) {
         const data = await res.json();
         renderTable(data.records || []);
         renderPager(data.totalPages, page, 'pagerBar', loadRecords);
-    } catch { showToast('⚠ Load failed'); }
+    } catch { showToast('⚠ ' + window.i18nT('admin.loadFailed')); }
 }
 
 function renderTable(rows) {
     const tbody = document.getElementById('recordsTbody');
     if (!rows.length) {
-        tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:30px;color:#aaa;">No records found</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;padding:30px;color:#aaa;">${window.i18nT('admin.noRecords')}</td></tr>`;
         return;
     }
     tbody.innerHTML = rows.map(r => {
@@ -691,8 +700,8 @@ function renderTable(rows) {
             <td title="${r.description||''}">${(r.description||'-').substring(0,30)}${(r.description||'').length>30?'…':''}</td>
             <td style="white-space:nowrap">${dt}</td>
             <td style="text-align:center;white-space:nowrap">
-                <button class="btn-edit" onclick='openEdit(${JSON.stringify(r)})'>✏ Edit</button>
-                <button class="btn-del"  onclick="openConfirm(${r.id},'downtime')" style="margin-left:4px">🗑 Del</button>
+                <button class="btn-edit" onclick='openEdit(${JSON.stringify(r)})'>✏ ${window.i18nT('admin.edit')}</button>
+                <button class="btn-del"  onclick="openConfirm(${r.id},'downtime')" style="margin-left:4px">🗑 ${window.i18nT('common.delete')}</button>
             </td>
         </tr>`;
     }).join('');
@@ -763,9 +772,9 @@ async function saveEdit() {
             body: JSON.stringify(payload)
         });
         const data = await res.json();
-        if (data.success) { closeEdit(); showToast('✅ Saved'); loadRecords(currentPage); }
-        else showToast('⚠ ' + (data.message || 'Save failed'));
-    } catch { showToast('⚠ Request failed'); }
+        if (data.success) { closeEdit(); showToast('✅ ' + window.i18nT('common.save')); loadRecords(currentPage); }
+        else showToast('⚠ ' + (data.message || window.i18nT('admin.saveFailed')));
+    } catch { showToast('⚠ ' + window.i18nT('admin.requestFailed')); }
 }
 
 function clearFilters() {
@@ -791,7 +800,7 @@ async function loadEmployees() {
         const data = await res.json();
         allEmployees = data.employees || [];
         renderEmployees(allEmployees, 1);
-    } catch { showToast('⚠ Load failed'); }
+    } catch { showToast('⚠ ' + window.i18nT('admin.loadFailed')); }
 }
 
 function filterEmployees() {
@@ -812,7 +821,7 @@ function renderEmployees(list, page) {
     const tbody = document.getElementById('empTbody');
 
     if (!slice.length) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;color:#aaa;">No records found</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:30px;color:#aaa;">${window.i18nT('admin.noRecords')}</td></tr>`;
         document.getElementById('empPagerBar').innerHTML = '';
         return;
     }
@@ -822,8 +831,8 @@ function renderEmployees(list, page) {
         <td>${e.chineseName || '-'}</td>
         <td>${e.englishName || '-'}</td>
         <td style="text-align:center;white-space:nowrap">
-            <button class="btn-edit" onclick='openEmpModal(${JSON.stringify(e)})'>✏ Edit</button>
-            <button class="btn-del"  onclick="openConfirm(${e.id},'employee')" style="margin-left:4px">🗑 Del</button>
+            <button class="btn-edit" onclick='openEmpModal(${JSON.stringify(e)})'>✏ ${window.i18nT('admin.edit')}</button>
+            <button class="btn-del"  onclick="openConfirm(${e.id},'employee')" style="margin-left:4px">🗑 ${window.i18nT('common.delete')}</button>
         </td>
     </tr>`).join('');
 
@@ -852,8 +861,8 @@ function _empGoPage(p) {
 
 function openEmpModal(e = null) {
     document.getElementById('empModalTitle').textContent = e
-        ? '✏️ 编辑员工 / Edit Employee'
-        : '👤 添加员工 / Add Employee';
+        ? window.i18nT('admin.editEmployee')
+        : window.i18nT('admin.addEmployee');
     document.getElementById('empId').value      = e ? e.id          : '';
     document.getElementById('empEmpID').value   = e ? e.employeeID  : '';
     document.getElementById('empChinese').value = e ? e.chineseName : '';
@@ -864,7 +873,7 @@ function closeEmpModal() { document.getElementById('empModal').classList.remove(
 
 async function saveEmployee() {
     const empID = document.getElementById('empEmpID').value.trim();
-    if (!empID) { showToast('⚠ Employee ID is required'); return; }
+    if (!empID) { showToast('⚠ ' + window.i18nT('admin.empIdRequired')); return; }
 
     const payload = {
         id:          parseInt(document.getElementById('empId').value) || 0,
@@ -879,9 +888,9 @@ async function saveEmployee() {
             body: JSON.stringify(payload)
         });
         const data = await res.json();
-        if (data.success) { closeEmpModal(); showToast('✅ Saved'); loadEmployees(); }
-        else showToast('⚠ ' + (data.message || 'Save failed'));
-    } catch { showToast('⚠ Request failed'); }
+        if (data.success) { closeEmpModal(); showToast('✅ ' + window.i18nT('common.save')); loadEmployees(); }
+        else showToast('⚠ ' + (data.message || window.i18nT('admin.saveFailed')));
+    } catch { showToast('⚠ ' + window.i18nT('admin.requestFailed')); }
 }
 
 // ════════════════════════════════════════
@@ -899,7 +908,7 @@ async function loadAccounts() {
         const data = await res.json();
         allAccounts = data.accounts || [];
         renderAccounts(allAccounts, 1);
-    } catch { showToast('⚠ Load failed'); }
+    } catch { showToast('⚠ ' + window.i18nT('admin.loadFailed')); }
 }
 
 function filterAccounts() {
@@ -919,7 +928,7 @@ function renderAccounts(list, page) {
     const tbody = document.getElementById('accTbody');
 
     if (!slice.length) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;color:#aaa;">No records found</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:30px;color:#aaa;">${window.i18nT('admin.noRecords')}</td></tr>`;
         document.getElementById('accPagerBar').innerHTML = '';
         return;
     }
@@ -932,9 +941,9 @@ function renderAccounts(list, page) {
             <span style="font-size:11px;color:#aaa;margin-left:6px">(${a.password.length} chars)</span></td>
         <td><span class="badge ${roleColor[a.role]||'badge-prod'}">${a.role}</span></td>
         <td style="text-align:center;white-space:nowrap">
-            <button class="btn-edit"  onclick='openAccModal(${JSON.stringify(a)})'>✏ Edit</button>
-            <button class="btn-reset" onclick="openResetPw(${a.id}, '${a.username.replace(/'/g,"\\'")}')" style="margin-left:4px">🔒 Reset</button>
-            <button class="btn-del"   onclick="openConfirm(${a.id},'account')" style="margin-left:4px">🗑 Del</button>
+            <button class="btn-edit"  onclick='openAccModal(${JSON.stringify(a)})'>✏ ${window.i18nT('admin.edit')}</button>
+            <button class="btn-reset" onclick="openResetPw(${a.id}, '${a.username.replace(/'/g,"\\'")}')" style="margin-left:4px">🔒 ${window.i18nT('admin.resetPwBtn')}</button>
+            <button class="btn-del"   onclick="openConfirm(${a.id},'account')" style="margin-left:4px">🗑 ${window.i18nT('common.delete')}</button>
         </td>
     </tr>`).join('');
 
@@ -960,8 +969,8 @@ function _accGoPage(p) {
 
 function openAccModal(a = null) {
     document.getElementById('accModalTitle').textContent = a
-        ? '✏️ Edit Account'
-        : '🔑 Add Account';
+        ? window.i18nT('admin.editAccount')
+        : window.i18nT('admin.addAccount');
     document.getElementById('accId').value       = a ? a.id       : '';
     document.getElementById('accUsername').value = a ? a.username : '';
     document.getElementById('accPassword').value = a ? a.password : '';
@@ -973,7 +982,7 @@ function closeAccModal() { document.getElementById('accModal').classList.remove(
 async function saveAccount() {
     const username = document.getElementById('accUsername').value.trim();
     const password = document.getElementById('accPassword').value.trim();
-    if (!username || !password) { showToast('⚠ Username and password cannot be empty'); return; }
+    if (!username || !password) { showToast('⚠ ' + window.i18nT('admin.usernamePasswordRequired')); return; }
 
     const payload = {
         id:       parseInt(document.getElementById('accId').value) || 0,
@@ -988,9 +997,9 @@ async function saveAccount() {
             body: JSON.stringify(payload)
         });
         const data = await res.json();
-        if (data.success) { closeAccModal(); showToast('✅ Saved'); loadAccounts(); }
-        else showToast('⚠ ' + (data.message || 'Save failed'));
-    } catch { showToast('⚠ Request failed'); }
+        if (data.success) { closeAccModal(); showToast('✅ ' + window.i18nT('common.save')); loadAccounts(); }
+        else showToast('⚠ ' + (data.message || window.i18nT('admin.saveFailed')));
+    } catch { showToast('⚠ ' + window.i18nT('admin.requestFailed')); }
 }
 
 // ════════════════════════════════════════
@@ -1017,7 +1026,7 @@ function genPassword() {
 async function confirmResetPw() {
     const id  = parseInt(document.getElementById('resetPwId').value);
     const pw  = document.getElementById('resetPwNew').value.trim();
-    if (!pw) { showToast('⚠ Please enter a new password'); return; }
+    if (!pw) { showToast('⚠ ' + window.i18nT('admin.newPasswordRequired')); return; }
 
     try {
         const res  = await fetch(`${pathBase}/Status/AdminResetPassword`, {
@@ -1028,12 +1037,12 @@ async function confirmResetPw() {
         const data = await res.json();
         if (data.success) {
             closeResetPw();
-            showToast('✅ Password reset successfully');
+            showToast('✅ ' + window.i18nT('admin.passwordResetSuccess'));
             loadAccounts(); // refresh để cập nhật hiển thị char count
         } else {
-            showToast('⚠ ' + (data.message || 'Reset failed'));
+            showToast('⚠ ' + (data.message || window.i18nT('admin.resetFailed')));
         }
-    } catch { showToast('⚠ Request failed'); }
+    } catch { showToast('⚠ ' + window.i18nT('admin.requestFailed')); }
 }
 
 // ── Init ──

@@ -195,20 +195,20 @@
                         {
                         <li class="nav-item">
                             <a class="nav-link text-dark custom-highlight" asp-controller="Status" asp-action="CreateDownTime">
-                                📝 Create Downtime
+                                📝 <span data-i18n="nav.createDowntime">Create Downtime</span>
                             </a>
                         </li>
                         }
 
                         <li class="nav-item">
                             <a class="nav-link text-dark custom-highlight" asp-controller="Status" asp-action="DowntimeList">
-                                📈 Downtime History
+                                📈 <span data-i18n="nav.downtimeHistory">Downtime History</span>
                             </a>
                         </li>
 
                         <li class="nav-item">
                             <a class="nav-link text-dark custom-highlight" asp-controller="Status" asp-action="ReportDowntime">
-                                📊 Downtime Report
+                                📊 <span data-i18n="nav.downtimeReport">Downtime Report</span>
                             </a>
                         </li>
 
@@ -216,7 +216,7 @@
                         {
                         <li class="nav-item">
                             <a class="nav-link text-dark custom-highlight" asp-controller="Status" asp-action="AdminNotifications">
-                                🔔 Notification Dashboard
+                                🔔 <span data-i18n="nav.notifDashboard">Notification Dashboard</span>
                                 <span id="navAdminBadge" style="display:none;background:#7c3aed;color:#fff;font-size:10px;font-weight:700;border-radius:99px;padding:1px 6px;margin-left:4px;vertical-align:middle;"></span>
                             </a>
                         </li>
@@ -225,7 +225,7 @@
                         {
                         <li class="nav-item">
                             <a class="nav-link text-dark custom-highlight" asp-controller="Status" asp-action="NotificationDashboard">
-                                🔔 Notification Dashboard
+                                🔔 <span data-i18n="nav.notifDashboard">Notification Dashboard</span>
                             </a>
                         </li>
                         }
@@ -233,7 +233,7 @@
                         {
                         <li class="nav-item">
                             <a class="nav-link text-dark custom-highlight" asp-controller="Status" asp-action="DRIDashboard">
-                                🔧 DRI Dashboard
+                                🔧 <span data-i18n="nav.driDashboard">DRI Dashboard</span>
                             </a>
                         </li>
                         }
@@ -242,7 +242,7 @@
                         {
                         <li class="nav-item">
                             <a class="nav-link text-dark custom-highlight" asp-controller="Status" asp-action="ProductionNotifications">
-                                📬 My Notifications
+                                📬 <span data-i18n="nav.myNotifications">My Notifications</span>
                                 <span id="navProdBadge" style="display:none;background:#ef4444;color:#fff;font-size:10px;font-weight:700;border-radius:99px;padding:1px 6px;margin-left:4px;vertical-align:middle;"></span>
                             </a>
                         </li>
@@ -252,7 +252,7 @@
                         {
                         <li class="nav-item">
                             <a class="nav-link text-dark custom-highlight" asp-controller="Status" asp-action="AdminPanel">
-                                🛡 Admin Panel
+                                🛡 <span data-i18n="nav.adminPanel">Admin Panel</span>
                             </a>
                         </li>
                         }
@@ -268,29 +268,37 @@
                                 </button>
                                 <div class="bell-dropdown" id="bellDropdown">
                                     <div class="bell-drop-header">
-                                        @if (isProduction) { <span>📬 Tech Team Responses</span> }
-                                        @if (isTechnical)  { <span>🛑 Production Notifications</span> }
-                                        @if (isAdmin)      { <span>📋 All Notifications</span> }
-                                        <button class="bell-drop-clear" onclick="clearBellNotifs()">Clear All</button>
+                                        @if (isProduction) { <span data-i18n="nav.techResponses">📬 Tech Team Responses</span> }
+                                        @if (isTechnical)  { <span data-i18n="nav.prodNotifs">🛑 Production Notifications</span> }
+                                        @if (isAdmin)      { <span data-i18n="nav.allNotifs">📋 All Notifications</span> }
+                                        <button class="bell-drop-clear" onclick="clearBellNotifs()" data-i18n="nav.clearAll">Clear All</button>
                                     </div>
                                     <div class="bell-drop-list" id="bellList">
-                                        <div class="bell-drop-empty" id="bellEmpty">No notifications.</div>
+                                        <div class="bell-drop-empty" id="bellEmpty" data-i18n="nav.noNotifs">No notifications.</div>
                                     </div>
                                 </div>
                             </div>
                         </li>
+                        <li class="nav-item d-flex align-items-center" style="gap:6px;padding:0 6px;">
+                            <img src="~/images/en.png" alt="EN" class="lang-flag" data-lang="en"
+                                 onclick="changeLang('en')" title="English"
+                                 style="width:24px;height:17px;cursor:pointer;border-radius:3px;object-fit:cover;" />
+                            <img src="~/images/cn.png" alt="CN" class="lang-flag" data-lang="cn"
+                                 onclick="changeLang('cn')" title="中文"
+                                 style="width:24px;height:17px;cursor:pointer;border-radius:3px;object-fit:cover;" />
+                        </li>
                         <li class="nav-item">
                             <span class="nav-link text-muted" style="font-size:13px; cursor:default;">
                                 👤 @userName
-                                @if (isAdmin)      { <span class="role-badge-nav role-admin">Admin</span> }
-                                @if (isTechnical)  { <span class="role-badge-nav role-technical">Technician</span> }
-                                @if (isProduction) { <span class="role-badge-nav role-production">Production</span> }
-                                @if (isDRI)        { <span class="role-badge-nav" style="background:#7c3aed;color:#fff;">DRI</span> }
+                                @if (isAdmin)      { <span class="role-badge-nav role-admin" data-i18n="roles.Admin">Admin</span> }
+                                @if (isTechnical)  { <span class="role-badge-nav role-technical" data-i18n="roles.Technical">Technician</span> }
+                                @if (isProduction) { <span class="role-badge-nav role-production" data-i18n="roles.Production">Production</span> }
+                                @if (isDRI)        { <span class="role-badge-nav" style="background:#7c3aed;color:#fff;" data-i18n="roles.DRI">DRI</span> }
                             </span>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link nav-logout" asp-controller="Account" asp-action="Logout">
-                                ⏻ Logout
+                                ⏻ <span data-i18n="nav.logout">Logout</span>
                             </a>
                         </li>
                     </ul>
@@ -312,6 +320,7 @@
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/i18n-init.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 
     @if (!string.IsNullOrEmpty(userRole))

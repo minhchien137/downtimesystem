@@ -219,7 +219,7 @@ namespace MachineStatusUpdate.Controllers
             var smeqs = await _context.SVN_Downtime_SMEQs
                 .AsNoTracking()
                 .OrderBy(e => e.name)
-                .Select(e => new { e.name, e.serialnumber })
+                .Select(e => new { e.name, e.serialnumber, e.namechinese })
                 .ToListAsync();
 
             ViewBag.SMEQs = smeqs;
@@ -244,7 +244,10 @@ namespace MachineStatusUpdate.Controllers
                 {
                     e.name,
                     e.serialnumber,
-                    label = e.name + (!string.IsNullOrEmpty(e.serialnumber) ? $" - {e.serialnumber}" : "")
+                    e.namechinese,
+                    label = e.name
+                        + (!string.IsNullOrEmpty(e.serialnumber)  ? $" - {e.serialnumber}"    : "")
+                        + (!string.IsNullOrEmpty(e.namechinese)   ? $" ({e.namechinese})"     : "")
                 })
                 .ToListAsync();
 
@@ -2121,6 +2124,19 @@ namespace MachineStatusUpdate.Controllers
 
                 var rawStops = await rawQuery.OrderBy(x => x.d.Datetime).ToListAsync();
 
+                // Build Chinese-name lookup for old records that predate the format change
+                var smeqChinese = await _context.SVN_Downtime_SMEQs
+                    .AsNoTracking()
+                    .Select(e => new {
+                        key = e.name + (string.IsNullOrEmpty(e.serialnumber) ? "" : " - " + e.serialnumber),
+                        e.namechinese
+                    })
+                    .ToListAsync();
+                var smeqChineseDict = smeqChinese
+                    .Where(x => !string.IsNullOrEmpty(x.key))
+                    .GroupBy(x => x.key)
+                    .ToDictionary(g => g.Key, g => g.First().namechinese ?? "");
+
                 // Join TechResponses for Start/Response/End times
                 var techResps = await _context.SVN_Downtime_TechResponses
                     .Where(x => x.TechAction == "ACCEPT")
@@ -2362,7 +2378,14 @@ namespace MachineStatusUpdate.Controllers
 
                     ws3.Cell(r, 1).Value  = d.Datetime?.ToString("dd/MM/yyyy HH:mm") ?? "-";
                     ws3.Cell(r, 2).Value  = d.Operation   ?? "-";
-                    ws3.Cell(r, 3).Value  = d.MachineCode ?? "-";
+                    // Append Chinese name for records that don't already have it
+                    var machineDisplay = d.MachineCode ?? "-";
+                    if (!string.IsNullOrEmpty(d.MachineCode) && !d.MachineCode.Contains("("))
+                    {
+                        if (smeqChineseDict.TryGetValue(d.MachineCode, out var cn) && !string.IsNullOrEmpty(cn))
+                            machineDisplay = $"{d.MachineCode} ({cn})";
+                    }
+                    ws3.Cell(r, 3).Value  = machineDisplay;
                     ws3.Cell(r, 4).Value  = d.Location    ?? "-";
                     ws3.Cell(r, 5).Value  = item.ReasonName.Length > 0 ? item.ReasonName : (d.Reason ?? "-");
                     ws3.Cell(r, 6).Value  = d.Station     ?? "-";
@@ -2441,6 +2464,108 @@ namespace MachineStatusUpdate.Controllers
 
                 // Freeze pane below header
                 ws3.SheetView.FreezeRows(headerRow3);
+
+                // ── Top 5 DT Summary by Time Period ──
+                r += 2;
+
+                ws3.Cell(r, 1).Value = "Top 5 DT Summary by Time Period";
+                ws3.Range(r, 1, r, 5).Merge();
+                ws3.Cell(r, 1).Style.Font.Bold      = true;
+                ws3.Cell(r, 1).Style.Font.FontSize  = 12;
+                ws3.Cell(r, 1).Style.Font.FontColor = XLColor.White;
+                ws3.Cell(r, 1).Style.Fill.BackgroundColor = XLColor.FromHtml("#B7410E");
+                ws3.Cell(r, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                ws3.Cell(r, 1).Style.Alignment.Vertical   = XLAlignmentVerticalValues.Center;
+                ws3.Row(r).Height = 26; r++;
+
+                var periodParts = new List<string>();
+                if (!string.IsNullOrEmpty(fromDate)) periodParts.Add(fromDate);
+                if (!string.IsNullOrEmpty(toDate))   periodParts.Add(toDate);
+                var periodNote = periodParts.Count == 2
+                    ? $"Period: {periodParts[0]}  –  {periodParts[1]}"
+                    : periodParts.Count == 1 ? $"Period: {periodParts[0]}" : "Period: All data";
+                ws3.Cell(r, 1).Value = periodNote;
+                ws3.Range(r, 1, r, 5).Merge();
+                ws3.Cell(r, 1).Style.Font.Italic   = true;
+                ws3.Cell(r, 1).Style.Font.FontSize = 9;
+                ws3.Cell(r, 1).Style.Font.FontColor = XLColor.FromHtml("#6E2C00");
+                ws3.Cell(r, 1).Style.Fill.BackgroundColor = XLColor.FromHtml("#FAD7A0");
+                ws3.Row(r).Height = 14; r++;
+
+                string[] top5Headers = { "Rank", "Machine Name", "Total DT (min)", "Total DT (h:mm)", "Incidents" };
+                for (int c = 0; c < top5Headers.Length; c++) {
+                    var hc = ws3.Cell(r, c + 1);
+                    hc.Value = top5Headers[c];
+                    hc.Style.Font.Bold      = true;
+                    hc.Style.Font.FontColor = XLColor.White;
+                    hc.Style.Fill.BackgroundColor     = XLColor.FromHtml("#B7410E");
+                    hc.Style.Alignment.Horizontal     = XLAlignmentHorizontalValues.Center;
+                    hc.Style.Alignment.Vertical       = XLAlignmentVerticalValues.Center;
+                    hc.Style.Border.OutsideBorder     = XLBorderStyleValues.Thin;
+                    hc.Style.Border.OutsideBorderColor = XLColor.White;
+                }
+                ws3.Row(r).Height = 20; r++;
+
+                var top5Data = rawStops
+                    .Select(item => {
+                        var _d  = item.d;
+                        var _st = _d.Datetime;
+                        var _et = runRecords
+                            .Where(rr => rr.MachineCode == _d.MachineCode && rr.Datetime.HasValue && rr.Datetime > _d.Datetime)
+                            .OrderBy(rr => rr.Datetime)
+                            .Select(rr => rr.Datetime)
+                            .FirstOrDefault();
+                        var _dt  = (_st.HasValue && _et.HasValue) ? (_et.Value - _st.Value).TotalMinutes : 0;
+                        var _mc  = _d.MachineCode ?? "-";
+                        if (!string.IsNullOrEmpty(_d.MachineCode) && !_d.MachineCode.Contains("("))
+                            if (smeqChineseDict.TryGetValue(_d.MachineCode, out var _cn) && !string.IsNullOrEmpty(_cn))
+                                _mc = $"{_d.MachineCode} ({_cn})";
+                        return new { Machine = _mc, DT = _dt };
+                    })
+                    .GroupBy(x => x.Machine)
+                    .Select(g => new {
+                        Machine      = g.Key,
+                        TotalMinutes = Math.Round(g.Sum(x => x.DT), 1),
+                        Incidents    = g.Count()
+                    })
+                    .OrderByDescending(x => x.TotalMinutes)
+                    .Take(5)
+                    .ToList();
+
+                XLColor[] rankBg = {
+                    XLColor.FromHtml("#E74C3C"),
+                    XLColor.FromHtml("#E67E22"),
+                    XLColor.FromHtml("#F39C12"),
+                    XLColor.FromHtml("#F1C40F"),
+                    XLColor.FromHtml("#FCF3CF")
+                };
+
+                for (int i = 0; i < top5Data.Count; i++) {
+                    var m   = top5Data[i];
+                    var bg  = rankBg[i];
+                    var hrs = (int)(m.TotalMinutes / 60);
+                    var min = (int)(m.TotalMinutes % 60);
+                    ws3.Cell(r, 1).Value = i + 1;
+                    ws3.Cell(r, 2).Value = m.Machine;
+                    ws3.Cell(r, 3).Value = m.TotalMinutes;
+                    ws3.Cell(r, 4).Value = $"{hrs}h {min:D2}m";
+                    ws3.Cell(r, 5).Value = m.Incidents;
+                    for (int c = 1; c <= 5; c++) {
+                        var cell = ws3.Cell(r, c);
+                        cell.Style.Fill.BackgroundColor = bg;
+                        cell.Style.Font.Bold      = i < 3;
+                        cell.Style.Font.FontColor = i < 2 ? XLColor.White : XLColor.FromHtml("#1A1A1A");
+                        cell.Style.Border.BottomBorder      = XLBorderStyleValues.Hair;
+                        cell.Style.Border.BottomBorderColor = XLColor.FromHtml("#E59866");
+                        cell.Style.Alignment.Vertical       = XLAlignmentVerticalValues.Center;
+                    }
+                    ws3.Cell(r, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                    ws3.Cell(r, 3).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                    ws3.Cell(r, 4).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                    ws3.Cell(r, 5).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                    ws3.Row(r).Height = 18;
+                    r++;
+                }
 
                 // Column widths
                 int[] ws3Widths = { 18, 28, 32, 16, 28, 14, 20, 32, 28, 18, 18, 18, 20, 16, 28, 20, 20, 14 };
@@ -3701,10 +3826,27 @@ public class EmployeeDto
                 .ToListAsync();
             var monthDict = monthCounts.ToDictionary(x => x.MC ?? "", x => x.Count);
 
+            // Chinese name lookup: strip any existing "(...)" suffix before matching
+            var smeqList = await _context.SVN_Downtime_SMEQs
+                .AsNoTracking()
+                .Select(e => new { e.namechinese, key = e.name + (e.serialnumber != null ? " - " + e.serialnumber : "") })
+                .ToListAsync();
+            var chineseDict = smeqList
+                .Where(x => !string.IsNullOrEmpty(x.key))
+                .GroupBy(x => x.key)
+                .ToDictionary(g => g.Key, g => g.First().namechinese ?? "");
+
+            string LookupChinese(string mc) {
+                if (string.IsNullOrEmpty(mc)) return "";
+                var lookup = mc.Contains(" (") ? mc.Substring(0, mc.LastIndexOf(" (")) : mc;
+                return chineseDict.TryGetValue(lookup, out var cn) ? cn : "";
+            }
+
             return top5Groups.Select(m => new Top5MachineData
                 {
                     MachineCode    = m.MC,
                     Operation      = m.Op,
+                    ChineseName    = LookupChinese(m.MC),
                     DowntimeCount  = m.Count,
                     MonthlyCount   = monthDict.TryGetValue(m.MC, out var mc) ? mc : 0,
                     TotalMinutes   = 0,

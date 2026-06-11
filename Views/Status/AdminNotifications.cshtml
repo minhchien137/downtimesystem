@@ -283,13 +283,13 @@
 <!-- ── Header ── -->
 <div class="an-header">
     <div>
-        <h1>📊 All Notifications</h1>
-        <div class="sub"> All Production & Technical activity today</div>
+        <h1 data-i18n="notifDashboard.pageTitle">📊 All Notifications</h1>
+        <div class="sub" data-i18n="admin.pageTitle"> All Production &amp; Technical activity today</div>
     </div>
     <div style="display:flex;align-items:center;gap:10px;">
         @if (unreadCount > 0)
         {
-            <button class="btn-mark-all" onclick="markAllRead()">✓ Mark all as read (@unreadCount)</button>
+            <button class="btn-mark-all" onclick="markAllRead()">✓ <span data-i18n="common.markAllRead">Mark all as read</span> (@unreadCount)</button>
         }
         <div class="an-admin-badge">🛡 @adminName</div>
     </div>
@@ -300,35 +300,35 @@
     <div class="an-sum-card">
         <div class="an-sum-icon">📋</div>
         <div>
-            <div class="an-sum-label">Total</div>
+            <div class="an-sum-label" data-i18n="notifDashboard.totalCalls">Total</div>
             <div class="an-sum-val val-total">@total</div>
         </div>
     </div>
     <div class="an-sum-card">
         <div class="an-sum-icon">🛑</div>
         <div>
-            <div class="an-sum-label">Stop</div>
+            <div class="an-sum-label" data-i18n="notifDashboard.pending">Stop</div>
             <div class="an-sum-val val-stop">@stopCount</div>
         </div>
     </div>
     <div class="an-sum-card">
         <div class="an-sum-icon">⚙️</div>
         <div>
-            <div class="an-sum-label">Technical</div>
+            <div class="an-sum-label" data-i18n="notifDashboard.waiting">Technical</div>
             <div class="an-sum-val val-tech">@techRespCount</div>
         </div>
     </div>
     <div class="an-sum-card">
         <div class="an-sum-icon">🔧</div>
         <div>
-            <div class="an-sum-label">Fixed</div>
+            <div class="an-sum-label" data-i18n="notifDashboard.resolved">Fixed</div>
             <div class="an-sum-val val-fix">@fixCount</div>
         </div>
     </div>
     <div class="an-sum-card">
         <div class="an-sum-icon">▶️</div>
         <div>
-            <div class="an-sum-label">Running</div>
+            <div class="an-sum-label" data-i18n="notifDashboard.accepted">Running</div>
             <div class="an-sum-val val-run">@runCount</div>
         </div>
     </div>
@@ -337,14 +337,14 @@
 <!-- ── Toolbar ── -->
 <div class="an-toolbar">
     <div class="an-tabs">
-        <button class="an-tab active" onclick="setFilter('ALL',this)">All (@total)</button>
-        <button class="an-tab" onclick="setFilter('STOP',this)">🛑 Stop (@stopCount)</button>
-        <button class="an-tab" onclick="setFilter('TECH_RESPONSE',this)">⚙️ Technical Response (@techRespCount)</button>
-        <button class="an-tab" onclick="setFilter('FIX_COMPLETE',this)">🔧 Fixed (@fixCount)</button>
-        <button class="an-tab" onclick="setFilter('RUN',this)">▶️ Running (@runCount)</button>
+        <button class="an-tab active" onclick="setFilter('ALL',this)"><span data-i18n="common.all">All</span> (@total)</button>
+        <button class="an-tab" onclick="setFilter('STOP',this)">🛑 <span data-i18n="notifDashboard.pending">Stop</span> (@stopCount)</button>
+        <button class="an-tab" onclick="setFilter('TECH_RESPONSE',this)">⚙️ <span data-i18n="notifDashboard.waiting">Technical Response</span> (@techRespCount)</button>
+        <button class="an-tab" onclick="setFilter('FIX_COMPLETE',this)">🔧 <span data-i18n="notifDashboard.resolved">Fixed</span> (@fixCount)</button>
+        <button class="an-tab" onclick="setFilter('RUN',this)">▶️ <span data-i18n="notifDashboard.accepted">Running</span> (@runCount)</button>
     </div>
     <div class="an-search">
-        <input type="text" id="searchInput" placeholder="🔍 Search machines, operations..." oninput="onSearch()">
+        <input type="text" id="searchInput" data-i18n-ph="common.searchPlaceholder" placeholder="🔍 Search machines, operations..." oninput="onSearch()">
     </div>
 </div>
 
@@ -354,8 +354,8 @@
     {
         <div class="an-empty">
             <span class="empty-icon">📭</span>
-            No notifications available today.
-            <small style="display:block;margin-top:6px;font-size:13px;">
+            <span data-i18n="common.noData">No notifications available today.</span>
+            <small style="display:block;margin-top:6px;font-size:13px;" data-i18n="common.noData">
                 No notifications available today.
             </small>
         </div>
@@ -415,7 +415,7 @@
                         <div style="display:flex;align-items:center;gap:8px;">
                             @if (!n.IsRead)
                             {
-                                <span class="an-unread-dot" title="Unread"></span>
+                                <span class="an-unread-dot" data-i18n-title="common.unread" title="Unread"></span>
                             }
                             <span class="an-time">🕐 @n.CreatedAt.ToString("HH:mm:ss")</span>
                         </div>
@@ -431,15 +431,15 @@
                     <div class="an-card-meta">
                         @if (!string.IsNullOrEmpty(n.MachineCode))
                         {
-                            <span>🔩 Machine: <strong>@n.MachineCode</strong></span>
+                            <span>🔩 <span data-i18n="notifDashboard.device">Machine</span>: <strong>@n.MachineCode</strong></span>
                         }
                         @if (!string.IsNullOrEmpty(n.Operation))
                         {
-                            <span>📍 Operation: <strong>@n.Operation</strong></span>
+                            <span>📍 <span data-i18n="notifDashboard.line">Operation</span>: <strong>@n.Operation</strong></span>
                         }
                         @if (!string.IsNullOrEmpty(n.TechName))
                         {
-                            <span>👨‍🔧 Technician: <strong>@n.TechName</strong></span>
+                            <span>👨‍🔧 <span data-i18n="admin.colEmployee">Technician</span>: <strong>@n.TechName</strong></span>
                         }
                         @if (n.TechResponseId.HasValue)
                         {
@@ -457,7 +457,7 @@
     <div class="an-page-info" id="pageInfo"></div>
     <div class="an-page-btns" id="pageBtns"></div>
     <div class="an-pagesize">
-        Items per page / Page:
+        <span data-i18n="common.pageSize">Items per page</span>:
         <select id="pageSizeSelect" onchange="changePageSize(this.value)">
             <option value="5" selected>5</option>
             <option value="10">10</option>
@@ -509,7 +509,7 @@
 
         const showing = Math.min(end, total);
         document.getElementById('pageInfo').innerHTML =
-            `Showing <strong>${start + 1}–${showing}</strong> of <strong>${total}</strong> items`;
+            `${window.i18nT('common.showing') || 'Showing'} <strong>${start + 1}–${showing}</strong> ${window.i18nT('common.of') || 'of'} <strong>${total}</strong> ${window.i18nT('common.items') || 'items'}`;
 
         renderPageBtns(pages);
     }
