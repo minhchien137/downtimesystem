@@ -25,8 +25,11 @@ namespace MachineStatusUpdate.Controllers
             _context = context;
             _webHostEnvironment = webHostEnvironment;
             _hubContext = hubContext;
-
         }
+
+        // Returns current time in China Standard Time (UTC+8).
+        // China does not observe DST, so UTC+8 is always correct.
+        private static DateTime GetChinaTime() => DateTime.UtcNow.AddHours(8);
 
 
         // ============================================================
@@ -697,7 +700,7 @@ namespace MachineStatusUpdate.Controllers
                 model.Name = model.EmployeeName ?? model.EmployeeCode ?? string.Empty;
 
             if (!model.Datetime.HasValue || model.Datetime.Value == default)
-                model.Datetime = DateTime.Now;
+                model.Datetime = GetChinaTime();
 
             if (string.IsNullOrWhiteSpace(model.EstimateTime))
                 model.EstimateTime = string.Empty;
@@ -721,19 +724,35 @@ namespace MachineStatusUpdate.Controllers
 
                 if (latestStop != null)
                 {
-                    // RUN chỉ fill: Reason, Effect, Station, Action, SpareParts
-                    if (string.IsNullOrWhiteSpace(model.Reason))     model.Reason     = latestStop.Reason;
-                    if (string.IsNullOrWhiteSpace(model.Effect))     model.Effect     = latestStop.Effect;
-                    if (string.IsNullOrWhiteSpace(model.Station))    model.Station    = latestStop.Station;
-                    if (string.IsNullOrWhiteSpace(model.Action))     model.Action     = latestStop.Action;
-                    if (string.IsNullOrWhiteSpace(model.SpareParts)) model.SpareParts = latestStop.SpareParts;
+                    // RUN copies base fields from STOP
+                    if (string.IsNullOrWhiteSpace(model.Reason)) model.Reason = latestStop.Reason;
+                    if (string.IsNullOrWhiteSpace(model.Effect)) model.Effect = latestStop.Effect;
 
-                    // Description RUN = TechDesc đã lưu tạm trong EstimateTime của STOP
-                    if (!string.IsNullOrWhiteSpace(latestStop.EstimateTime)
-                        && latestStop.EstimateTime.StartsWith("[TECHDESC]"))
+                    // RUN employee and repair fields come from the TechResponse record
+                    var techResp = await _context.SVN_Downtime_TechResponses
+                        .Where(x => x.DowntimeId == latestStop.Id && x.TechAction == "ACCEPT")
+                        .OrderByDescending(x => x.RespondDatetime)
+                        .FirstOrDefaultAsync();
+                    if (techResp != null)
                     {
-                        model.Description = latestStop.EstimateTime.Substring(10).Trim();
-                        // Dọn sạch staging field
+                        if (!string.IsNullOrWhiteSpace(techResp.TechUsername))
+                        {
+                            model.EmployeeName = techResp.TechUsername;
+                            model.EmployeeCode = techResp.TechUsername;
+                        }
+                        if (string.IsNullOrWhiteSpace(model.Action)     && !string.IsNullOrWhiteSpace(techResp.RepairAction))
+                            model.Action     = techResp.RepairAction;
+                        if (string.IsNullOrWhiteSpace(model.RootCause)  && !string.IsNullOrWhiteSpace(techResp.RepairRootCause))
+                            model.RootCause  = techResp.RepairRootCause;
+                        if (string.IsNullOrWhiteSpace(model.SpareParts) && !string.IsNullOrWhiteSpace(techResp.RepairSpareParts))
+                            model.SpareParts = techResp.RepairSpareParts;
+                    }
+
+                    // Description comes from [TECHDESC] in EstimateTime
+                    if (!string.IsNullOrWhiteSpace(latestStop.EstimateTime))
+                    {
+                        if (latestStop.EstimateTime.StartsWith("[TECHDESC]") && string.IsNullOrWhiteSpace(model.Description))
+                            model.Description = latestStop.EstimateTime.Substring(10).Trim();
                         latestStop.EstimateTime = null;
                     }
                 }
@@ -1157,13 +1176,12 @@ namespace MachineStatusUpdate.Controllers
             var stopRecord = await _context.SVN_Downtime_Infos_Devel.FindAsync(techResp.DowntimeId);
             if (stopRecord != null)
             {
-                if (!string.IsNullOrWhiteSpace(dto.Description))
-                    stopRecord.EstimateTime = $"[TECHDESC]{dto.Description.Trim()}";
-                if (!string.IsNullOrWhiteSpace(dto.RootCause))  stopRecord.RootCause  = dto.RootCause;
-                if (!string.IsNullOrWhiteSpace(dto.Action))     stopRecord.Action     = dto.Action;
-                if (!string.IsNullOrWhiteSpace(dto.SpareParts)) stopRecord.SpareParts = dto.SpareParts;
-                await _context.SaveChangesAsync();
+                stopRecord.EstimateTime = $"[TECHDESC]{dto.Description?.Trim() ?? ""}";
             }
+            techResp.RepairAction     = dto.Action?.Trim()      ?? "";
+            techResp.RepairRootCause  = dto.RootCause?.Trim()   ?? "";
+            techResp.RepairSpareParts = dto.SpareParts?.Trim()  ?? "";
+            await _context.SaveChangesAsync();
 
             if (!string.IsNullOrWhiteSpace(techResp.OperatorUsername))
             {
@@ -1198,9 +1216,6 @@ namespace MachineStatusUpdate.Controllers
             {
                 if (!string.IsNullOrWhiteSpace(dto.Description))
                     stopRecord.Description = $"[DRI-UNRESOLVED] {dto.Description.Trim()}";
-                if (!string.IsNullOrWhiteSpace(dto.RootCause))  stopRecord.RootCause  = dto.RootCause;
-                if (!string.IsNullOrWhiteSpace(dto.Action))     stopRecord.Action     = dto.Action;
-                if (!string.IsNullOrWhiteSpace(dto.SpareParts)) stopRecord.SpareParts = dto.SpareParts;
                 await _context.SaveChangesAsync();
             }
 
@@ -1384,6 +1399,15 @@ namespace MachineStatusUpdate.Controllers
                 ViewBag.MachineChartData = PrepareMachineChartData(machineData);
                 ViewBag.MttrData         = await GetMttrByMachine(fromDate, toDate, operation, reason, location, machine, effect, station);
                 ViewBag.Top5Data         = await GetTop5Machines(fromDate, toDate, operation, location, machine);
+                if (DateTime.TryParse(fromDate, out var _t5Fd) && DateTime.TryParse(toDate, out var _t5Td))
+                {
+                    int _t5Days = (int)(_t5Td.Date - _t5Fd.Date).TotalDays + 1;
+                    ViewBag.Top5PeriodLabel = $"{_t5Days}-day trend  ({_t5Fd:dd/MM} – {_t5Td:dd/MM/yyyy})";
+                }
+                else
+                {
+                    ViewBag.Top5PeriodLabel = "Weekly trend";
+                }
                 ViewBag.ResponseTimeData = await GetResponseTimeData(fromDate, toDate, operation, machine);
 
                 // Tech response records cho EQ detail expand — kèm RunDatetime
@@ -1433,18 +1457,18 @@ namespace MachineStatusUpdate.Controllers
                 var runTimes  = await _context.SVN_Downtime_Infos_Devel
                     .Where(x => x.State != null && x.State.ToUpper() == "RUN"
                              && rawResps.Select(r => r.MachineCode).Contains(x.MachineCode))
-                    .Select(x => new { x.MachineCode, x.Datetime })
+                    .Select(x => new { x.MachineCode, x.Datetime, x.Description })
                     .ToListAsync();
 
                 var allTechResps = rawResps.Select(r => {
-                    var runDt = runTimes
+                    var runRecord = runTimes
                         .Where(rn => rn.MachineCode == r.MachineCode
                                   && rn.Datetime.HasValue
                                   && r.StopDatetime.HasValue
                                   && rn.Datetime > r.StopDatetime)
                         .OrderBy(rn => rn.Datetime)
-                        .Select(rn => rn.Datetime)
                         .FirstOrDefault();
+                    var runDt = runRecord?.Datetime;
 
                     var stop = stopDetails.FirstOrDefault(s => s.Id == r.DowntimeId);
                     var reasonName = stop?.Reason != null && reasonNames.TryGetValue(stop.Reason, out var rn2) ? rn2 : (stop?.Reason ?? "");
@@ -1454,12 +1478,13 @@ namespace MachineStatusUpdate.Controllers
                         r.MachineCode, r.Operation,
                         r.StopDatetime, r.RespondDatetime,
                         r.TechAction, r.TechUsername,
-                        RunDatetime  = runDt,
-                        Location     = stop?.Location    ?? "",
-                        Reason       = reasonName,
-                        Station      = stop?.Station     ?? "",
-                        Description  = stop?.Description ?? "",
-                        RootCause    = stop?.RootCause   ?? "",
+                        RunDatetime     = runDt,
+                        Location        = stop?.Location    ?? "",
+                        Reason          = reasonName,
+                        Station         = stop?.Station     ?? "",
+                        Description     = stop?.Description ?? "",
+                        RunDescription  = runRecord?.Description ?? "",
+                        RootCause       = stop?.RootCause   ?? "",
                         Action       = stop?.Action      ?? "",
                         SpareParts   = stop?.SpareParts  ?? "",
                         Effect       = effStr,
@@ -2453,7 +2478,7 @@ namespace MachineStatusUpdate.Controllers
 
             record.TechAction = dto.Action;   // "ACCEPT" | "REJECT"
             record.TechUsername = techUser;
-            record.RespondDatetime = DateTime.Now;
+            record.RespondDatetime = GetChinaTime();
             await _context.SaveChangesAsync();
 
             // ── ACCEPT → cập nhật record STOP gốc với thông tin kỹ thuật + tạo RESPONSE ──
@@ -2486,11 +2511,10 @@ namespace MachineStatusUpdate.Controllers
                     Reason       = dto.Reason ?? record.Reason,
                     Effect       = dto.Effect ?? record.Effect,
                     EstimateTime = dto.EstimateTime ?? record.EstimateTime,
-                    Station      = record.Station,
                     Description  = $"{techUser} accepted the call",
                     Code         = stopRecord?.Code,
                     Name         = stopRecord?.Name,
-                    Datetime     = DateTime.Now
+                    Datetime     = GetChinaTime()
                 };
                 _context.SVN_Downtime_Infos_Devel.Add(responseRecord);
                 await _context.SaveChangesAsync();
@@ -2578,7 +2602,7 @@ namespace MachineStatusUpdate.Controllers
                             rejectReason = dto.RejectReason ?? "",
                             message = $"❌ 技术员 [{techUser}] 已拒绝 — 设备: {dto.MachineCode ?? "-"}"
                                            + (string.IsNullOrWhiteSpace(dto.RejectReason) ? "" : $" 理由: {dto.RejectReason}"),
-                            datetime = DateTime.Now.ToString("dd/MM/yyyy HH:mm")
+                            datetime = GetChinaTime().ToString("dd/MM/yyyy HH:mm")
                         });
                 }
                 else
@@ -2593,7 +2617,7 @@ namespace MachineStatusUpdate.Controllers
                             message = dto.Action == "ACCEPT"
                                 ? $"✅ 技术员 [{techUser}] 已收到信息并正在准备维修设备 {dto.MachineCode}。"
                                 : $"⏳ 技术员 [{techUser}] 已查看通知，请稍候。",
-                            datetime = DateTime.Now.ToString("dd/MM/yyyy HH:mm")
+                            datetime = GetChinaTime().ToString("dd/MM/yyyy HH:mm")
                         });
                 }
             }
@@ -2784,18 +2808,24 @@ namespace MachineStatusUpdate.Controllers
             if (stopRecord == null)
                 return Json(new { success = false, message = $"Record #{dto.Id} not found" });
 
-            // ── Patch STOP: tất cả trừ Description (giữ nguyên của Prod) ──
-            if (dto.Reason     != null) stopRecord.Reason     = dto.Reason;
-            if (dto.Effect     != null) stopRecord.Effect     = dto.Effect;
-            if (dto.RootCause  != null) stopRecord.RootCause  = dto.RootCause;
-            if (dto.Action     != null) stopRecord.Action     = dto.Action;
-            if (dto.SpareParts != null) stopRecord.SpareParts = dto.SpareParts;
-            // Description STOP: KHÔNG đụng vào
+            // Patch Reason/Effect into STOP — these describe the problem, valid at stop time
+            if (dto.Reason != null) stopRecord.Reason = dto.Reason;
+            if (dto.Effect != null) stopRecord.Effect = dto.Effect;
 
-            // Lưu Tech Description tạm vào EstimateTime (field ít dùng) để copy sang RUN sau
-            // Dùng prefix [TECHDESC] để phân biệt
-            if (!string.IsNullOrWhiteSpace(dto.Description))
-                stopRecord.EstimateTime = $"[TECHDESC]{dto.Description.Trim()}";
+            // Stage Description in EstimateTime (short format) so CreateDownTime can pick it up
+            stopRecord.EstimateTime = $"[TECHDESC]{dto.Description?.Trim() ?? ""}";
+
+            // Write Action/RootCause/SpareParts to TechResponse (no column-length risk)
+            var techResp = await _context.SVN_Downtime_TechResponses
+                .Where(x => x.DowntimeId == dto.Id && x.TechAction == "ACCEPT")
+                .OrderByDescending(x => x.RespondDatetime)
+                .FirstOrDefaultAsync();
+            if (techResp != null)
+            {
+                techResp.RepairAction     = dto.Action?.Trim()      ?? "";
+                techResp.RepairRootCause  = dto.RootCause?.Trim()   ?? "";
+                techResp.RepairSpareParts = dto.SpareParts?.Trim()  ?? "";
+            }
 
             await _context.SaveChangesAsync();
             return Json(new { success = true });
@@ -3640,9 +3670,8 @@ public class EmployeeDto
             DateTime rangeStart = hasFrom ? fd.Date : weekMon;
             DateTime rangeEnd   = hasTo   ? td.Date : weekSun;
 
-            // Giới hạn tối đa 14 ngày để sparkline không quá dày
-            int totalDays = Math.Min((int)(rangeEnd - rangeStart).TotalDays + 1, 14);
-            // Lấy `totalDays` ngày cuối trong range
+            // Cap at 31 days so monthly selections show full trend
+            int totalDays = Math.Min((int)(rangeEnd - rangeStart).TotalDays + 1, 31);
             var trendStart = rangeEnd.AddDays(-(totalDays - 1));
             var trendDays  = Enumerable.Range(0, totalDays).Select(i => trendStart.AddDays(i)).ToList();
 
@@ -3653,19 +3682,97 @@ public class EmployeeDto
 
             var stops = await q.Select(x => new { x.MachineCode, x.Operation, x.Datetime }).ToListAsync();
 
-            return stops.GroupBy(x => x.MachineCode)
+            var top5Groups = stops.GroupBy(x => x.MachineCode)
                 .Select(g => new { MC = g.Key ?? "", Op = g.First().Operation ?? "", Count = g.Count(), Items = g.ToList() })
-                .OrderByDescending(x => x.Count).Take(5)
-                .Select(m => new Top5MachineData
+                .OrderByDescending(x => x.Count).Take(5).ToList();
+
+            // Monthly total for the month that contains rangeEnd
+            var monthStart  = new DateTime(rangeEnd.Year, rangeEnd.Month, 1);
+            var monthEnd    = monthStart.AddMonths(1).AddDays(-1);
+            var top5Codes   = top5Groups.Select(g => g.MC).ToList();
+            var monthCounts = await _context.SVN_Downtime_Infos_Devel
+                .Where(x => x.MachineCode != null && x.State != null && x.State.ToUpper() == "STOP"
+                         && x.Datetime.HasValue
+                         && x.Datetime.Value.Date >= monthStart
+                         && x.Datetime.Value.Date <= monthEnd
+                         && top5Codes.Contains(x.MachineCode))
+                .GroupBy(x => x.MachineCode)
+                .Select(g => new { MC = g.Key, Count = g.Count() })
+                .ToListAsync();
+            var monthDict = monthCounts.ToDictionary(x => x.MC ?? "", x => x.Count);
+
+            return top5Groups.Select(m => new Top5MachineData
                 {
                     MachineCode    = m.MC,
                     Operation      = m.Op,
                     DowntimeCount  = m.Count,
+                    MonthlyCount   = monthDict.TryGetValue(m.MC, out var mc) ? mc : 0,
                     TotalMinutes   = 0,
                     TotalFormatted = "-",
                     DailyTrend     = trendDays.Select(d => (double)m.Items.Count(r => r.Datetime.HasValue && r.Datetime.Value.Date == d)).ToList(),
                     TrendDates     = trendDays.Select(d => d.ToString("dd/MM")).ToList()
                 }).ToList();
+        }
+
+        // ── Export Top 5 to Excel ──────────────────────────────────────
+        [HttpGet]
+        public async Task<IActionResult> ExportTop5ToExcel(
+            string fromDate = "", string toDate = "",
+            string operation = "", string location = "", string machine = "")
+        {
+            var top5 = await GetTop5Machines(fromDate, toDate, operation, location, machine);
+            if (!top5.Any())
+                return Json(new { success = false, message = "No data to export." });
+
+            string periodLabel = (DateTime.TryParse(fromDate, out var _ef) && DateTime.TryParse(toDate, out var _et))
+                ? $"{_ef:dd/MM/yyyy} – {_et:dd/MM/yyyy}"
+                : "Selected Period";
+            string monthLabel = DateTime.TryParse(toDate, out var _em)
+                ? _em.ToString("MM/yyyy")
+                : GetChinaTime().ToString("MM/yyyy");
+
+            using var wb = new XLWorkbook();
+            var ws = wb.Worksheets.Add("Top5 Downtime");
+
+            int r = 1;
+            ws.Cell(r, 1).Value = $"Top 5 Most Downtime Machines — {periodLabel}";
+            ws.Range(r, 1, r, 6).Merge();
+            ws.Cell(r, 1).Style.Font.Bold = true;
+            ws.Cell(r, 1).Style.Font.FontSize = 13;
+            ws.Cell(r, 1).Style.Fill.BackgroundColor = XLColor.FromHtml("#1E8449");
+            ws.Cell(r, 1).Style.Font.FontColor = XLColor.White;
+            r += 2;
+
+            string[] hdrs = { "Rank", "Machine Code", "Operation", $"Stops ({periodLabel})", $"Monthly Total ({monthLabel})", "Daily Trend (date:stops)" };
+            for (int c = 0; c < hdrs.Length; c++)
+            {
+                ws.Cell(r, c + 1).Value = hdrs[c];
+                ws.Cell(r, c + 1).Style.Font.Bold = true;
+                ws.Cell(r, c + 1).Style.Fill.BackgroundColor = XLColor.FromHtml("#D9EAD3");
+            }
+            r++;
+
+            int rank = 0;
+            foreach (var m in top5)
+            {
+                rank++;
+                ws.Cell(r, 1).Value = rank;
+                ws.Cell(r, 2).Value = m.MachineCode;
+                ws.Cell(r, 3).Value = m.Operation;
+                ws.Cell(r, 4).Value = m.DowntimeCount;
+                ws.Cell(r, 5).Value = m.MonthlyCount;
+                ws.Cell(r, 6).Value = string.Join("  ", m.TrendDates.Zip(m.DailyTrend, (d, v) => $"{d}:{(int)v}"));
+                r++;
+            }
+
+            ws.Columns().AdjustToContents();
+
+            using var stream = new MemoryStream();
+            wb.SaveAs(stream);
+            string fname = $"Top5_Downtime_{(DateTime.TryParse(fromDate, out var _fn) ? _fn.ToString("yyyyMMdd") : "")}" +
+                           $"_{(DateTime.TryParse(toDate,   out var _tn) ? _tn.ToString("yyyyMMdd") : "")}.xlsx";
+            return File(stream.ToArray(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fname);
         }
 
         // ── Response Time ──────────────────────────────────────────────

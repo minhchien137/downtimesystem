@@ -1661,7 +1661,7 @@ async function submitReject() {
                         <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
                             <span class="responded-badge rejected">❌ Rejected</span>
                             ${responseTimeStr ? `<span class="response-time-badge">⚡ Time: ${responseTimeStr}</span>` : ''}
-                            <span style="font-size:12px;color:#6b7280;font-style:italic;">Reason: ${reason}</span>
+                            <span style="font-size:12px;color:#6b7280;font-style:italic;">Category: ${reason}</span>
                         </div>`;
                 }
             }
@@ -1732,53 +1732,34 @@ async function pieNotEF(btn) {
     }
 }
 
-/* ===== Tech bấm Response (Đã sửa xong) — tạo RUN record + notify Prod ===== */
+/* ===== Tech bấm Response (Đã sửa xong) — mở modal điền thông tin, THEN notify Prod ===== */
 async function techFixComplete(btn) {
     const card = btn.closest('.notif-card');
     if (!card) return;
 
-    const techResponseId   = card.dataset.techResponseId   || '';
-    const actionsDiv       = card.querySelector('.notif-actions');
+    const techRespId = card.dataset.techResponseId || '';
 
     btn.disabled  = true;
-    btn.innerHTML = '⏳ Sending...';
+    btn.innerHTML = '⏳ Loading...';
+
+    // Store for use after modal save/skip
+    _fixCompleteOrigBtn    = btn;
+    _fixCompleteTechRespId = parseInt(techRespId) || 0;
 
     try {
-        const res = await fetch(`${pathBase}/Status/TechnicianFixComplete`, {
-            method : 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body   : JSON.stringify({ techResponseId: parseInt(techResponseId) || 0 })
-        });
-        const data = await res.json();
-
-        if (data.success) {
-            // Thay nút bằng badge "Đã gửi"
-            btn.replaceWith((() => {
-                const s = document.createElement('span');
-                s.className   = 'responded-badge fix-done';
-                s.textContent = '🔧 Fix Complete Notification Sent';
-                return s;
-            })());
-
-            // ── PIE điền thông tin kỹ thuật vào STOP record gốc ──
-            const techRespId = card.dataset.techResponseId || '';
-            if (techRespId) {
-                try {
-                    const recRes  = await fetch(`${pathBase}/Status/GetStopRecordByTechResponse?techResponseId=${encodeURIComponent(techRespId)}`);
-                    const recData = await recRes.json();
-                    if (recData.success && recData.data) {
-                        openPostRunModal(recData.data.id, recData.data);
-                    }
-                } catch (e) { console.warn('GetStopRecord failed:', e); }
-            }
+        const recRes  = await fetch(`${pathBase}/Status/GetStopRecordByTechResponse?techResponseId=${encodeURIComponent(techRespId)}`);
+        const recData = await recRes.json();
+        if (recData.success && recData.data) {
+            openPostRunModal(recData.data.id, recData.data, techRespId);
         } else {
-            btn.disabled  = false;
-            btn.innerHTML = '🔧 Respond — Fix Complete';
+            // Can't get stop record — notify directly without form
+            await _finishFixComplete();
         }
     } catch (err) {
         console.error('techFixComplete error:', err);
         btn.disabled  = false;
         btn.innerHTML = '🔧 Respond — Fix Complete';
+        _fixCompleteOrigBtn = null;
     }
 }
 
@@ -2338,31 +2319,60 @@ function teShowToast(msg, isError = false) {
 // ══════════════════════════════════════════
 //  POST-RUN EDIT MODAL — chỉ Technical
 // ══════════════════════════════════════════
-function openPostRunModal(recordId, existingData) {
-    document.getElementById('postRunRecordId').value    = recordId || '';
+
+// Stored between techFixComplete and modal submit/skip
+let _fixCompleteOrigBtn   = null;
+let _fixCompleteTechRespId = 0;
+
+function openPostRunModal(recordId, existingData, techRespId) {
+    document.getElementById('postRunRecordId').value    = recordId   || '';
+    document.getElementById('postRunTechRespId').value  = techRespId || '';
     document.getElementById('postRunReason').value      = existingData?.reason      || '';
     document.getElementById('postRunEffect').value      = existingData?.effect      || '';
     document.getElementById('postRunDescription').value = '';
-    document.getElementById('postRunRootCause').value   = existingData?.rootCause   || '';
-    document.getElementById('postRunAction').value      = existingData?.action      || '';
-    document.getElementById('postRunSpareParts').value  = existingData?.spareParts  || '';
+    document.getElementById('postRunRootCause').value   = '';
+    document.getElementById('postRunAction').value      = '';
+    document.getElementById('postRunSpareParts').value  = '';
     document.getElementById('postRunModalOverlay').style.display = 'flex';
     setTimeout(() => document.getElementById('postRunReason').focus(), 120);
 }
 
-function closePostRunModal() {
+// Sends FIX_COMPLETE notification to Prod and replaces the original button with a badge
+async function _finishFixComplete() {
+    const techRespId = parseInt(document.getElementById('postRunTechRespId').value) || _fixCompleteTechRespId;
+    if (techRespId) {
+        try {
+            await fetch(`${pathBase}/Status/TechnicianFixComplete`, {
+                method : 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body   : JSON.stringify({ techResponseId: techRespId })
+            });
+        } catch(e) { console.warn('TechnicianFixComplete failed:', e); }
+    }
+    if (_fixCompleteOrigBtn) {
+        const badge = document.createElement('span');
+        badge.className   = 'responded-badge fix-done';
+        badge.textContent = '🔧 Fix Complete Notification Sent';
+        _fixCompleteOrigBtn.replaceWith(badge);
+        _fixCompleteOrigBtn = null;
+    }
     document.getElementById('postRunModalOverlay').style.display = 'none';
+}
+
+function closePostRunModal() {
+    // Skip — still notify Prod, just without repair data
+    _finishFixComplete();
 }
 
 async function submitPostRunEdit() {
     const id = parseInt(document.getElementById('postRunRecordId').value) || 0;
-    if (!id) { closePostRunModal(); return; }
+    if (!id) { _finishFixComplete(); return; }
 
     const reason = document.getElementById('postRunReason').value.trim();
     const effect = document.getElementById('postRunEffect').value.trim();
     if (!reason) {
         document.getElementById('postRunReason').style.borderColor = '#ef4444';
-        teShowToast('⚠ Please select Reason!', true);
+        teShowToast('⚠ Please select Category!', true);
         return;
     }
     if (!effect) {
@@ -2371,9 +2381,9 @@ async function submitPostRunEdit() {
         return;
     }
 
-    const btn = document.getElementById('postRunSaveBtn');
-    btn.disabled    = true;
-    btn.textContent = '⏳ Saving...';
+    const saveBtn = document.getElementById('postRunSaveBtn');
+    saveBtn.disabled    = true;
+    saveBtn.textContent = '⏳ Saving...';
 
     try {
         const res  = await fetch(`${pathBase}/Status/PostRunEdit`, {
@@ -2391,20 +2401,23 @@ async function submitPostRunEdit() {
         });
         if (!res.ok) {
             teShowToast(`❌ HTTP ${res.status}: ${res.statusText}`, true);
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '💾 Save / 保存';
             return;
         }
         const data = await res.json();
         if (data.success) {
-            teShowToast('✅ Information saved successfully!');
-            closePostRunModal();
+            teShowToast('✅ Information saved — notifying Prod...');
+            await _finishFixComplete();
         } else {
             teShowToast('❌ Failed to save information!', true);
+            saveBtn.disabled  = false;
+            saveBtn.innerHTML = '💾 Save / 保存';
         }
     } catch (err) {
         teShowToast('❌ Error occurred while saving!', true);
-    } finally {
-        btn.disabled    = false;
-        btn.innerHTML   = '💾 Save / 保存';
+        saveBtn.disabled  = false;
+        saveBtn.innerHTML = '💾 Save / 保存';
     }
 }
 
@@ -2433,13 +2446,14 @@ document.getElementById('postRunModalOverlay')
             After repair complete, please fill in the details below.<br>
         </p>
         <input type="hidden" id="postRunRecordId" />
+        <input type="hidden" id="postRunTechRespId" />
         <div style="display:flex;flex-direction:column;gap:12px">
             <div>
                 <label style="font-size:12.5px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px">
-                    Reason <span style="color:#ef4444">*</span>
+                    Category <span style="color:#ef4444">*</span>
                 </label>
                 <select id="postRunReason" style="width:100%;border:1.5px solid #e5e7eb;border-radius:8px;padding:9px 12px;font-size:14px;box-sizing:border-box;background:#fff">
-                    <option value="">-- Select reason --</option>
+                    <option value="">-- Select category --</option>
                     @foreach (var r in (ViewBag.PieReasonOptions as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>()))
                     {
                         <option value="@r.Reason_Name">@r.Reason_Name (@r.Reason_Code)</option>

@@ -104,6 +104,7 @@ namespace MachineStatusUpdate.Models
         public string       MachineCode    { get; set; }
         public string       Operation      { get; set; }
         public int          DowntimeCount  { get; set; }
+        public int          MonthlyCount   { get; set; }
         public double       TotalMinutes   { get; set; }
         public string       TotalFormatted { get; set; }
         public List<double> DailyTrend     { get; set; } = new();

@@ -29,5 +29,10 @@ namespace MachineStatusUpdate.Models
         public string?   TechAction      { get; set; }
         public string?   TechUsername    { get; set; }
         public DateTime? RespondDatetime { get; set; }
+
+        // Repair data filled by Tech before notifying Prod to Run
+        public string? RepairAction      { get; set; }
+        public string? RepairRootCause   { get; set; }
+        public string? RepairSpareParts  { get; set; }
     }
 }

@@ -577,10 +577,22 @@
             <!-- ══ Top 5 Machines ══ -->
             @if (top5Data != null && top5Data.Any())
             {
+                var _periodLabel = ViewBag.Top5PeriodLabel as string ?? "selected period";
+                var _fromQ  = ViewBag.FromDate  as string ?? "";
+                var _toQ    = ViewBag.ToDate    as string ?? "";
+                var _opQ    = ViewBag.Operation as string ?? "";
+                var _locQ   = ViewBag.Location  as string ?? "";
+                var _mcQ    = ViewBag.Machine   as string ?? "";
                 <div class="row mt-3">
                     <div class="col-12">
                         <div class="operation-section">
-                            <h5 class="mb-3">🏆 Top 5 — Most Downtime Machines (7-day trend)</h5>
+                            <div class="d-flex align-items-center justify-content-between mb-3">
+                                <h5 class="mb-0">🏆 Top 5 — Most Downtime Machines (@_periodLabel)</h5>
+                                <a href="@Url.Action("ExportTop5ToExcel","Status", new { fromDate=_fromQ, toDate=_toQ, operation=_opQ, location=_locQ, machine=_mcQ })"
+                                   class="btn btn-sm btn-success">
+                                    <i class="fas fa-file-excel"></i> Top 5 Downtime by Time Period
+                                </a>
+                            </div>
                             <div class="row g-3">
                                 @{ var _rank = 0; }
                                 @foreach (var _m in top5Data)
@@ -591,7 +603,7 @@
                                     var _trendJson = System.Text.Json.JsonSerializer.Serialize(_m.DailyTrend);
                                     var _dateJson  = System.Text.Json.JsonSerializer.Serialize(_m.TrendDates);
                                     <div class="col-md-4 col-lg-@(top5Data.Count <= 3 ? 4 : top5Data.Count == 4 ? 3 : 2)">
-                                        <div style="border:2px solid @_rc;border-radius:12px;padding:14px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.06);height:140px;">
+                                        <div style="border:2px solid @_rc;border-radius:12px;padding:14px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.06);height:150px;">
                                             <div class="d-flex align-items-center gap-2 mb-2">
                                                 <span style="font-size:22px">@_ri</span>
                                                 <div>
@@ -600,7 +612,8 @@
                                                 </div>
                                                 <div class="ms-auto text-end">
                                                     <div style="font-size:22px;font-weight:800;color:@_rc">@_m.DowntimeCount</div>
-                                                    <div style="font-size:10px;color:#6b7280">STOP(s)</div>
+                                                    <div style="font-size:10px;color:#6b7280">STOP(s) — period</div>
+                                                    <div style="font-size:10px;color:#9ca3af">@_m.MonthlyCount STOP(s) — month</div>
                                                 </div>
                                             </div>
                                             <div style="height:60px;position:relative;">
@@ -1076,7 +1089,7 @@
                                 <th onclick="sortDetailTable(3)" style="cursor:pointer;min-width:90px;">Location ⇅</th>
                                 <th onclick="sortDetailTable(4)" style="cursor:pointer;min-width:120px;">Reason ⇅</th>
                                 <th style="min-width:90px;">Station</th>
-                                <th style="min-width:160px;">Problem Description</th>
+                                <th style="min-width:160px;">Fix Description</th>
                                 <th style="min-width:140px;">Root Cause</th>
                                 <th onclick="sortDetailTable(8)" style="cursor:pointer;white-space:nowrap;min-width:120px;">Start Time ⇅</th>
                                 <th style="white-space:nowrap;min-width:120px;">Response Time</th>
@@ -1085,7 +1098,7 @@
                                 <th class="text-center" onclick="sortDetailTable(12)" style="cursor:pointer;white-space:nowrap;min-width:80px;">Downtime (min) ⇅</th>
                                 <th style="min-width:140px;">Action</th>
                                 <th style="min-width:110px;">Spare Parts</th>
-                                <th onclick="sortDetailTable(15)" style="cursor:pointer;min-width:120px;">Employee ⇅</th>
+                                <th onclick="sortDetailTable(15)" style="cursor:pointer;min-width:120px;">Technician ⇅</th>
                                 <th class="text-center" style="min-width:80px;">Effect</th>
                             </tr>
                         </thead>
@@ -1121,7 +1134,7 @@
                                         <td>@(rr.Location ?? "-")</td>
                                         <td>@(rr.Reason ?? "-")</td>
                                         <td>@(rr.Station ?? "-")</td>
-                                        <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="@(rr.Description ?? "")">@(rr.Description ?? "-")</td>
+                                        <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="@(rr.RunDescription ?? "")">@(rr.RunDescription ?? "-")</td>
                                         <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="@(rr.RootCause ?? "")">@(rr.RootCause ?? "-")</td>
                                         <td style="white-space:nowrap;">@(stopDt?.ToString("dd/MM HH:mm") ?? "-")</td>
                                         <td style="white-space:nowrap;">@(respDt?.ToString("dd/MM HH:mm") ?? "-")</td>
@@ -1136,7 +1149,7 @@
                                         </td>
                                         <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="@(rr.Action ?? "")">@(rr.Action ?? "-")</td>
                                         <td>@(rr.SpareParts ?? "-")</td>
-                                        <td>@(rr.EmployeeName ?? "-")</td>
+                                        <td>@(rr.TechUsername ?? "-")</td>
                                         <td class="text-center">
                                             @if ((string)(rr.Effect ?? "") == "Affects Production") {
                                                 <span class="badge bg-danger">Yes</span>

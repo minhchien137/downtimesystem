@@ -1018,9 +1018,6 @@ async function prodRunMachine(btn, machineCode, operation, notifId, techName) {
             if (techData.techName) actualTechName = techData.techName;
         } catch (e) { console.warn('GetLatestStopByMachine failed:', e); }
 
-        // Ghi đè Description với tên Tech đúng
-        fd.set('Description', actualTechName ? `Repaired by ${actualTechName}` : 'Repaired by technician');
-
         const res  = await fetch('/downtime/Status/CreateDownTime', { method: 'POST', body: fd });
         const data = await res.json();
 

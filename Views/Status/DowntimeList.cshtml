@@ -502,6 +502,7 @@
                         bool isStop     = string.Equals(item.State, "STOP",     StringComparison.OrdinalIgnoreCase);
                         bool isResponse = string.Equals(item.State, "RESPONSE", StringComparison.OrdinalIgnoreCase);
                         bool isReject   = string.Equals(item.State, "REJECT",   StringComparison.OrdinalIgnoreCase);
+                        bool isRun      = string.Equals(item.State, "RUN",      StringComparison.OrdinalIgnoreCase);
                         string badgeCss = isStop ? "badge-stop" : isResponse ? "badge-response" : isReject ? "badge-reject" : "badge-run";
 
                         <tr>
@@ -520,7 +521,7 @@
                             <td>@(item.Station ?? "-")</td>
                             <td style="display:none;">@(string.IsNullOrEmpty(item.EstimateTime) ? "-" : item.EstimateTime)</td>
                             <td><span class="badge @badgeCss">@item.State</span></td>
-                            <td>@(item.Action ?? "-")</td>
+                            <td>@(isRun ? (item.Action ?? "-") : "-")</td>
                             <td>
                                 @if (!string.IsNullOrEmpty(item.Image))
                                 {
@@ -536,10 +537,9 @@
                                 else { <span>-</span> }
                             </td>
                             <td style="max-width:200px;">@(item.Description ?? "-")</td>
-                            <td style="max-width:180px;">@(item.RootCause ?? "-")</td>
+                            <td style="max-width:180px;">@(isRun ? (item.RootCause ?? "-") : "-")</td>
                             <td>@(item.SpareParts ?? "-")</td>
                             <td>@(item.EmployeeCode ?? "-")</td>
-                            @* <td>@(item.EmployeeName ?? "-")</td> *@
                             <td style="white-space:nowrap;">@(item.Datetime?.ToString("dd/MM/yyyy HH:mm") ?? "-")</td>
                         </tr>
                     }
@@ -561,6 +561,7 @@
                 bool isStop     = string.Equals(item.State, "STOP",     StringComparison.OrdinalIgnoreCase);
                 bool isResponse = string.Equals(item.State, "RESPONSE", StringComparison.OrdinalIgnoreCase);
                 bool isReject   = string.Equals(item.State, "REJECT",   StringComparison.OrdinalIgnoreCase);
+                bool isRun      = string.Equals(item.State, "RUN",      StringComparison.OrdinalIgnoreCase);
                 string badgeCss = isStop ? "badge-stop" : isResponse ? "badge-response" : isReject ? "badge-reject" : "badge-run";
                 string effLabel = item.Effect == "1" ? "Affects Production" : item.Effect == "2" ? "No Effect" : (item.Effect ?? "-");
 
@@ -612,19 +613,22 @@
                         </div>
                     }
 
-                    <div class="card-section-title">Resolution</div>
-                    <div class="card-row">
-                        <span class="card-label">Action:</span>
-                        <span class="card-value">@(item.Action ?? "-")</span>
-                    </div>
-                    <div class="card-row">
-                        <span class="card-label">Root Cause:</span>
-                        <span class="card-value">@(item.RootCause ?? "-")</span>
-                    </div>
-                    <div class="card-row">
-                        <span class="card-label">Spare Parts:</span>
-                        <span class="card-value">@(item.SpareParts ?? "-")</span>
-                    </div>
+                    @if (isRun)
+                    {
+                        <div class="card-section-title">Resolution</div>
+                        <div class="card-row">
+                            <span class="card-label">Action:</span>
+                            <span class="card-value">@(item.Action ?? "-")</span>
+                        </div>
+                        <div class="card-row">
+                            <span class="card-label">Root Cause:</span>
+                            <span class="card-value">@(item.RootCause ?? "-")</span>
+                        </div>
+                        <div class="card-row">
+                            <span class="card-label">Spare Parts:</span>
+                            <span class="card-value">@(item.SpareParts ?? "-")</span>
+                        </div>
+                    }
 
                     <div class="card-section-title">Employee</div>
                     <div class="card-row">
