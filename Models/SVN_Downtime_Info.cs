@@ -40,6 +40,9 @@ namespace MachineStatusUpdate.Models
         [Column("AutoRunEnabled")]
         public bool AutoRunEnabled { get; set; } = false;
 
+        [Column("AutoRunDescription")]
+        public string? AutoRunDescription { get; set; }
+
     }
 
     [Table("SVN_target")]

@@ -82,8 +82,8 @@ namespace MachineStatusUpdate.Services
                     State         = "Run",
                     Datetime      = runAt,
                     EstimateTime  = string.Empty,
-                    AutoRunEnabled = false,   // Run record không cần flag này
-                    Description   = string.Empty,
+                    AutoRunEnabled = false,
+                    Description   = string.IsNullOrWhiteSpace(stop.AutoRunDescription) ? null : stop.AutoRunDescription,
                     Image         = string.Empty
                 };
 

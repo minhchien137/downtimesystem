@@ -1233,11 +1233,16 @@ namespace MachineStatusUpdate.Controllers
                 model.EstimateTime = string.Empty;
 
             if (string.IsNullOrWhiteSpace(model.Description))
-                model.Description = string.Empty;
+                model.Description = string.Equals(model.State, "Run", StringComparison.OrdinalIgnoreCase)
+                    ? null
+                    : string.Empty;
 
             // ✅ Đọc AutoRunHint từ form
             var autoRunHint = Request.Form["AutoRunHint"].FirstOrDefault();
             model.AutoRunEnabled = autoRunHint == "1";
+
+            var autoRunDesc = Request.Form["AutoRunDescription"].FirstOrDefault();
+            model.AutoRunDescription = string.IsNullOrWhiteSpace(autoRunDesc) ? null : autoRunDesc.Trim();
 
             // ===== 2) Xử lý upload ảnh (tuỳ chọn) =====
             string imagePath = string.Empty;

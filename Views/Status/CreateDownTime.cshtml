@@ -425,6 +425,11 @@
 <div class="confirmation-modal" id="confirmationModal">
     <div class="modal-content">
         <div class="modal-text">Bạn có muốn xác nhận lưu downtime?</div>
+        <div id="runDescWrap" style="display:none; margin-bottom:14px;">
+            <label style="font-size:13px; color:#6b7280; margin-bottom:4px; display:block;">Mô tả (tùy chọn)</label>
+            <input type="text" id="runDescInput" placeholder="Nhập mô tả..."
+                   style="width:100%; padding:8px 10px; border:1px solid #d1d5db; border-radius:8px; font-size:14px; box-sizing:border-box;" />
+        </div>
         <div class="modal-buttons">
             <button class="btn-yes" id="btnConfirmYes">Có</button>
             <button class="btn-no" id="btnConfirmNo">Không</button>
@@ -492,6 +497,7 @@
             <input asp-for="EstimateTime" type="time" class="form-control" id="EstimateTime"
                 name="EstimateTime" step="60" placeholder="hh:mm" />
             <span asp-validation-for="EstimateTime" class="text-danger"></span>
+            <span id="estimateTimeError" class="text-danger" style="display:none; font-size:13px; margin-top:4px;">Thời gian ước tính không được nhỏ hơn thời gian hiện tại</span>
 
             <!-- Toggle Auto-Run – chỉ hiện khi có EstimateTime -->
             <div id="autoRunToggleWrap" style="display:none; margin-top:10px;">
@@ -502,6 +508,11 @@
                     <span id="autoRunText">Tự động Run khi tới Thời gian ước tính</span>
                 </label>
                 <div id="autoRunHint" class="autorun-hint"></div>
+                <div id="autoRunDescWrap" style="display:none; margin-top:8px;">
+                    <label style="font-size:13px; color:#6b7280; margin-bottom:4px; display:block;">Mô tả sau khi tự động Run (tùy chọn)</label>
+                    <input type="text" id="autoRunDescInput" placeholder="Nhập mô tả cho bản ghi Run..."
+                           style="width:100%; padding:8px 10px; border:1px solid #d1d5db; border-radius:8px; font-size:14px; box-sizing:border-box;" />
+                </div>
             </div>
         </div>
 
@@ -578,30 +589,74 @@
 
     const btnRun = document.getElementById('btnRun');
     const btnStop = document.getElementById('btnStop');
+    const runDescInput = document.getElementById('runDescInput');
+    const runDescWrap  = document.getElementById('runDescWrap');
     let autoRunEnabled = false;
+
+    function showRunConfirmModal() {
+        runDescWrap.style.display = 'block';
+        runDescInput.value = '';
+        document.getElementById('confirmationModal').style.display = 'flex';
+        runDescInput.focus();
+    }
+    function hideConfirmModal() {
+        document.getElementById('confirmationModal').style.display = 'none';
+        runDescWrap.style.display = 'none';
+    }
+    document.getElementById('btnConfirmYes').addEventListener('click', () => {
+        const desc = runDescInput.value;
+        hideConfirmModal();
+        runDescInput.value = '';
+        performSave('Run', desc);
+    });
+    document.getElementById('btnConfirmNo').addEventListener('click', hideConfirmModal);
+    document.getElementById('confirmationModal').addEventListener('click', function (e) {
+        if (e.target === this) hideConfirmModal();
+    });
 
     const autoRunWrap  = document.getElementById('autoRunToggleWrap');
     const autoRunTrack = document.getElementById('autoRunTrack');
     const autoRunText  = document.getElementById('autoRunText');
     const autoRunHint  = document.getElementById('autoRunHint');
 
+    function validateEstimateTime() {
+        const errEl = document.getElementById('estimateTimeError');
+        if (!estimateEl || !estimateEl.value) { errEl.style.display = 'none'; return true; }
+        const [hh, mm] = estimateEl.value.split(':').map(Number);
+        const now = new Date();
+        if (hh * 60 + mm < now.getHours() * 60 + now.getMinutes()) {
+            errEl.style.display = 'block';
+            return false;
+        }
+        errEl.style.display = 'none';
+        return true;
+    }
+
     // Hiện/ẩn toggle khi thay đổi EstimateTime
     estimateEl?.addEventListener('change', () => {
+        validateEstimateTime();
         const hasValue = !!estimateEl.value;
         autoRunWrap.style.display = hasValue ? 'block' : 'none';
         if (!hasValue) {
             autoRunEnabled = false;
             autoRunTrack.classList.remove('on');
+            autoRunDescWrap.style.display = 'none';
+            if (autoRunDescInput) autoRunDescInput.value = '';
             updateAutoRunHint();
         } else {
             updateAutoRunHint();
         }
     });
 
+    const autoRunDescWrap  = document.getElementById('autoRunDescWrap');
+    const autoRunDescInput = document.getElementById('autoRunDescInput');
+
     // Click toggle
     autoRunTrack?.addEventListener('click', () => {
         autoRunEnabled = !autoRunEnabled;
         autoRunTrack.classList.toggle('on', autoRunEnabled);
+        autoRunDescWrap.style.display = autoRunEnabled ? 'block' : 'none';
+        if (!autoRunEnabled && autoRunDescInput) autoRunDescInput.value = '';
         updateAutoRunHint();
     });
 
@@ -670,6 +725,10 @@
             estimateEl.value = '';
             setEstimateEnabled(true);
         }
+        autoRunEnabled = false;
+        if (autoRunTrack) autoRunTrack.classList.remove('on');
+        if (autoRunDescWrap) autoRunDescWrap.style.display = 'none';
+        if (autoRunDescInput) autoRunDescInput.value = '';
         if (svnCodeEl) svnCodeEl.value = '';
         if (descEl) descEl.value = '';
         removeImageDT();
@@ -807,7 +866,7 @@
     });
 
     /* ============ POST save ============ */
-    async function performSave(nextState) {
+    async function performSave(nextState, runDesc) {
         const op = (opEl?.value || '').trim();
         if (!op) { showToast('Vui lòng chọn Operation!', 'error', 2200); return; }
         const svnCode = (svnCodeEl?.value || '').trim();
@@ -823,13 +882,23 @@
             if (!d) { showToast('Vui lòng chọn/nhập Lý do cho STOP!', 'error', 2400); return; }
         }
 
+        if (!validateEstimateTime()) {
+            estimateEl?.focus();
+            return;
+        }
+
         const fd = new FormData();
         fd.append('Operation', op);
         fd.append('State', nextState);
         fd.append('ISS_Code', (IssCodeEl?.value || '').trim());
         fd.append('SVnCode', (svnCodeEl?.value || '').trim());
-        fd.append('Description', (descEl?.value || '').trim());
+        const descValue = nextState === 'Run'
+            ? (runDesc || '').trim()
+            : (descEl?.value || '').trim();
+        fd.append('Description', descValue);
         fd.append('AutoRunHint', autoRunEnabled ? '1' : '0');
+        if (autoRunEnabled && autoRunDescInput?.value.trim())
+            fd.append('AutoRunDescription', autoRunDescInput.value.trim());
         if (timeEl && timeEl.value) {
             const selected = new Date(timeEl.value);
             const now = new Date();
@@ -890,7 +959,7 @@
 
     /* ============ Event bindings ============ */
     opEl?.addEventListener('change', onOperationChanged);
-    btnRun?.addEventListener('click', () => performSave('Run'));
+    btnRun?.addEventListener('click', () => showRunConfirmModal());
     btnStop?.addEventListener('click', () => performSave('Stop'));
 
     /* ============ Init ============ */
