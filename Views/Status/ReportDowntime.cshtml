@@ -239,7 +239,7 @@
                             <i class="fas fa-microchip text-info"></i> <span data-i18n="report.machine">Machine</span>
                         </label>
                         <select class="form-select form-select-sm" name="machine">
-                            <option value="">-- All Machines --</option>
+                            <option value="">-- All --</option>
                             @if (ViewBag.MachineOptions != null)
                             {
                                 foreach (var mc in (IEnumerable<string>)ViewBag.MachineOptions)
@@ -254,7 +254,7 @@
                             <i class="fas fa-map-marker-alt text-warning"></i> <span data-i18n="report.location">Location</span>
                         </label>
                         <select class="form-select form-select-sm" name="location">
-                            <option value="">-- All Locations --</option>
+                            <option value="">-- All --</option>
                             @if (ViewBag.LocationOptions != null)
                             {
                                 foreach (var loc in (IEnumerable<string>)ViewBag.LocationOptions)
@@ -266,10 +266,10 @@
                     </div>
                     <div class="col-md-2">
                         <label class="form-label fw-bold mb-1">
-                            <i class="fas fa-exclamation-triangle text-danger"></i> Reason
+                            <i class="fas fa-exclamation-triangle text-danger"></i> <span data-i18n="report.filtercategory">Category</span>
                         </label>
                         <select class="form-select form-select-sm" name="reason">
-                            <option value="">-- All Faults --</option>
+                            <option value="">-- All --</option>
                             @if (ViewBag.ReasonOptions != null)
                             {
                                 foreach (var r in ViewBag.ReasonOptions)
@@ -296,7 +296,7 @@
                             <i class="fas fa-sitemap text-purple"></i> Station
                         </label>
                         <select class="form-select form-select-sm" name="station">
-                            <option value="">-- All Stations --</option>
+                            <option value="">-- All --</option>
                             @if (ViewBag.StationOptions != null)
                             {
                                 foreach (var st in (IEnumerable<string>)ViewBag.StationOptions)
@@ -418,7 +418,7 @@
                 </div>
                 <div class="col-md-4">
                     <div class="chart-container">
-                        <h4 class="mb-2"><i class="fas fa-exclamation-triangle"></i> <span data-i18n="report.downtimeByReason">Downtime by Reason</span></h4>
+                        <h4 class="mb-2"><i class="fas fa-exclamation-triangle"></i> <span data-i18n="report.downtimeByReason">Downtime by Category</span></h4>
                         <canvas id="issCodeChart"></canvas>
                     </div>
                 </div>

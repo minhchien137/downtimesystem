@@ -547,7 +547,7 @@ namespace MachineStatusUpdate.Controllers
                     ws.Style.Font.FontSize = 11;
 
                     // ── 标题 "停机历史" ──
-                    int totalCols = 18;
+                    int totalCols = 17;
                     var titleCell = ws.Cell(1, 1);
                     titleCell.Value = "停机历史";
                     titleCell.Style.Font.Bold     = true;
@@ -559,12 +559,11 @@ namespace MachineStatusUpdate.Controllers
 
                     var currentRow = 2;
 
-                    // 按SQL列顺序的表头
                     string[] headers = {
-                        "#", "工序", "设备号", "位置",
-                        "故障代码", "故障名称", "影响程度", "工位", "预估时间",
+                        "#", "工序", "Machine & Fixture", "E & F no.", "位置",
+                        "故障代码", "故障名称", "影响程度", "工位",
                         "状态", "处理措施", "详细描述", "根本原因", "备件",
-                        "员工编号", "员工姓名", "时间", "图片"
+                        "员工", "停机开始时间", "图片"
                     };
 
                     for (int i = 0; i < headers.Length; i++)
@@ -591,23 +590,45 @@ namespace MachineStatusUpdate.Controllers
                                         : item.Effect == "2" ? "不影响生产"
                                         : (item.Effect ?? "-");
 
+                        // Parse "Name - Code (Chinese)" → "Name (Chinese)" + "Code"
+                        string rawMC = item.MachineCode ?? "";
+                        string excelMachineName = rawMC, excelMachineCode = rawMC;
+                        if (!string.IsNullOrEmpty(rawMC))
+                        {
+                            int di = rawMC.IndexOf(" - ");
+                            if (di >= 0)
+                            {
+                                string np   = rawMC.Substring(0, di).Trim();
+                                string rest = rawMC.Substring(di + 3).Trim();
+                                string ch   = "";
+                                int pi = rest.IndexOf(" (");
+                                if (pi >= 0)
+                                {
+                                    excelMachineCode = rest.Substring(0, pi).Trim();
+                                    int pe = rest.IndexOf(")", pi);
+                                    if (pe > pi + 2) ch = rest.Substring(pi + 2, pe - pi - 2).Trim();
+                                }
+                                else excelMachineCode = rest;
+                                excelMachineName = string.IsNullOrEmpty(ch) ? np : $"{np} ({ch})";
+                            }
+                        }
+
                         ws.Cell(currentRow,  1).Value = rowIndex;
                         ws.Cell(currentRow,  2).Value = item.Operation;
-                        ws.Cell(currentRow,  3).Value = item.MachineCode;
-                        ws.Cell(currentRow,  4).Value = item.Location;
-                        ws.Cell(currentRow,  5).Value = item.Reason;
-                        ws.Cell(currentRow,  6).Value = item.ErrorName;
-                        ws.Cell(currentRow,  7).Value = effLabel;
-                        ws.Cell(currentRow,  8).Value = item.Station;
-                        ws.Cell(currentRow,  9).Value = string.IsNullOrEmpty(item.EstimateTime) ? "-" : item.EstimateTime;
+                        ws.Cell(currentRow,  3).Value = excelMachineName;
+                        ws.Cell(currentRow,  4).Value = excelMachineCode;
+                        ws.Cell(currentRow,  5).Value = item.Location;
+                        ws.Cell(currentRow,  6).Value = item.Reason;
+                        ws.Cell(currentRow,  7).Value = item.ErrorName;
+                        ws.Cell(currentRow,  8).Value = effLabel;
+                        ws.Cell(currentRow,  9).Value = item.Station;
                         ws.Cell(currentRow, 10).Value = item.State;
                         ws.Cell(currentRow, 11).Value = item.Action;
                         ws.Cell(currentRow, 12).Value = item.Description;
                         ws.Cell(currentRow, 13).Value = item.RootCause;
                         ws.Cell(currentRow, 14).Value = item.SpareParts;
-                        ws.Cell(currentRow, 15).Value = item.EmployeeCode;
-                        ws.Cell(currentRow, 16).Value = item.EmployeeName;
-                        ws.Cell(currentRow, 17).Value = item.Datetime?.ToString("dd/MM/yyyy HH:mm") ?? "-";
+                        ws.Cell(currentRow, 15).Value = item.EmployeeName ?? item.EmployeeCode ?? "-";
+                        ws.Cell(currentRow, 16).Value = item.Datetime?.ToString("dd/MM/yyyy HH:mm") ?? "-";
 
                         if (!string.IsNullOrEmpty(item.Image))
                         {
@@ -624,32 +645,32 @@ namespace MachineStatusUpdate.Controllers
                                 if (System.IO.File.Exists(imagePath))
                                 {
                                     var picture = ws.AddPicture(imagePath);
-                                    picture.MoveTo(ws.Cell(currentRow, 18), 8, 5);
+                                    picture.MoveTo(ws.Cell(currentRow, 17), 8, 5);
                                     picture.WithSize(100, 70);
-                                    ws.Cell(currentRow, 18).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                                    ws.Cell(currentRow, 18).Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+                                    ws.Cell(currentRow, 17).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                                    ws.Cell(currentRow, 17).Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
                                 }
                                 else
                                 {
-                                    ws.Cell(currentRow, 18).Value = "No image";
-                                    ws.Cell(currentRow, 18).Style.Font.FontColor = XLColor.Gray;
+                                    ws.Cell(currentRow, 17).Value = "No image";
+                                    ws.Cell(currentRow, 17).Style.Font.FontColor = XLColor.Gray;
                                 }
                             }
                             catch
                             {
-                                ws.Cell(currentRow, 18).Value = "Error";
-                                ws.Cell(currentRow, 18).Style.Font.FontColor = XLColor.Red;
+                                ws.Cell(currentRow, 17).Value = "Error";
+                                ws.Cell(currentRow, 17).Style.Font.FontColor = XLColor.Red;
                             }
                         }
                         else
                         {
-                            ws.Cell(currentRow, 18).Value = "-";
-                            ws.Cell(currentRow, 18).Style.Font.FontColor = XLColor.Gray;
+                            ws.Cell(currentRow, 17).Value = "-";
+                            ws.Cell(currentRow, 17).Style.Font.FontColor = XLColor.Gray;
                         }
                     }
 
-                    ws.Columns(1, 18).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                    ws.Columns(1, 18).Style.Alignment.Vertical   = XLAlignmentVerticalValues.Center;
+                    ws.Columns(1, 17).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                    ws.Columns(1, 17).Style.Alignment.Vertical   = XLAlignmentVerticalValues.Center;
                     // 描述、根本原因、备件列左对齐
                     ws.Column(12).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;
                     ws.Column(13).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;
@@ -657,22 +678,21 @@ namespace MachineStatusUpdate.Controllers
 
                     ws.Column(1).Width  = 6;   // #
                     ws.Column(2).Width  = 28;  // 工序
-                    ws.Column(3).Width  = 22;  // 设备号
-                    ws.Column(4).Width  = 18;  // 位置
-                    ws.Column(5).Width  = 14;  // 故障代码
-                    ws.Column(6).Width  = 25;  // 故障名称
-                    ws.Column(7).Width  = 15;  // 影响程度
-                    ws.Column(8).Width  = 14;  // 工位
-                    ws.Column(9).Width  = 14;  // 预估时间
+                    ws.Column(3).Width  = 30;  // 设备名称
+                    ws.Column(4).Width  = 20;  // 设备编号
+                    ws.Column(5).Width  = 18;  // 位置
+                    ws.Column(6).Width  = 14;  // 故障代码
+                    ws.Column(7).Width  = 25;  // 故障名称
+                    ws.Column(8).Width  = 15;  // 影响程度
+                    ws.Column(9).Width  = 14;  // 工位
                     ws.Column(10).Width = 12;  // 状态
                     ws.Column(11).Width = 28;  // 处理措施
                     ws.Column(12).Width = 30;  // 详细描述
                     ws.Column(13).Width = 28;  // 根本原因
                     ws.Column(14).Width = 22;  // 备件
-                    ws.Column(15).Width = 15;  // 员工编号
-                    ws.Column(16).Width = 18;  // 员工姓名
-                    ws.Column(17).Width = 18;  // 时间
-                    ws.Column(18).Width = 15;  // 图片
+                    ws.Column(15).Width = 20;  // 员工
+                    ws.Column(16).Width = 18;  // 停机开始时间
+                    ws.Column(17).Width = 15;  // 图片
 
                     using (var stream = new MemoryStream())
                     {
@@ -2140,7 +2160,8 @@ namespace MachineStatusUpdate.Controllers
                 // Join TechResponses for Start/Response/End times
                 var techResps = await _context.SVN_Downtime_TechResponses
                     .Where(x => x.TechAction == "ACCEPT")
-                    .Select(x => new { x.DowntimeId, x.TechUsername, x.RespondDatetime, x.StopDatetime })
+                    .Select(x => new { x.DowntimeId, x.TechUsername, x.RespondDatetime, x.StopDatetime,
+                                       x.RepairAction, x.RepairRootCause, x.RepairSpareParts, x.EstimateTime })
                     .ToListAsync();
 
                 var runRecords = await _context.SVN_Downtime_Infos_Devel
@@ -2319,7 +2340,7 @@ namespace MachineStatusUpdate.Controllers
 
                 r = 1;
                 ws3.Cell(r, 1).Value = "DOWNTIME REPORT — Detail Records";
-                ws3.Range(r, 1, r, 18).Merge();
+                ws3.Range(r, 1, r, 19).Merge();
                 ws3.Cell(r, 1).Style.Font.Bold = true;
                 ws3.Cell(r, 1).Style.Font.FontSize = 14;
                 ws3.Cell(r, 1).Style.Font.FontColor = XLColor.White;
@@ -2327,16 +2348,16 @@ namespace MachineStatusUpdate.Controllers
                 ws3.Cell(r, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
                 ws3.Row(r).Height = 28; r++;
                 ws3.Cell(r, 1).Value = FilterInfo();
-                ws3.Range(r, 1, r, 18).Merge();
+                ws3.Range(r, 1, r, 19).Merge();
                 ws3.Cell(r, 1).Style.Font.Italic = true;
                 ws3.Cell(r, 1).Style.Fill.BackgroundColor = XLColor.FromHtml("#D5F5E3");
                 r += 2;
 
                 string[] sh3 = {
-                    "Datetime", "Operation", "Machine", "Location", "Reason",
-                    "Station", "Image", "Problem Description", "Root Cause",
-                    "Start Time", "Response Time", "End Time",
+                    "Datetime", "Operation", "Machine & Fixture", "E & F no.", "Location", "Category",
+                    "Station", "Image", "Start Time", "Response Time", "End Time",
                     "Response Duration (min)", "Downtime (min)",
+                    "Problem Description", "Root Cause",
                     "Action", "Spare Parts", "Employee Name", "Effect"
                 };
                 int headerRow3 = r;
@@ -2378,17 +2399,38 @@ namespace MachineStatusUpdate.Controllers
 
                     ws3.Cell(r, 1).Value  = d.Datetime?.ToString("dd/MM/yyyy HH:mm") ?? "-";
                     ws3.Cell(r, 2).Value  = d.Operation   ?? "-";
-                    // Append Chinese name for records that don't already have it
+                    // Build enriched display string then split into Name Machine + Machine Code
                     var machineDisplay = d.MachineCode ?? "-";
                     if (!string.IsNullOrEmpty(d.MachineCode) && !d.MachineCode.Contains("("))
                     {
                         if (smeqChineseDict.TryGetValue(d.MachineCode, out var cn) && !string.IsNullOrEmpty(cn))
                             machineDisplay = $"{d.MachineCode} ({cn})";
                     }
-                    ws3.Cell(r, 3).Value  = machineDisplay;
-                    ws3.Cell(r, 4).Value  = d.Location    ?? "-";
-                    ws3.Cell(r, 5).Value  = item.ReasonName.Length > 0 ? item.ReasonName : (d.Reason ?? "-");
-                    ws3.Cell(r, 6).Value  = d.Station     ?? "-";
+                    string ws3MachineName = machineDisplay, ws3MachineCode = machineDisplay;
+                    if (!string.IsNullOrEmpty(machineDisplay) && machineDisplay != "-")
+                    {
+                        int ws3Di = machineDisplay.IndexOf(" - ");
+                        if (ws3Di >= 0)
+                        {
+                            string ws3Np   = machineDisplay.Substring(0, ws3Di).Trim();
+                            string ws3Rest = machineDisplay.Substring(ws3Di + 3).Trim();
+                            string ws3Ch   = "";
+                            int ws3Pi = ws3Rest.IndexOf(" (");
+                            if (ws3Pi >= 0)
+                            {
+                                ws3MachineCode = ws3Rest.Substring(0, ws3Pi).Trim();
+                                int ws3Pe = ws3Rest.IndexOf(")", ws3Pi);
+                                if (ws3Pe > ws3Pi + 2) ws3Ch = ws3Rest.Substring(ws3Pi + 2, ws3Pe - ws3Pi - 2).Trim();
+                            }
+                            else ws3MachineCode = ws3Rest;
+                            ws3MachineName = string.IsNullOrEmpty(ws3Ch) ? ws3Np : $"{ws3Np} ({ws3Ch})";
+                        }
+                    }
+                    ws3.Cell(r, 3).Value  = ws3MachineName;
+                    ws3.Cell(r, 4).Value  = ws3MachineCode;
+                    ws3.Cell(r, 5).Value  = d.Location    ?? "-";
+                    ws3.Cell(r, 6).Value  = item.ReasonName.Length > 0 ? item.ReasonName : (d.Reason ?? "-");
+                    ws3.Cell(r, 7).Value  = d.Station     ?? "-";
                     if (!string.IsNullOrEmpty(d.Image))
                     {
                         try
@@ -2403,43 +2445,48 @@ namespace MachineStatusUpdate.Controllers
 
                             if (System.IO.File.Exists(imgPath))
                             {
-                                ws3.Column(7).Width = 20;
+                                ws3.Column(8).Width = 20;
                                 ws3.Row(r).Height = 75;
 
                                 var pic = ws3.AddPicture(imgPath);
-                                pic.MoveTo(ws3.Cell(r, 7), 5, 4);
+                                pic.MoveTo(ws3.Cell(r, 8), 5, 4);
                                 pic.WithSize(95, 65);
-                                ws3.Cell(r, 7).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                                ws3.Cell(r, 7).Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+                                ws3.Cell(r, 8).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                                ws3.Cell(r, 8).Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
                             }
                             else
                             {
-                                ws3.Cell(r, 7).Value = "No image";
+                                ws3.Cell(r, 8).Value = "No image";
                             }
                         }
                         catch (Exception ex)
                         {
-                            ws3.Cell(r, 7).Value = "Error";
+                            ws3.Cell(r, 8).Value = "Error";
                         }
                     }
 
-
-
-                    ws3.Cell(r, 8).Value  = d.Description ?? "-";
-                    ws3.Cell(r, 9).Value  = d.RootCause   ?? "-";
-                    ws3.Cell(r, 10).Value = startDt?.ToString("dd/MM/yyyy HH:mm") ?? "-";
-                    ws3.Cell(r, 11).Value = respDt?.ToString("dd/MM/yyyy HH:mm")  ?? "-";
-                    ws3.Cell(r, 12).Value = endDt?.ToString("dd/MM/yyyy HH:mm")   ?? "-";
-                    if (respDuration > 0) ws3.Cell(r, 13).Value = Math.Round(respDuration, 1);
+                    ws3.Cell(r, 9).Value  = startDt?.ToString("dd/MM/yyyy HH:mm") ?? "-";
+                    ws3.Cell(r, 10).Value = respDt?.ToString("dd/MM/yyyy HH:mm")  ?? "-";
+                    ws3.Cell(r, 11).Value = endDt?.ToString("dd/MM/yyyy HH:mm")   ?? "-";
+                    if (respDuration > 0) ws3.Cell(r, 12).Value = Math.Round(respDuration, 1);
+                    else ws3.Cell(r, 12).Value = "-";
+                    if (totalDT > 0) ws3.Cell(r, 13).Value = Math.Round(totalDT, 1);
                     else ws3.Cell(r, 13).Value = "-";
-                    if (totalDT > 0) ws3.Cell(r, 14).Value = Math.Round(totalDT, 1);
-                    else ws3.Cell(r, 14).Value = "-";
-                    ws3.Cell(r, 15).Value = d.Action     ?? "-";
-                    ws3.Cell(r, 16).Value = d.SpareParts ?? "-";
-                    ws3.Cell(r, 17).Value = d.EmployeeName ?? d.EmployeeCode ?? "-";
-                    ws3.Cell(r, 18).Value = effStr;
+                    // Repair fields: prefer STOP record, fall back to TechResponse
+                    string trDesc = (!string.IsNullOrEmpty(tr?.EstimateTime) && tr.EstimateTime.StartsWith("[TECHDESC]"))
+                                    ? tr.EstimateTime.Substring(10).Trim() : "";
+                    string ws3Desc  = !string.IsNullOrWhiteSpace(d.Description) ? d.Description : trDesc;
+                    string ws3RC    = !string.IsNullOrWhiteSpace(d.RootCause)   ? d.RootCause   : (tr?.RepairRootCause  ?? "");
+                    string ws3Act   = !string.IsNullOrWhiteSpace(d.Action)      ? d.Action      : (tr?.RepairAction     ?? "");
+                    string ws3Spare = !string.IsNullOrWhiteSpace(d.SpareParts)  ? d.SpareParts  : (tr?.RepairSpareParts ?? "");
+                    ws3.Cell(r, 14).Value = string.IsNullOrWhiteSpace(ws3Desc)  ? "-" : ws3Desc;
+                    ws3.Cell(r, 15).Value = string.IsNullOrWhiteSpace(ws3RC)    ? "-" : ws3RC;
+                    ws3.Cell(r, 16).Value = string.IsNullOrWhiteSpace(ws3Act)   ? "-" : ws3Act;
+                    ws3.Cell(r, 17).Value = string.IsNullOrWhiteSpace(ws3Spare) ? "-" : ws3Spare;
+                    ws3.Cell(r, 18).Value = tr?.TechUsername ?? "-";
+                    ws3.Cell(r, 19).Value = effStr;
 
-                    for (int c = 1; c <= 18; c++) {
+                    for (int c = 1; c <= 19; c++) {
                         var cell = ws3.Cell(r, c);
                         if (alt) cell.Style.Fill.BackgroundColor = XLColor.FromHtml("#EAFAF1");
                         cell.Style.Border.BottomBorder = XLBorderStyleValues.Hair;
@@ -2447,36 +2494,48 @@ namespace MachineStatusUpdate.Controllers
                         cell.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
                     }
                     // Right-align numbers
+                    ws3.Cell(r, 12).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
                     ws3.Cell(r, 13).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                    ws3.Cell(r, 14).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                    ws3.Cell(r, 18).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                    ws3.Cell(r, 19).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
 
                     // Highlight unresolved rows
                     if (totalDT <= 0 && endDt == null)
-                        ws3.Cell(r, 14).Style.Fill.BackgroundColor = XLColor.FromHtml("#FDEDEC");
+                        ws3.Cell(r, 13).Style.Fill.BackgroundColor = XLColor.FromHtml("#FDEDEC");
 
                     ws3.Row(r).Height = 18;
                     r++;
                 }
 
                 // AutoFilter on header row
-                ws3.Range(headerRow3, 1, r - 1, 18).SetAutoFilter();
+                ws3.Range(headerRow3, 1, r - 1, 19).SetAutoFilter();
 
                 // Freeze pane below header
                 ws3.SheetView.FreezeRows(headerRow3);
 
-                // ── Top 5 DT Summary by Time Period ──
-                r += 2;
+                // Column widths
+                // 1=Datetime 2=Op 3=Machine & Fixture 4=E & F no. 5=Location 6=Reason 7=Station 8=Image
+                // 9=Start 10=Response 11=End 12=RespDur 13=DT 14=ProbDesc 15=RootCause 16=Action 17=Spare 18=Employee 19=Effect
+                int[] ws3Widths = { 18, 28, 30, 20, 16, 28, 14, 20, 18, 18, 18, 20, 16, 32, 28, 28, 20, 20, 14 };
+                for (int c = 0; c < ws3Widths.Length; c++)
+                    ws3.Column(c + 1).Width = ws3Widths[c];
 
-                ws3.Cell(r, 1).Value = "Top 5 DT Summary by Time Period";
-                ws3.Range(r, 1, r, 5).Merge();
-                ws3.Cell(r, 1).Style.Font.Bold      = true;
-                ws3.Cell(r, 1).Style.Font.FontSize  = 12;
-                ws3.Cell(r, 1).Style.Font.FontColor = XLColor.White;
-                ws3.Cell(r, 1).Style.Fill.BackgroundColor = XLColor.FromHtml("#B7410E");
-                ws3.Cell(r, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                ws3.Cell(r, 1).Style.Alignment.Vertical   = XLAlignmentVerticalValues.Center;
-                ws3.Row(r).Height = 26; r++;
+                // ════════════════════════════════════════════════
+                // SHEET 4: Top 5 DT Summary
+                // ════════════════════════════════════════════════
+                var ws4 = workbook.Worksheets.Add("Top 5 DT Summary");
+                ws4.Style.Font.FontName = "Arial";
+                ws4.Style.Font.FontSize = 10;
+
+                r = 1;
+                ws4.Cell(r, 1).Value = "Top 5 DT Summary by Time Period";
+                ws4.Range(r, 1, r, 6).Merge();
+                ws4.Cell(r, 1).Style.Font.Bold      = true;
+                ws4.Cell(r, 1).Style.Font.FontSize  = 12;
+                ws4.Cell(r, 1).Style.Font.FontColor = XLColor.White;
+                ws4.Cell(r, 1).Style.Fill.BackgroundColor = XLColor.FromHtml("#B7410E");
+                ws4.Cell(r, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                ws4.Cell(r, 1).Style.Alignment.Vertical   = XLAlignmentVerticalValues.Center;
+                ws4.Row(r).Height = 26; r++;
 
                 var periodParts = new List<string>();
                 if (!string.IsNullOrEmpty(fromDate)) periodParts.Add(fromDate);
@@ -2484,17 +2543,24 @@ namespace MachineStatusUpdate.Controllers
                 var periodNote = periodParts.Count == 2
                     ? $"Period: {periodParts[0]}  –  {periodParts[1]}"
                     : periodParts.Count == 1 ? $"Period: {periodParts[0]}" : "Period: All data";
-                ws3.Cell(r, 1).Value = periodNote;
-                ws3.Range(r, 1, r, 5).Merge();
-                ws3.Cell(r, 1).Style.Font.Italic   = true;
-                ws3.Cell(r, 1).Style.Font.FontSize = 9;
-                ws3.Cell(r, 1).Style.Font.FontColor = XLColor.FromHtml("#6E2C00");
-                ws3.Cell(r, 1).Style.Fill.BackgroundColor = XLColor.FromHtml("#FAD7A0");
-                ws3.Row(r).Height = 14; r++;
+                ws4.Cell(r, 1).Value = periodNote;
+                ws4.Range(r, 1, r, 6).Merge();
+                ws4.Cell(r, 1).Style.Font.Italic   = true;
+                ws4.Cell(r, 1).Style.Font.FontSize = 9;
+                ws4.Cell(r, 1).Style.Font.FontColor = XLColor.FromHtml("#6E2C00");
+                ws4.Cell(r, 1).Style.Fill.BackgroundColor = XLColor.FromHtml("#FAD7A0");
+                ws4.Row(r).Height = 14; r++;
 
-                string[] top5Headers = { "Rank", "Machine Name", "Total DT (min)", "Total DT (h:mm)", "Incidents" };
+                ws4.Cell(r, 1).Value = FilterInfo();
+                ws4.Range(r, 1, r, 6).Merge();
+                ws4.Cell(r, 1).Style.Font.Italic   = true;
+                ws4.Cell(r, 1).Style.Font.FontSize = 9;
+                ws4.Cell(r, 1).Style.Font.FontColor = XLColor.Gray;
+                ws4.Row(r).Height = 14; r++;
+
+                string[] top5Headers = { "Rank", "Machine & Fixture", "E & F no.", "Total DT (min)", "Total DT (h:mm)", "Incidents" };
                 for (int c = 0; c < top5Headers.Length; c++) {
-                    var hc = ws3.Cell(r, c + 1);
+                    var hc = ws4.Cell(r, c + 1);
                     hc.Value = top5Headers[c];
                     hc.Style.Font.Bold      = true;
                     hc.Style.Font.FontColor = XLColor.White;
@@ -2504,7 +2570,7 @@ namespace MachineStatusUpdate.Controllers
                     hc.Style.Border.OutsideBorder     = XLBorderStyleValues.Thin;
                     hc.Style.Border.OutsideBorderColor = XLColor.White;
                 }
-                ws3.Row(r).Height = 20; r++;
+                ws4.Row(r).Height = 20; r++;
 
                 var top5Data = rawStops
                     .Select(item => {
@@ -2520,13 +2586,31 @@ namespace MachineStatusUpdate.Controllers
                         if (!string.IsNullOrEmpty(_d.MachineCode) && !_d.MachineCode.Contains("("))
                             if (smeqChineseDict.TryGetValue(_d.MachineCode, out var _cn) && !string.IsNullOrEmpty(_cn))
                                 _mc = $"{_d.MachineCode} ({_cn})";
-                        return new { Machine = _mc, DT = _dt };
+                        return new { Disp = _mc, DT = _dt };
                     })
-                    .GroupBy(x => x.Machine)
-                    .Select(g => new {
-                        Machine      = g.Key,
-                        TotalMinutes = Math.Round(g.Sum(x => x.DT), 1),
-                        Incidents    = g.Count()
+                    .GroupBy(x => x.Disp)
+                    .Select(g => {
+                        var disp = g.Key;
+                        string t4Name = disp, t4Code = disp;
+                        int t4Di = disp.IndexOf(" - ");
+                        if (t4Di >= 0) {
+                            var t4Np   = disp.Substring(0, t4Di).Trim();
+                            var t4Rest = disp.Substring(t4Di + 3).Trim();
+                            var t4Ch   = "";
+                            int t4Pi   = t4Rest.IndexOf(" (");
+                            if (t4Pi >= 0) {
+                                t4Code = t4Rest.Substring(0, t4Pi).Trim();
+                                int t4Pe = t4Rest.IndexOf(")", t4Pi);
+                                if (t4Pe > t4Pi + 2) t4Ch = t4Rest.Substring(t4Pi + 2, t4Pe - t4Pi - 2).Trim();
+                            } else t4Code = t4Rest;
+                            t4Name = string.IsNullOrEmpty(t4Ch) ? t4Np : $"{t4Np} ({t4Ch})";
+                        }
+                        return new {
+                            MachineName  = t4Name,
+                            MachineCode  = t4Code,
+                            TotalMinutes = Math.Round(g.Sum(x => x.DT), 1),
+                            Incidents    = g.Count()
+                        };
                     })
                     .OrderByDescending(x => x.TotalMinutes)
                     .Take(5)
@@ -2545,13 +2629,14 @@ namespace MachineStatusUpdate.Controllers
                     var bg  = rankBg[i];
                     var hrs = (int)(m.TotalMinutes / 60);
                     var min = (int)(m.TotalMinutes % 60);
-                    ws3.Cell(r, 1).Value = i + 1;
-                    ws3.Cell(r, 2).Value = m.Machine;
-                    ws3.Cell(r, 3).Value = m.TotalMinutes;
-                    ws3.Cell(r, 4).Value = $"{hrs}h {min:D2}m";
-                    ws3.Cell(r, 5).Value = m.Incidents;
-                    for (int c = 1; c <= 5; c++) {
-                        var cell = ws3.Cell(r, c);
+                    ws4.Cell(r, 1).Value = i + 1;
+                    ws4.Cell(r, 2).Value = m.MachineName;
+                    ws4.Cell(r, 3).Value = m.MachineCode;
+                    ws4.Cell(r, 4).Value = m.TotalMinutes;
+                    ws4.Cell(r, 5).Value = $"{hrs}h {min:D2}m";
+                    ws4.Cell(r, 6).Value = m.Incidents;
+                    for (int c = 1; c <= 6; c++) {
+                        var cell = ws4.Cell(r, c);
                         cell.Style.Fill.BackgroundColor = bg;
                         cell.Style.Font.Bold      = i < 3;
                         cell.Style.Font.FontColor = i < 2 ? XLColor.White : XLColor.FromHtml("#1A1A1A");
@@ -2559,18 +2644,20 @@ namespace MachineStatusUpdate.Controllers
                         cell.Style.Border.BottomBorderColor = XLColor.FromHtml("#E59866");
                         cell.Style.Alignment.Vertical       = XLAlignmentVerticalValues.Center;
                     }
-                    ws3.Cell(r, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                    ws3.Cell(r, 3).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                    ws3.Cell(r, 4).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                    ws3.Cell(r, 5).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                    ws3.Row(r).Height = 18;
+                    ws4.Cell(r, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                    ws4.Cell(r, 4).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                    ws4.Cell(r, 5).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                    ws4.Cell(r, 6).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                    ws4.Row(r).Height = 18;
                     r++;
                 }
 
-                // Column widths
-                int[] ws3Widths = { 18, 28, 32, 16, 28, 14, 20, 32, 28, 18, 18, 18, 20, 16, 28, 20, 20, 14 };
-                for (int c = 0; c < ws3Widths.Length; c++)
-                    ws3.Column(c + 1).Width = ws3Widths[c];
+                ws4.Column(1).Width = 8;   // Rank
+                ws4.Column(2).Width = 32;  // Machine & Fixture
+                ws4.Column(3).Width = 20;  // E & F no.
+                ws4.Column(4).Width = 18;  // Total DT (min)
+                ws4.Column(5).Width = 16;  // Total DT (h:mm)
+                ws4.Column(6).Width = 12;  // Incidents
 
                 using var stream = new MemoryStream();
                 workbook.SaveAs(stream);
@@ -3862,57 +3949,192 @@ public class EmployeeDto
             string fromDate = "", string toDate = "",
             string operation = "", string location = "", string machine = "")
         {
-            var top5 = await GetTop5Machines(fromDate, toDate, operation, location, machine);
-            if (!top5.Any())
+            bool hasFrom = DateTime.TryParse(fromDate, out var fd);
+            bool hasTo   = DateTime.TryParse(toDate,   out var td);
+            DateTime today     = GetChinaTime().Date;
+            DateTime weekMon   = today.AddDays(-(((int)today.DayOfWeek + 6) % 7));
+            DateTime rangeStart = hasFrom ? fd.Date : weekMon;
+            DateTime rangeEnd   = hasTo   ? td.Date : weekMon.AddDays(6);
+
+            // ── 1. STOP records in range ──────────────────────────────
+            var stopQ = _context.SVN_Downtime_Infos_Devel
+                .Where(x => x.MachineCode != null && x.State != null && x.State.ToUpper() == "STOP"
+                         && x.Datetime.HasValue
+                         && x.Datetime.Value.Date >= rangeStart
+                         && x.Datetime.Value.Date <= rangeEnd);
+            if (!string.IsNullOrWhiteSpace(operation)) { var _op = operation.Trim(); stopQ = stopQ.Where(x => x.Operation != null && x.Operation.Contains(_op)); }
+            if (!string.IsNullOrWhiteSpace(location))  { var _lo = location.Trim();  stopQ = stopQ.Where(x => x.Location  != null && x.Location.Contains(_lo));  }
+            if (!string.IsNullOrWhiteSpace(machine))   { var _mc = machine.Trim();   stopQ = stopQ.Where(x => x.MachineCode == _mc); }
+
+            var stops = await stopQ.Select(x => new { x.MachineCode, x.Datetime }).ToListAsync();
+            if (!stops.Any())
                 return Json(new { success = false, message = "No data to export." });
 
-            string periodLabel = (DateTime.TryParse(fromDate, out var _ef) && DateTime.TryParse(toDate, out var _et))
-                ? $"{_ef:dd/MM/yyyy} – {_et:dd/MM/yyyy}"
-                : "Selected Period";
-            string monthLabel = DateTime.TryParse(toDate, out var _em)
-                ? _em.ToString("MM/yyyy")
-                : GetChinaTime().ToString("MM/yyyy");
+            // ── 2. RUN records for DT calculation ────────────────────
+            var mcList = stops.Select(x => x.MachineCode).Distinct().ToList();
+            var runs   = await _context.SVN_Downtime_Infos_Devel
+                .Where(x => x.State != null && x.State.ToUpper() == "RUN"
+                         && x.MachineCode != null && mcList.Contains(x.MachineCode)
+                         && x.Datetime.HasValue)
+                .Select(x => new { x.MachineCode, x.Datetime })
+                .ToListAsync();
 
+            // ── 3. Chinese name lookup ────────────────────────────────
+            var smeqList = await _context.SVN_Downtime_SMEQs.AsNoTracking()
+                .Select(e => new { e.namechinese, key = e.name + (e.serialnumber != null ? " - " + e.serialnumber : "") })
+                .ToListAsync();
+            var chineseDict = smeqList.Where(x => !string.IsNullOrEmpty(x.key))
+                .GroupBy(x => x.key)
+                .ToDictionary(g => g.Key, g => g.First().namechinese ?? "");
+
+            // ── 4. Compute per-stop DT, enrich name, group & sort ────
+            var top5Data = stops
+                .Select(s => {
+                    var endDt = runs
+                        .Where(rr => rr.MachineCode == s.MachineCode && rr.Datetime > s.Datetime)
+                        .OrderBy(rr => rr.Datetime)
+                        .Select(rr => rr.Datetime)
+                        .FirstOrDefault();
+                    double dt = (s.Datetime.HasValue && endDt.HasValue) ? (endDt.Value - s.Datetime.Value).TotalMinutes : 0;
+                    var raw = s.MachineCode ?? "-";
+                    var disp = raw;
+                    if (!raw.Contains("(") && chineseDict.TryGetValue(raw, out var ch) && !string.IsNullOrEmpty(ch))
+                        disp = $"{raw} ({ch})";
+                    return new { Disp = disp, DT = dt };
+                })
+                .GroupBy(x => x.Disp)
+                .Select(g => {
+                    // Split "Name - Code (Chinese)" → "Name (Chinese)" + "Code"
+                    var disp = g.Key;
+                    string mName = disp, mCode = disp;
+                    int di = disp.IndexOf(" - ");
+                    if (di >= 0) {
+                        var np   = disp.Substring(0, di).Trim();
+                        var rest = disp.Substring(di + 3).Trim();
+                        var chPart = "";
+                        int pi = rest.IndexOf(" (");
+                        if (pi >= 0) {
+                            mCode = rest.Substring(0, pi).Trim();
+                            int pe = rest.IndexOf(")", pi);
+                            if (pe > pi + 2) chPart = rest.Substring(pi + 2, pe - pi - 2).Trim();
+                        } else mCode = rest;
+                        mName = string.IsNullOrEmpty(chPart) ? np : $"{np} ({chPart})";
+                    }
+                    return new {
+                        MachineName  = mName,
+                        MachineCode  = mCode,
+                        TotalMinutes = Math.Round(g.Sum(x => x.DT), 1),
+                        Incidents    = g.Count()
+                    };
+                })
+                .OrderByDescending(x => x.TotalMinutes)
+                .Take(5)
+                .ToList();
+
+            if (!top5Data.Any())
+                return Json(new { success = false, message = "No data to export." });
+
+            // ── 5. Period label ───────────────────────────────────────
+            string trendLabel = "";
+            if (hasFrom && hasTo) {
+                int days = (int)(td.Date - fd.Date).TotalDays + 1;
+                trendLabel = days <= 7 ? "Weekly trend" : $"{days}-day trend";
+            }
+            string periodLabel = (hasFrom && hasTo)
+                ? $"{trendLabel}  {fd:dd/MM} – {td:dd/MM/yyyy}"
+                : "Selected Period";
+
+            // ── 6. Build Excel ────────────────────────────────────────
             using var wb = new XLWorkbook();
-            var ws = wb.Worksheets.Add("Top5 Downtime");
+            var ws = wb.Worksheets.Add("Top 5 DT Summary");
+            ws.Style.Font.FontName = "Arial";
+            ws.Style.Font.FontSize = 10;
 
             int r = 1;
-            ws.Cell(r, 1).Value = $"Top 5 Most Downtime Machines — {periodLabel}";
+
+            // Title
+            ws.Cell(r, 1).Value = "Top 5 DT Summary by Time Period";
             ws.Range(r, 1, r, 6).Merge();
-            ws.Cell(r, 1).Style.Font.Bold = true;
-            ws.Cell(r, 1).Style.Font.FontSize = 13;
-            ws.Cell(r, 1).Style.Fill.BackgroundColor = XLColor.FromHtml("#1E8449");
+            ws.Cell(r, 1).Style.Font.Bold      = true;
+            ws.Cell(r, 1).Style.Font.FontSize  = 12;
             ws.Cell(r, 1).Style.Font.FontColor = XLColor.White;
-            r += 2;
+            ws.Cell(r, 1).Style.Fill.BackgroundColor    = XLColor.FromHtml("#B7410E");
+            ws.Cell(r, 1).Style.Alignment.Horizontal    = XLAlignmentHorizontalValues.Center;
+            ws.Cell(r, 1).Style.Alignment.Vertical      = XLAlignmentVerticalValues.Center;
+            ws.Row(r).Height = 26; r++;
 
-            string[] hdrs = { "Rank", "Machine Code", "Operation", $"Stops ({periodLabel})", $"Monthly Total ({monthLabel})", "Daily Trend (date:stops)" };
-            for (int c = 0; c < hdrs.Length; c++)
-            {
-                ws.Cell(r, c + 1).Value = hdrs[c];
-                ws.Cell(r, c + 1).Style.Font.Bold = true;
-                ws.Cell(r, c + 1).Style.Fill.BackgroundColor = XLColor.FromHtml("#D9EAD3");
+            // Period info
+            ws.Cell(r, 1).Value = $"Period: {periodLabel}";
+            ws.Range(r, 1, r, 6).Merge();
+            ws.Cell(r, 1).Style.Font.Italic    = true;
+            ws.Cell(r, 1).Style.Font.FontSize  = 9;
+            ws.Cell(r, 1).Style.Font.FontColor = XLColor.FromHtml("#6E2C00");
+            ws.Cell(r, 1).Style.Fill.BackgroundColor = XLColor.FromHtml("#FAD7A0");
+            ws.Row(r).Height = 14; r++;
+
+            // Header
+            string[] hdrs = { "Rank", "Machine & Fixture", "E & F no.", "Total DT (min)", "Total DT (h:mm)", "Incidents" };
+            for (int c = 0; c < hdrs.Length; c++) {
+                var hc = ws.Cell(r, c + 1);
+                hc.Value = hdrs[c];
+                hc.Style.Font.Bold      = true;
+                hc.Style.Font.FontColor = XLColor.White;
+                hc.Style.Fill.BackgroundColor      = XLColor.FromHtml("#1E4D78");
+                hc.Style.Alignment.Horizontal      = XLAlignmentHorizontalValues.Center;
+                hc.Style.Alignment.Vertical        = XLAlignmentVerticalValues.Center;
+                hc.Style.Border.OutsideBorder      = XLBorderStyleValues.Thin;
+                hc.Style.Border.OutsideBorderColor = XLColor.White;
             }
-            r++;
+            ws.Row(r).Height = 20; r++;
 
-            int rank = 0;
-            foreach (var m in top5)
-            {
-                rank++;
-                ws.Cell(r, 1).Value = rank;
-                ws.Cell(r, 2).Value = m.MachineCode;
-                ws.Cell(r, 3).Value = m.Operation;
-                ws.Cell(r, 4).Value = m.DowntimeCount;
-                ws.Cell(r, 5).Value = m.MonthlyCount;
-                ws.Cell(r, 6).Value = string.Join("  ", m.TrendDates.Zip(m.DailyTrend, (d, v) => $"{d}:{(int)v}"));
+            // Data rows
+            XLColor[] rankBg = {
+                XLColor.FromHtml("#E74C3C"),
+                XLColor.FromHtml("#E67E22"),
+                XLColor.FromHtml("#F39C12"),
+                XLColor.FromHtml("#F1C40F"),
+                XLColor.FromHtml("#FCF3CF")
+            };
+
+            for (int i = 0; i < top5Data.Count; i++) {
+                var m   = top5Data[i];
+                var bg  = rankBg[i];
+                var hrs = (int)(m.TotalMinutes / 60);
+                var min = (int)(m.TotalMinutes % 60);
+                ws.Cell(r, 1).Value = i + 1;
+                ws.Cell(r, 2).Value = m.MachineName;
+                ws.Cell(r, 3).Value = m.MachineCode;
+                ws.Cell(r, 4).Value = m.TotalMinutes;
+                ws.Cell(r, 5).Value = $"{hrs}h {min:D2}m";
+                ws.Cell(r, 6).Value = m.Incidents;
+                for (int c = 1; c <= 6; c++) {
+                    var cell = ws.Cell(r, c);
+                    cell.Style.Fill.BackgroundColor    = bg;
+                    cell.Style.Font.Bold               = i < 3;
+                    cell.Style.Font.FontColor          = i < 2 ? XLColor.White : XLColor.FromHtml("#1A1A1A");
+                    cell.Style.Border.BottomBorder      = XLBorderStyleValues.Thin;
+                    cell.Style.Border.BottomBorderColor = XLColor.FromHtml("#E59866");
+                    cell.Style.Alignment.Vertical       = XLAlignmentVerticalValues.Center;
+                }
+                ws.Cell(r, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                ws.Cell(r, 4).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                ws.Cell(r, 5).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                ws.Cell(r, 6).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                ws.Row(r).Height = 18;
                 r++;
             }
 
-            ws.Columns().AdjustToContents();
+            // Column widths
+            ws.Column(1).Width = 8;   // Rank
+            ws.Column(2).Width = 32;  // Machine & Fixture
+            ws.Column(3).Width = 20;  // E & F no.
+            ws.Column(4).Width = 16;  // Total DT (min)
+            ws.Column(5).Width = 14;  // Total DT (h:mm)
+            ws.Column(6).Width = 12;  // Incidents
 
             using var stream = new MemoryStream();
             wb.SaveAs(stream);
-            string fname = $"Top5_Downtime_{(DateTime.TryParse(fromDate, out var _fn) ? _fn.ToString("yyyyMMdd") : "")}" +
-                           $"_{(DateTime.TryParse(toDate,   out var _tn) ? _tn.ToString("yyyyMMdd") : "")}.xlsx";
+            string fname = $"Top5_DT_Summary_{(hasFrom ? fd.ToString("yyyyMMdd") : "")}_{(hasTo ? td.ToString("yyyyMMdd") : "")}.xlsx";
             return File(stream.ToArray(),
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fname);
         }

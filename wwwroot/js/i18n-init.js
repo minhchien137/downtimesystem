@@ -1,27 +1,27 @@
 /**
- * Lightweight i18n — Machine Downtime System
- * All translations bundled inline (no CDN / HTTP fetch required).
- *
- * HTML usage:
- *   <span data-i18n="nav.logout">Logout</span>
- *   <input data-i18n-ph="login.usernamePH" placeholder="Enter username..." />
- *   <button data-i18n-title="common.save" title="Save">…</button>
- *
- * JS usage:
- *   window.i18nT('nav.createDowntime')
- *   window.changeLang('cn')
- *   window.getLang()
- */
+* Lightweight i18n — Machine Downtime System
+* All translations bundled inline (no CDN / HTTP fetch required).
+*
+* HTML usage:
+*   <span data-i18n="nav.logout">Logout</span>
+*   <input data-i18n-ph="login.usernamePH" placeholder="Enter username..." />
+*   <button data-i18n-title="common.save" title="Save">…</button>
+*
+* JS usage:
+*   window.i18nT('nav.createDowntime')
+*   window.changeLang('cn')
+*   window.getLang()
+*/
 (function (global) {
   'use strict';
-
+  
   var LANG_KEY = 'dtapp-lang';
-
+  
   /* ─────────────────────────────────────────────────────────────
-     TRANSLATIONS
+  TRANSLATIONS
   ───────────────────────────────────────────────────────────── */
   var dict = {
-
+    
     /* ══════════════════════════ ENGLISH ══════════════════════════ */
     en: {
       common: {
@@ -136,9 +136,10 @@
         noData: 'No records found.', prevPage: '← Prev', nextPage: 'Next →',
         colDatetime: 'Datetime', colOperation: 'Operation', colMachine: 'Machine / Fixture',
         colLocation: 'Location', colState: 'State', colStation: 'Station',
-        colReason: 'Reason', colEffect: 'Effect', colDescription: 'Description',
+        colReason: 'Category', colEffect: 'Effect', colDescription: 'Description',
         colAction: 'Action', colRootCause: 'Root Cause', colSpareParts: 'Spare Parts',
-        colEmployee: 'Employee', showRecords: 'records per page'
+        colEmployee: 'Employee', showRecords: 'records per page',
+        machineFixture: 'Machine & Fixture', efNo: 'E & F no.'
       },
       report: {
         pageTitle: 'Downtime Report',
@@ -156,7 +157,8 @@
         recordsPerPage: 'Records per page', activeFilters: 'Active Filters',
         totalLines: 'Total Lines', totalDowntimeEvents: 'Total Downtime Events',
         affectedMachines: 'Affected Machines',
-        downtimeDistribution: 'Downtime Distribution', downtimeByReason: 'Downtime by Reason',
+        downtimeDistribution: 'Downtime Distribution', downtimeByReason: 'Downtime by Category',
+        filtercategory: 'Category',
         dailyTrend: 'Daily Downtime Trend', responseTimeByTech: 'Response Time by Technician',
         detailByLine: 'Detail by Line', machineDetail: 'Machine Detail',
         detailRecords: 'Detail Records', searchPlaceholder: 'Search records…',
@@ -175,7 +177,7 @@
         downtimeTab: 'Downtime Records', employeeTab: 'Employee Management', accountTab: 'Account Management',
         filterOperation: 'Operation', filterState: 'State', filterFrom: 'From', filterTo: 'To',
         allStates: 'All States', colId: 'ID', colState: 'State', colLocation: 'Location',
-        colReason: 'Reason', colEffect: 'Effect', colStation: 'Station',
+        colReason: 'Category', colEffect: 'Effect', colStation: 'Station',
         colDescription: 'Description', colAction: 'Action',
         filterEmpId: 'Employee ID', addEmployee: 'Add Employee',
         colEmpId: 'Employee ID', colChineseName: 'Chinese Name', colEnglishName: 'English Name',
@@ -226,7 +228,7 @@
         devModeWarning: 'The Development environment shouldn\'t be enabled for deployed applications. It can result in displaying sensitive information from exceptions to end users. For local debugging, enable the Development environment by setting the ASPNETCORE_ENVIRONMENT environment variable to Development and restarting the app.'
       }
     },
-
+    
     /* ══════════════════════════ CHINESE ══════════════════════════ */
     cn: {
       common: {
@@ -336,14 +338,15 @@
         pageTitle: '停机记录', filters: '筛选条件',
         fromDate: '开始日期', toDate: '结束日期',
         operation: '工序', location: '区域', machine: '设备',
-        station: '站位', employee: '员工', reason: '原因', effect: '影响',
+        station: '站位', employee: '员工', reason: '类别', effect: '影响',
         applyFilter: '🔍 筛选', resetFilter: '✕ 清除', exportExcel: '📥 导出Excel',
         noData: '未找到记录。', prevPage: '← 上一页', nextPage: '下一页 →',
         colDatetime: '时间', colOperation: '工序', colMachine: '设备/治具',
         colLocation: '区域', colState: '状态', colStation: '站位',
-        colReason: '原因', colEffect: '影响', colDescription: '描述',
+        colReason: '类别', colEffect: '影响', colDescription: '描述',
         colAction: '措施', colRootCause: '根本原因', colSpareParts: '备件',
-        colEmployee: '员工', showRecords: '条/页'
+        colEmployee: '员工', showRecords: '条/页',
+        machineFixture: '设备名称', efNo: '设备编号'
       },
       report: {
         pageTitle: '停机报告',
@@ -361,7 +364,8 @@
         recordsPerPage: '条/页', activeFilters: '已启用筛选',
         totalLines: '总工序数', totalDowntimeEvents: '总停机次数',
         affectedMachines: '受影响设备数',
-        downtimeDistribution: '停机分布', downtimeByReason: '按原因停机',
+        downtimeDistribution: '停机分布', downtimeByReason: '按类别划分的停机时间',
+        filtercategory: '类别',
         dailyTrend: '每日停机趋势', responseTimeByTech: '技术员响应时间',
         detailByLine: '工序详情', machineDetail: '设备详情',
         detailRecords: '详细记录', searchPlaceholder: '搜索记录…',
@@ -432,12 +436,12 @@
       }
     }
   };
-
+  
   /* ─────────────────────────────────────────────────────────────
-     ENGINE
+  ENGINE
   ───────────────────────────────────────────────────────────── */
   var lang = localStorage.getItem(LANG_KEY) || 'en';
-
+  
   function t(key) {
     var parts = key.split('.');
     var v = dict[lang] || dict['en'];
@@ -447,7 +451,7 @@
     }
     return (v != null && typeof v === 'string') ? v : key;
   }
-
+  
   function apply() {
     document.querySelectorAll('[data-i18n]').forEach(function (el) {
       var k = el.getAttribute('data-i18n');
@@ -474,23 +478,23 @@
     });
     document.documentElement.lang = lang === 'cn' ? 'zh' : 'en';
   }
-
+  
   function setLang(l) {
     if (!dict[l]) return;
     lang = l;
     localStorage.setItem(LANG_KEY, l);
     apply();
   }
-
+  
   /* Public API */
   global.i18nT      = t;
   global.changeLang = setLang;
   global.getLang    = function () { return lang; };
-
+  
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', apply);
   } else {
     apply();
   }
-
+  
 })(window);

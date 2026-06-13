@@ -471,21 +471,20 @@
             <thead>
                 <tr>
                     <th data-i18n="downtimeList.colOperation">Operation</th>
-                    <th data-i18n="downtimeList.colMachine">Machine</th>
+                    <th data-i18n="downtimeList.machineFixture">Machine & Fixture</th>
+                    <th data-i18n="downtimeList.efNo">E & F no.</th>
                     <th data-i18n="downtimeList.colLocation">Location</th>
                     <th data-i18n="downtimeList.colReason">Reason</th>
                     <th data-i18n="downtimeList.colEffect">Effect</th>
                     <th data-i18n="downtimeList.colStation">Station</th>
-                    <th style="display:none;">Estimate Time</th>
                     <th data-i18n="downtimeList.colState">State</th>
                     <th data-i18n="downtimeList.colAction">Action</th>
                     <th>Image</th>
                     <th data-i18n="downtimeList.colDescription">Description</th>
                     <th data-i18n="downtimeList.colRootCause">Root Cause</th>
                     <th data-i18n="downtimeList.colSpareParts">Spare Parts</th>
-                    <th data-i18n="downtimeList.colEmployee">Employee </th>
-                    @* <th>Emp. Name</th> *@
-                    <th data-i18n="downtimeList.colDatetime">Datetime</th>
+                    <th>员工</th>
+                    <th>停机开始时间</th>
                 </tr>
             </thead>
             <tbody>
@@ -505,9 +504,33 @@
                         bool isRun      = string.Equals(item.State, "RUN",      StringComparison.OrdinalIgnoreCase);
                         string badgeCss = isStop ? "badge-stop" : isResponse ? "badge-response" : isReject ? "badge-reject" : "badge-run";
 
+                        // Parse "Name - Code (Chinese)" → "Name (Chinese)" + "Code"
+                        string _rawMC = item.MachineCode ?? "";
+                        string _dispName = _rawMC, _dispCode = _rawMC;
+                        if (!string.IsNullOrEmpty(_rawMC))
+                        {
+                            int _di = _rawMC.IndexOf(" - ");
+                            if (_di >= 0)
+                            {
+                                string _np   = _rawMC.Substring(0, _di).Trim();
+                                string _rest = _rawMC.Substring(_di + 3).Trim();
+                                string _ch   = "";
+                                int _pi = _rest.IndexOf(" (");
+                                if (_pi >= 0)
+                                {
+                                    _dispCode = _rest.Substring(0, _pi).Trim();
+                                    int _pe = _rest.IndexOf(")", _pi);
+                                    if (_pe > _pi + 2) _ch = _rest.Substring(_pi + 2, _pe - _pi - 2).Trim();
+                                }
+                                else _dispCode = _rest;
+                                _dispName = string.IsNullOrEmpty(_ch) ? _np : $"{_np} ({_ch})";
+                            }
+                        }
+
                         <tr>
                             <td style="white-space:nowrap;">@item.Operation</td>
-                            <td>@(item.MachineCode ?? "-")</td>
+                            <td>@_dispName</td>
+                            <td>@_dispCode</td>
                             <td>@(item.Location ?? "-")</td>
                             <td>@(item.Reason ?? "-")</td>
                             <td>
@@ -519,7 +542,6 @@
                                 else { <span>-</span> }
                             </td>
                             <td>@(item.Station ?? "-")</td>
-                            <td style="display:none;">@(string.IsNullOrEmpty(item.EstimateTime) ? "-" : item.EstimateTime)</td>
                             <td><span class="badge @badgeCss">@item.State</span></td>
                             <td>@(isRun ? (item.Action ?? "-") : "-")</td>
                             <td>
@@ -539,7 +561,7 @@
                             <td style="max-width:200px;">@(item.Description ?? "-")</td>
                             <td style="max-width:180px;">@(isRun ? (item.RootCause ?? "-") : "-")</td>
                             <td>@(item.SpareParts ?? "-")</td>
-                            <td>@(item.EmployeeCode ?? "-")</td>
+                            <td>@(item.EmployeeName ?? item.EmployeeCode ?? "-")</td>
                             <td style="white-space:nowrap;">@(item.Datetime?.ToString("dd/MM/yyyy HH:mm") ?? "-")</td>
                         </tr>
                     }
@@ -565,6 +587,29 @@
                 string badgeCss = isStop ? "badge-stop" : isResponse ? "badge-response" : isReject ? "badge-reject" : "badge-run";
                 string effLabel = item.Effect == "1" ? "Affects Production" : item.Effect == "2" ? "No Effect" : (item.Effect ?? "-");
 
+                // Parse "Name - Code (Chinese)" → "Name (Chinese)" + "Code"
+                string _mRaw = item.MachineCode ?? "";
+                string _mName = _mRaw, _mCode = _mRaw;
+                if (!string.IsNullOrEmpty(_mRaw))
+                {
+                    int _mdi = _mRaw.IndexOf(" - ");
+                    if (_mdi >= 0)
+                    {
+                        string _mnp   = _mRaw.Substring(0, _mdi).Trim();
+                        string _mrest = _mRaw.Substring(_mdi + 3).Trim();
+                        string _mch   = "";
+                        int _mpi = _mrest.IndexOf(" (");
+                        if (_mpi >= 0)
+                        {
+                            _mCode = _mrest.Substring(0, _mpi).Trim();
+                            int _mpe = _mrest.IndexOf(")", _mpi);
+                            if (_mpe > _mpi + 2) _mch = _mrest.Substring(_mpi + 2, _mpe - _mpi - 2).Trim();
+                        }
+                        else _mCode = _mrest;
+                        _mName = string.IsNullOrEmpty(_mch) ? _mnp : $"{_mnp} ({_mch})";
+                    }
+                }
+
                 <div class="downtime-card">
                     <div class="card-header">
                         <div>
@@ -580,8 +625,12 @@
                         <span class="card-value">@item.Operation</span>
                     </div>
                     <div class="card-row">
-                        <span class="card-label" data-i18n="downtimeList.colMachine">Machine:</span>
-                        <span class="card-value">@(item.MachineCode ?? "-")</span>
+                        <span class="card-label" data-i18n="downtimeList.machineFixture">Machine & Fixture</span>
+                        <span class="card-value">@_mName</span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label" data-i18n="downtimeList.efNo">E & F no.</span>
+                        <span class="card-value">@_mCode</span>
                     </div>
                     <div class="card-row">
                         <span class="card-label" data-i18n="downtimeList.colLocation">Location:</span>
@@ -600,10 +649,6 @@
                     <div class="card-row">
                         <span class="card-label" data-i18n="downtimeList.colEffect">Effect:</span>
                         <span class="card-value">@effLabel</span>
-                    </div>
-                    <div class="card-row">
-                        <span class="card-label" style="display:none;">Estimate Time:</span>
-                        <span class="card-value" style="display:none;">@(string.IsNullOrEmpty(item.EstimateTime) ? "-" : item.EstimateTime)</span>
                     </div>
                     @if (!string.IsNullOrEmpty(item.Description))
                     {
@@ -630,19 +675,15 @@
                         </div>
                     }
 
-                    <div class="card-section-title" data-i18n="downtimeList.colEmployee">Employee</div>
+                    <div class="card-section-title">员工</div>
                     <div class="card-row">
-                        <span class="card-label">Emp. Code:</span>
-                        <span class="card-value">@(item.EmployeeCode ?? "-")</span>
-                    </div>
-                    <div class="card-row">
-                        <span class="card-label">Emp. Name:</span>
-                        <span class="card-value">@(item.EmployeeName ?? "-")</span>
+                        <span class="card-label">员工:</span>
+                        <span class="card-value">@(item.EmployeeName ?? item.EmployeeCode ?? "-")</span>
                     </div>
 
-                    <div class="card-section-title">Time</div>
+                    <div class="card-section-title">停机开始时间</div>
                     <div class="card-row">
-                        <span class="card-label" data-i18n="downtimeList.colDatetime">Datetime:</span>
+                        <span class="card-label">停机开始时间:</span>
                         <span class="card-value">@(item.Datetime?.ToString("dd/MM/yyyy HH:mm") ?? "-")</span>
                     </div>
 
