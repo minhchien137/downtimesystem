@@ -32,12 +32,12 @@ namespace MachineStatusUpdate.Services
             var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var now = DateTime.Now;
 
-            // ✅ Chỉ lấy Stop có AutoRunEnabled = true
+            // Lấy Stop có AutoRunEnabled = true và chưa được auto-run
             var pendingStops = await context.SVN_Downtime_Infos
                 .Where(x => x.State == "Stop"
                          && x.AutoRunEnabled == true
+                         && x.IsAutoRunExecuted == false
                          && x.Datetime.HasValue
-                         && x.Datetime.Value.Date == now.Date
                          && !string.IsNullOrEmpty(x.EstimateTime))
                 .OrderBy(x => x.Datetime)
                 .ToListAsync();
@@ -56,38 +56,36 @@ namespace MachineStatusUpdate.Services
                     .AddHours(estimateSpan.Hours)
                     .AddMinutes(estimateSpan.Minutes);
 
+                // Nếu runAt trước hoặc bằng thời điểm Stop (ví dụ EstimateTime là 00:00 hôm sau),
+                // dịch sang ngày tiếp theo
+                if (runAt <= stop.Datetime!.Value)
+                    runAt = runAt.AddDays(1);
+
                 // Chưa đến giờ → bỏ qua
                 if (now < runAt)
-                    continue;
-
-                // Đã có Run sau record Stop này chưa?
-                var alreadyRun = await context.SVN_Downtime_Infos
-                    .AnyAsync(x => x.State == "Run"
-                               && x.Operation == stop.Operation
-                               && x.SVNCode == stop.SVNCode
-                               && x.Datetime.HasValue
-                               && x.Datetime.Value > stop.Datetime.Value);
-
-                if (alreadyRun)
                     continue;
 
                 // ✅ Insert Run tự động
                 var runRecord = new SVN_Downtime_Info
                 {
-                    Code          = stop.Code,
-                    Name          = stop.Name,
-                    SVNCode       = stop.SVNCode,
-                    Operation     = stop.Operation,
-                    ISS_Code      = stop.ISS_Code,
-                    State         = "Run",
-                    Datetime      = runAt,
-                    EstimateTime  = string.Empty,
+                    Code           = stop.Code,
+                    Name           = stop.Name,
+                    SVNCode        = stop.SVNCode,
+                    Operation      = stop.Operation,
+                    ISS_Code       = stop.ISS_Code,
+                    State          = "Run",
+                    Datetime       = runAt,
+                    EstimateTime   = string.Empty,
                     AutoRunEnabled = false,
-                    Description   = string.IsNullOrWhiteSpace(stop.AutoRunDescription) ? null : stop.AutoRunDescription,
-                    Image         = string.Empty
+                    Description    = string.IsNullOrWhiteSpace(stop.AutoRunDescription) ? null : stop.AutoRunDescription,
+                    Image          = string.Empty
                 };
 
                 context.SVN_Downtime_Infos.Add(runRecord);
+
+                // Đánh dấu đã xử lý để không tạo thêm Run record nữa
+                stop.IsAutoRunExecuted = true;
+
                 await context.SaveChangesAsync();
 
                 _logger.LogInformation(
