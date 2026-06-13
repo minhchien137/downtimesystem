@@ -1421,8 +1421,8 @@ function renderStopCard(data, prepend = true) {
             ${data.image ? `<div class="notif-field" style="grid-column:1/-1;">
                 <div class="notif-field-label">🖼 Image</div>
                 <div style="margin-top:4px;">
-                    <a href="${data.image}" target="_blank">
-                        <img src="${data.image}" alt="Error image"
+                    <a href="${pathBase}${data.image}" target="_blank">
+                        <img src="${pathBase}${data.image}" alt="Error image"
                              style="max-height:100px;max-width:220px;border-radius:7px;border:1.5px solid var(--border);object-fit:cover;cursor:pointer;transition:transform .15s;"
                              onmouseover="this.style.transform='scale(1.04)'"
                              onmouseout="this.style.transform='scale(1)'" />
