@@ -370,6 +370,43 @@
         filter: brightness(0.98);
     }
 
+    /* ── Auto-Run toggle ── */
+    .autorun-label {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        user-select: none;
+        font-size: 14px;
+        color: var(--text);
+    }
+    .autorun-track {
+        position: relative;
+        width: 44px;
+        height: 24px;
+        background: #d1d5db;
+        border-radius: 12px;
+        transition: background .25s;
+        flex-shrink: 0;
+    }
+    .autorun-track.on { background: var(--ok); }
+    .autorun-thumb {
+        position: absolute;
+        top: 3px; left: 3px;
+        width: 18px; height: 18px;
+        background: #fff;
+        border-radius: 50%;
+        box-shadow: 0 1px 4px rgba(0,0,0,.18);
+        transition: transform .25s;
+    }
+    .autorun-track.on .autorun-thumb { transform: translateX(20px); }
+    .autorun-hint {
+        margin-top: 5px;
+        font-size: 12.5px;
+        color: var(--muted);
+    }
+
+
     /* Mobile */
     @@media (max-width: 720px) {
         .image-upload-area {
@@ -388,6 +425,11 @@
 <div class="confirmation-modal" id="confirmationModal">
     <div class="modal-content">
         <div class="modal-text">Bạn có muốn xác nhận lưu downtime?</div>
+        <div id="runDescWrap" style="display:none; margin-bottom:14px;">
+            <label style="font-size:13px; color:#6b7280; margin-bottom:4px; display:block;">Mô tả (tùy chọn)</label>
+            <input type="text" id="runDescInput" placeholder="Nhập mô tả..."
+                   style="width:100%; padding:8px 10px; border:1px solid #d1d5db; border-radius:8px; font-size:14px; box-sizing:border-box;" />
+        </div>
         <div class="modal-buttons">
             <button class="btn-yes" id="btnConfirmYes">Có</button>
             <button class="btn-no" id="btnConfirmNo">Không</button>
@@ -450,12 +492,30 @@
             </div>
 
             <!-- Ước tính thời gian (không bắt buộc) -->
-            <div class="form-group">
-                <label class="form-label" for="EstimateTime">Thời gian ước tính (tùy chọn)</label>
-                <input asp-for="EstimateTime" type="time" class="form-control" id="EstimateTime" name="EstimateTime"
-                    step="60" placeholder="hh:mm" />
-                <span asp-validation-for="EstimateTime" class="text-danger"></span>
+           <div class="form-group">
+            <label class="form-label" for="EstimateTime">Thời gian ước tính (tùy chọn)</label>
+            <input asp-for="EstimateTime" type="time" class="form-control" id="EstimateTime"
+                name="EstimateTime" step="60" placeholder="hh:mm" />
+            <span asp-validation-for="EstimateTime" class="text-danger"></span>
+            <span id="estimateTimeError" class="text-danger" style="display:none; font-size:13px; margin-top:4px;">Thời gian ước tính không được nhỏ hơn thời gian hiện tại</span>
+
+            <!-- Toggle Auto-Run – chỉ hiện khi có EstimateTime -->
+            <div id="autoRunToggleWrap" style="display:none; margin-top:10px;">
+                <label class="autorun-label">
+                    <div class="autorun-track" id="autoRunTrack">
+                        <div class="autorun-thumb" id="autoRunThumb"></div>
+                    </div>
+                    <span id="autoRunText">Tự động Run khi tới Thời gian ước tính</span>
+                </label>
+                <div id="autoRunHint" class="autorun-hint"></div>
+                <div id="autoRunDescWrap" style="display:none; margin-top:8px;">
+                    <label style="font-size:13px; color:#6b7280; margin-bottom:4px; display:block;">Mô tả sau khi tự động Run (tùy chọn)</label>
+                    <input type="text" id="autoRunDescInput" placeholder="Nhập mô tả cho bản ghi Run..."
+                           style="width:100%; padding:8px 10px; border:1px solid #d1d5db; border-radius:8px; font-size:14px; box-sizing:border-box;" />
+                </div>
             </div>
+        </div>
+
 
             <!-- Description -->
             <div class="form-group">
@@ -529,6 +589,99 @@
 
     const btnRun = document.getElementById('btnRun');
     const btnStop = document.getElementById('btnStop');
+    const runDescInput = document.getElementById('runDescInput');
+    const runDescWrap  = document.getElementById('runDescWrap');
+    let autoRunEnabled = false;
+
+    function showRunConfirmModal() {
+        runDescWrap.style.display = 'block';
+        runDescInput.value = '';
+        document.getElementById('confirmationModal').style.display = 'flex';
+        runDescInput.focus();
+    }
+    function hideConfirmModal() {
+        document.getElementById('confirmationModal').style.display = 'none';
+        runDescWrap.style.display = 'none';
+    }
+    document.getElementById('btnConfirmYes').addEventListener('click', () => {
+        const desc = runDescInput.value;
+        hideConfirmModal();
+        runDescInput.value = '';
+        performSave('Run', desc);
+    });
+    document.getElementById('btnConfirmNo').addEventListener('click', hideConfirmModal);
+    document.getElementById('confirmationModal').addEventListener('click', function (e) {
+        if (e.target === this) hideConfirmModal();
+    });
+
+    const autoRunWrap  = document.getElementById('autoRunToggleWrap');
+    const autoRunTrack = document.getElementById('autoRunTrack');
+    const autoRunText  = document.getElementById('autoRunText');
+    const autoRunHint  = document.getElementById('autoRunHint');
+
+    function validateEstimateTime() {
+        const errEl = document.getElementById('estimateTimeError');
+        if (!estimateEl || !estimateEl.value) { errEl.style.display = 'none'; return true; }
+        const [hh, mm] = estimateEl.value.split(':').map(Number);
+        const now = new Date();
+        if (hh * 60 + mm < now.getHours() * 60 + now.getMinutes()) {
+            errEl.style.display = 'block';
+            return false;
+        }
+        errEl.style.display = 'none';
+        return true;
+    }
+
+    // Hiện/ẩn toggle khi thay đổi EstimateTime
+    estimateEl?.addEventListener('change', () => {
+        validateEstimateTime();
+        const hasValue = !!estimateEl.value;
+        autoRunWrap.style.display = hasValue ? 'block' : 'none';
+        if (!hasValue) {
+            autoRunEnabled = false;
+            autoRunTrack.classList.remove('on');
+            autoRunDescWrap.style.display = 'none';
+            if (autoRunDescInput) autoRunDescInput.value = '';
+            updateAutoRunHint();
+        } else {
+            updateAutoRunHint();
+        }
+    });
+
+    const autoRunDescWrap  = document.getElementById('autoRunDescWrap');
+    const autoRunDescInput = document.getElementById('autoRunDescInput');
+
+    // Click toggle
+    autoRunTrack?.addEventListener('click', () => {
+        autoRunEnabled = !autoRunEnabled;
+        autoRunTrack.classList.toggle('on', autoRunEnabled);
+        autoRunDescWrap.style.display = autoRunEnabled ? 'block' : 'none';
+        if (!autoRunEnabled && autoRunDescInput) autoRunDescInput.value = '';
+        updateAutoRunHint();
+    });
+
+   function updateAutoRunHint() {
+    if (!estimateEl?.value) { autoRunHint.textContent = ''; return; }
+    if (!autoRunEnabled) {
+        autoRunHint.textContent = 'Bật để hệ thống tự động nhập Run khi hết giờ ước tính.';
+        return;
+    }
+
+    // Lấy thời gian Stop làm gốc (từ field Datetime)
+    const base = timeEl?.value ? new Date(timeEl.value) : new Date();
+
+    // EstimateTime là giờ cố định (HH:mm), không phải duration
+    // → dùng trực tiếp làm giờ Run
+    const [hh, mm] = estimateEl.value.split(':').map(Number);
+    const runTime = new Date(base);
+    runTime.setHours(hh, mm, 0, 0);
+
+    const pad = n => String(n).padStart(2, '0');
+    autoRunHint.textContent =
+        `✓ Hệ thống sẽ tự động Run lúc ${pad(runTime.getHours())}:${pad(runTime.getMinutes())}.`;
+        }
+
+
 
     function updateDatetimeRange() {
         if (!timeEl) return;
@@ -572,6 +725,10 @@
             estimateEl.value = '';
             setEstimateEnabled(true);
         }
+        autoRunEnabled = false;
+        if (autoRunTrack) autoRunTrack.classList.remove('on');
+        if (autoRunDescWrap) autoRunDescWrap.style.display = 'none';
+        if (autoRunDescInput) autoRunDescInput.value = '';
         if (svnCodeEl) svnCodeEl.value = '';
         if (descEl) descEl.value = '';
         removeImageDT();
@@ -709,7 +866,7 @@
     });
 
     /* ============ POST save ============ */
-    async function performSave(nextState) {
+    async function performSave(nextState, runDesc) {
         const op = (opEl?.value || '').trim();
         if (!op) { showToast('Vui lòng chọn Operation!', 'error', 2200); return; }
         const svnCode = (svnCodeEl?.value || '').trim();
@@ -725,12 +882,23 @@
             if (!d) { showToast('Vui lòng chọn/nhập Lý do cho STOP!', 'error', 2400); return; }
         }
 
+        if (!validateEstimateTime()) {
+            estimateEl?.focus();
+            return;
+        }
+
         const fd = new FormData();
         fd.append('Operation', op);
         fd.append('State', nextState);
         fd.append('ISS_Code', (IssCodeEl?.value || '').trim());
         fd.append('SVnCode', (svnCodeEl?.value || '').trim());
-        fd.append('Description', (descEl?.value || '').trim());
+        const descValue = nextState === 'Run'
+            ? (runDesc || '').trim()
+            : (descEl?.value || '').trim();
+        fd.append('Description', descValue);
+        fd.append('AutoRunHint', autoRunEnabled ? '1' : '0');
+        if (autoRunEnabled && autoRunDescInput?.value.trim())
+            fd.append('AutoRunDescription', autoRunDescInput.value.trim());
         if (timeEl && timeEl.value) {
             const selected = new Date(timeEl.value);
             const now = new Date();
@@ -791,7 +959,7 @@
 
     /* ============ Event bindings ============ */
     opEl?.addEventListener('change', onOperationChanged);
-    btnRun?.addEventListener('click', () => performSave('Run'));
+    btnRun?.addEventListener('click', () => showRunConfirmModal());
     btnStop?.addEventListener('click', () => performSave('Stop'));
 
     /* ============ Init ============ */

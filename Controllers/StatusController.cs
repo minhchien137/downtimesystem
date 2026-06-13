@@ -931,7 +931,12 @@ namespace MachineStatusUpdate.Controllers
             var today = DateTime.Now.ToString("yyyyMMdd");
             var ops = await _context.SVN_targets
                 .AsNoTracking()
-                .Where(x => x.Date_time == today && x.Operation != null && x.Operation != "")
+                .Where(x => x.Date_time == today 
+                && x.Operation != null 
+                && x.Operation != ""
+                && !x.Operation.StartsWith("Sakura")
+                
+                )
                 .Select(x => x.Operation)
                 .Distinct()
                 .OrderBy(x => x)
@@ -1215,19 +1220,12 @@ namespace MachineStatusUpdate.Controllers
         public async Task<IActionResult> CreateDownTime(SVN_Downtime_Info model, IFormFile? imageFile)
         {
             // ===== 1) Chuẩn hoá/điền mặc định =====
-
             if (string.IsNullOrWhiteSpace(model.Code))
-            {
-
                 model.Code = model.Operation ?? string.Empty;
 
-            }
-
-            // Nếu chưa có Name thì đặt theo Operation để không null
             if (string.IsNullOrWhiteSpace(model.Name))
                 model.Name = model.Operation ?? string.Empty;
 
-            // Dùng thời gian người dùng chọn, nếu trống thì Now (như logic cũ)
             if (!model.Datetime.HasValue || model.Datetime.Value == default)
                 model.Datetime = DateTime.Now;
 
@@ -1235,7 +1233,16 @@ namespace MachineStatusUpdate.Controllers
                 model.EstimateTime = string.Empty;
 
             if (string.IsNullOrWhiteSpace(model.Description))
-                model.Description = string.Empty;
+                model.Description = string.Equals(model.State, "Run", StringComparison.OrdinalIgnoreCase)
+                    ? null
+                    : string.Empty;
+
+            // ✅ Đọc AutoRunHint từ form
+            var autoRunHint = Request.Form["AutoRunHint"].FirstOrDefault();
+            model.AutoRunEnabled = autoRunHint == "1";
+
+            var autoRunDesc = Request.Form["AutoRunDescription"].FirstOrDefault();
+            model.AutoRunDescription = string.IsNullOrWhiteSpace(autoRunDesc) ? null : autoRunDesc.Trim();
 
             // ===== 2) Xử lý upload ảnh (tuỳ chọn) =====
             string imagePath = string.Empty;
@@ -1265,7 +1272,7 @@ namespace MachineStatusUpdate.Controllers
                 imagePath = $"/uploads/status-images/{fileName}";
             }
 
-            model.Image = imagePath; // model có trường Image để lưu đường dẫn ảnh
+            model.Image = imagePath;
 
             // ===== 3) Validate ModelState & Lưu DB =====
             if (!ModelState.IsValid)
@@ -1279,9 +1286,10 @@ namespace MachineStatusUpdate.Controllers
             _context.SVN_Downtime_Infos.Add(model);
             await _context.SaveChangesAsync();
 
-            // ===== 4) Trả JSON cho AJAX (giống kiểu cũ) =====
+            // ===== 4) Trả JSON cho AJAX =====
             return Json(new { success = true, message = "Đã lưu downtime!" });
         }
+
 
         /* Hàm fill danh sách dropdown mã lỗi ISS Code - Error Reason */
         private async Task RefillReasonsAsync()
