@@ -88,7 +88,7 @@
     /* ===== Summary counters ===== */
     .summary-row {
         display: grid;
-        grid-template-columns: repeat(5, 1fr);
+        grid-template-columns: repeat(4, 1fr);
         gap: 14px;
         margin-bottom: 22px;
     }
@@ -347,9 +347,77 @@
     .reject-modal .btn-modal-submit.active:hover { filter: brightness(1.08); }
 
 
+    /* ── 768px: tablet ── */
+    @@media (max-width: 768px) {
+        .dash-header  { padding: 12px 16px; }
+        .dash-header h1 { font-size: 17px; }
+        .dash-body    { padding: 14px 12px; }
+
+        .summary-row  { gap: 10px; margin-bottom: 16px; }
+        .summary-card { padding: 12px 14px; gap: 10px; }
+        .summary-icon { font-size: 22px; }
+        .summary-value { font-size: 22px; }
+
+        /* tabs: scroll horizontally instead of wrapping */
+        .tech-tabs { padding: 0 8px; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; }
+        .tech-tabs::-webkit-scrollbar { display: none; }
+        .tech-tab-btn { padding: 10px 14px; font-size: 13px; white-space: nowrap; }
+
+        /* toolbar buttons smaller */
+        .btn-today, .btn-sound, .btn-clear { font-size: 12px; padding: 6px 10px; }
+
+        /* edit-records form/info modals: single column */
+        .te-form-grid    { grid-template-columns: 1fr; }
+        .te-modal-info   { grid-template-columns: 1fr; }
+
+        /* search box fills available space */
+        .te-search { width: auto; flex: 1 1 0; min-width: 0; }
+
+        .reject-modal { padding: 22px 18px 18px; }
+    }
+
+    /* ── 600px: mobile ── */
     @@media (max-width: 600px) {
         .summary-row { grid-template-columns: 1fr 1fr; }
         .notif-grid  { grid-template-columns: 1fr 1fr; }
+
+        /* toolbar: title occupies its own line, controls wrap below */
+        .toolbar-title { flex-basis: 100%; }
+        .notif-date-filter { flex: 1 1 0; min-width: 0; }
+
+        /* edit toolbar: search full-width on its own line */
+        .te-search { flex-basis: 100%; }
+        .te-filter-select { flex: 1 1 0; min-width: 0; }
+    }
+
+    /* ── 480px: small phones ── */
+    @@media (max-width: 480px) {
+        .dash-header h1  { font-size: 15px; }
+        .conn-badge      { font-size: 12px; padding: 5px 10px; }
+
+        .summary-card  { padding: 10px 12px; gap: 8px; }
+        .summary-icon  { font-size: 18px; }
+        .summary-value { font-size: 18px; }
+        .summary-label { font-size: 11px; }
+
+        /* notification grid: single column */
+        .notif-grid { grid-template-columns: 1fr; }
+
+        /* card header: badge + time stack vertically */
+        .notif-top { flex-direction: column; gap: 4px; align-items: flex-start; }
+
+        /* action buttons: compact */
+        .btn-accept, .btn-reject, .btn-not-ef, .btn-fix-complete {
+            padding: 8px 14px;
+            font-size: 12px;
+        }
+
+        /* PIE employee selector: override inline min-width */
+        .pie-emp-select { min-width: 0 !important; width: 100% !important; }
+
+        /* edit modal: slide-up sheet on small phones */
+        .te-modal-overlay { align-items: flex-end; }
+        .te-modal { width: 100%; border-radius: 20px 20px 0 0; max-height: 92vh; overflow-y: auto; }
     }
 
     .toolbar {

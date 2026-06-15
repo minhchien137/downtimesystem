@@ -861,7 +861,7 @@ namespace MachineStatusUpdate.Controllers
                         Station          = model.Station      ?? "",
                         Description      = model.Description  ?? "",
                         Location         = model.Location     ?? "",
-                        StopDatetime     = model.Datetime ?? DateTime.Now,
+                        StopDatetime     = model.Datetime ?? GetChinaTime(),
                         TechAction       = null   // 尚未处理
                     };
                     _context.SVN_Downtime_TechResponses.Add(techResp);
@@ -1111,7 +1111,7 @@ namespace MachineStatusUpdate.Controllers
                         machineCode    = techResp.MachineCode ?? "",
                         operation      = techResp.Operation   ?? "",
                         techName       = techUser,
-                        datetime       = DateTime.Now.ToString("dd/MM/yyyy HH:mm")
+                        datetime       = GetChinaTime().ToString("dd/MM/yyyy HH:mm")
                     });
             }
 
@@ -1151,7 +1151,7 @@ namespace MachineStatusUpdate.Controllers
                 reason           = techResp.Reason           ?? "",
                 description      = techResp.Description      ?? "",
                 location         = techResp.Location         ?? "",
-                datetime         = DateTime.Now.ToString("dd/MM/yyyy HH:mm")
+                datetime         = GetChinaTime().ToString("dd/MM/yyyy HH:mm")
             });
 
             return Json(new { success = true });
@@ -1181,7 +1181,7 @@ namespace MachineStatusUpdate.Controllers
                         action = "ACCEPT", techName = $"[DRI] {driUser}",
                         machineCode = techResp.MachineCode ?? "",
                         message = $"🔧 DRI [{driUser}] is handling machine {techResp.MachineCode}",
-                        datetime = DateTime.Now.ToString("dd/MM/yyyy HH:mm")
+                        datetime = GetChinaTime().ToString("dd/MM/yyyy HH:mm")
                     });
             }
             return Json(new { success = true });
@@ -1219,7 +1219,7 @@ namespace MachineStatusUpdate.Controllers
                         operation   = techResp.Operation   ?? "",
                         techName    = $"[DRI] {driUser}",
                         message     = $"✅ Machine {techResp.MachineCode} resolved. Please click Run!",
-                        datetime    = DateTime.Now.ToString("dd/MM/yyyy HH:mm")
+                        datetime    = GetChinaTime().ToString("dd/MM/yyyy HH:mm")
                     });
             }
             return Json(new { success = true });
@@ -1448,7 +1448,8 @@ namespace MachineStatusUpdate.Controllers
                         x.MachineCode, x.Operation,
                         x.StopDatetime, x.RespondDatetime,
                         x.TechAction, x.TechUsername,
-                        x.DowntimeId
+                        x.DowntimeId,
+                        x.RepairAction, x.RepairRootCause, x.RepairSpareParts
                     })
                     .ToListAsync();
 
@@ -1507,9 +1508,9 @@ namespace MachineStatusUpdate.Controllers
                         Station         = stop?.Station     ?? "",
                         Description     = stop?.Description ?? "",
                         RunDescription  = runRecord?.Description ?? "",
-                        RootCause       = stop?.RootCause   ?? "",
-                        Action       = stop?.Action      ?? "",
-                        SpareParts   = stop?.SpareParts  ?? "",
+                        RootCause    = !string.IsNullOrWhiteSpace(r.RepairRootCause)  ? r.RepairRootCause  : (stop?.RootCause  ?? ""),
+                        Action       = !string.IsNullOrWhiteSpace(r.RepairAction)     ? r.RepairAction     : (stop?.Action     ?? ""),
+                        SpareParts   = !string.IsNullOrWhiteSpace(r.RepairSpareParts) ? r.RepairSpareParts : (stop?.SpareParts ?? ""),
                         Effect       = effStr,
                         Image        = stop?.Image       ?? "",
                         EmployeeName = (stop?.EmployeeCode != null && empEnglishNames.TryGetValue(stop.EmployeeCode, out var engName) && !string.IsNullOrEmpty(engName))
@@ -2358,7 +2359,7 @@ namespace MachineStatusUpdate.Controllers
                     "Station", "Image", "Start Time", "Response Time", "End Time",
                     "Response Duration (min)", "Downtime (min)",
                     "Problem Description", "Root Cause",
-                    "Action", "Spare Parts", "Employee Name", "Effect"
+                    "Action", "Spare Parts", "Technical", "Effect"
                 };
                 int headerRow3 = r;
                 for (int c = 0; c < sh3.Length; c++) {
@@ -2756,7 +2757,7 @@ namespace MachineStatusUpdate.Controllers
                     Code = stopRecord?.Code,
                     Name = stopRecord?.Name,
                     Image = stopRecord?.Image,
-                    Datetime = DateTime.Now
+                    Datetime = GetChinaTime()
                 };
                 _context.SVN_Downtime_Infos_Devel.Add(rejectRecord);
                 await _context.SaveChangesAsync();
@@ -2880,7 +2881,7 @@ namespace MachineStatusUpdate.Controllers
                         operation   = techResp.Operation   ?? "",
                         techName    = techUser,
                         message     = $"✅ 设备 {techResp.MachineCode} 已维修完成，请按运行按钮！",
-                        datetime    = DateTime.Now.ToString("dd/MM/yyyy HH:mm")
+                        datetime    = GetChinaTime().ToString("dd/MM/yyyy HH:mm")
                     });
             }
 
@@ -2903,7 +2904,7 @@ namespace MachineStatusUpdate.Controllers
                 techResponseId = dto.TechResponseId,
                 machineCode    = techResp.MachineCode ?? "",
                 operation      = techResp.Operation   ?? "",
-                datetime       = DateTime.Now.ToString("dd/MM/yyyy HH:mm")
+                datetime       = GetChinaTime().ToString("dd/MM/yyyy HH:mm")
             });
 
             return Json(new { success = true });
@@ -3078,7 +3079,7 @@ namespace MachineStatusUpdate.Controllers
                 MachineCode       = machineCode,
                 Operation         = operation,
                 TechResponseId    = techResponseId,
-                CreatedAt         = DateTime.Now,
+                CreatedAt         = GetChinaTime(),
                 IsRead            = false,
                 TechAction        = techAction,
                 TechName          = techName

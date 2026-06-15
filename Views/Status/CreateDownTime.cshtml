@@ -962,8 +962,11 @@
         const pad = n => String(n).padStart(2, '0');
         return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
     }
-    // China Standard Time = browser local time (UTC+7) + 1 hour
-    function chinaNow() { return new Date(Date.now() + 3_600_000); }
+    // Get current UTC+8 time as "yyyy-MM-ddTHH:mm" string, independent of browser timezone
+    function chinaNow() {
+        const s = new Date().toLocaleString('sv', { timeZone: 'Asia/Shanghai' });
+        return s.slice(0, 16).replace(' ', 'T');
+    }
 
     /* ===================== Toast ===================== */
     function showToast(message, type = 'success', duration = 2100) {
@@ -1491,7 +1494,7 @@
         if (opEl)       { opEl.selectedIndex = 0;      syncSelectColor(opEl); }
         if (IssCodeEl)  { IssCodeEl.selectedIndex = 0; syncSelectColor(IssCodeEl); setReasonEnabled(true); }
         if (effectEl)   { effectEl.selectedIndex = 0;  syncSelectColor(effectEl); }
-        if (timeEl)     timeEl.value = formatLocal(chinaNow());
+        if (timeEl)     timeEl.value = chinaNow();
         if (estimateEl) { estimateEl.value = ''; setEstimateEnabled(true); }
         if (descEl)     descEl.value = '';
 
@@ -1724,7 +1727,7 @@
         fd.append('RootCause',    (document.getElementById('RootCause')?.value || '').trim());
         fd.append('SpareParts',   (document.getElementById('SpareParts')?.value || '').trim());
 
-        fd.append('Datetime', formatLocal(chinaNow()));
+        // Datetime is generated server-side as DateTime.UtcNow — do not send from client
         if (estimateEl?.value) fd.append('EstimateTime', estimateEl.value);
 
         const imgInput = document.getElementById('imageInputDT');

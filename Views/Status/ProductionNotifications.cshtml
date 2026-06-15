@@ -500,7 +500,7 @@
                                 <button class="pn-mark-read-btn" onclick="markProdCardRead(this, @n.Id)" title="Mark as read">✓ Mark read</button>
                                 <span class="pn-unread-dot" title="Unread"></span>
                             }
-                            <span class="pn-time">🕐 @n.CreatedAt.AddHours(1).ToString("HH:mm")</span>
+                            <span class="pn-time">🕐 @n.CreatedAt.ToString("HH:mm")</span>
                             <button class="pn-delete-btn" onclick="deleteNotif(this, @n.Id)" title="Delete this notification">🗑</button>
                         </div>
                     </div>

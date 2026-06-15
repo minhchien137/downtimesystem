@@ -483,8 +483,8 @@
                     <th data-i18n="downtimeList.colDescription">Description</th>
                     <th data-i18n="downtimeList.colRootCause">Root Cause</th>
                     <th data-i18n="downtimeList.colSpareParts">Spare Parts</th>
-                    <th>员工</th>
-                    <th>停机开始时间</th>
+                    <th data-i18n="downtimeList.employee_name">Employee Name</th>
+                    <th data-i18n="downtimeList.downtime_start_time">Downtime Start Time</th>
                 </tr>
             </thead>
             <tbody>
@@ -675,15 +675,15 @@
                         </div>
                     }
 
-                    <div class="card-section-title">员工</div>
+                    <div class="card-section-title" data-i18n="downtimeList.employee_name">Employee Name</div>
                     <div class="card-row">
-                        <span class="card-label">员工:</span>
+                        <span class="card-label" data-i18n="downtimeList.employee_name">Employee Name</span>
                         <span class="card-value">@(item.EmployeeName ?? item.EmployeeCode ?? "-")</span>
                     </div>
 
-                    <div class="card-section-title">停机开始时间</div>
+                    <div class="card-section-title" data-i18n="downtimeList.downtime_start_time">Downtime Start Time</div>
                     <div class="card-row">
-                        <span class="card-label">停机开始时间:</span>
+                        <span class="card-label" data-i18n="downtimeList.downtime_start_time">Downtime Start Time</span>
                         <span class="card-value">@(item.Datetime?.ToString("dd/MM/yyyy HH:mm") ?? "-")</span>
                     </div>
 

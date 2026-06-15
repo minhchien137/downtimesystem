@@ -139,7 +139,8 @@
         colReason: 'Category', colEffect: 'Effect', colDescription: 'Description',
         colAction: 'Action', colRootCause: 'Root Cause', colSpareParts: 'Spare Parts',
         colEmployee: 'Employee', showRecords: 'records per page',
-        machineFixture: 'Machine & Fixture', efNo: 'E & F no.'
+        machineFixture: 'Machine & Fixture', efNo: 'E & F no.',
+        employee_name: 'Employee Name', downtime_start_time: 'Downtime Start Time'
       },
       report: {
         pageTitle: 'Downtime Report',
@@ -152,13 +153,14 @@
         operation: 'Line', location: 'Location', machine: 'Machine',
         fromDate: 'From Date', toDate: 'To Date', effect: 'Effect',
         stopPeriod: 'STOP(s) — period', stopMonth: 'STOP(s) — month',
-        avgRepair: 'Avg Repair (min)', repairCount: 'Repair Count',
+        avgRepair: 'Response Duration', downtimeMin: 'Downtime (min)', repairCount: 'Repair Count',
         mttr: 'MTTR — Mean Time To Repair (min)',
         recordsPerPage: 'Records per page', activeFilters: 'Active Filters',
         totalLines: 'Total Lines', totalDowntimeEvents: 'Total Downtime Events',
         affectedMachines: 'Affected Machines',
         downtimeDistribution: 'Downtime Distribution', downtimeByReason: 'Downtime by Category',
         filtercategory: 'Category',
+        reason: 'Category', employeeName: 'Technical Name',
         dailyTrend: 'Daily Downtime Trend', responseTimeByTech: 'Response Time by Technician',
         detailByLine: 'Detail by Line', machineDetail: 'Machine Detail',
         detailRecords: 'Detail Records', searchPlaceholder: 'Search records…',
@@ -346,7 +348,8 @@
         colReason: '类别', colEffect: '影响', colDescription: '描述',
         colAction: '措施', colRootCause: '根本原因', colSpareParts: '备件',
         colEmployee: '员工', showRecords: '条/页',
-        machineFixture: '设备名称', efNo: '设备编号'
+        machineFixture: '设备名称', efNo: '设备编号',
+        employee_name: '员工', downtime_start_time: '停机开始时间'
       },
       report: {
         pageTitle: '停机报告',
@@ -359,13 +362,14 @@
         operation: '工序', location: '区域', machine: '设备',
         fromDate: '开始日期', toDate: '结束日期', effect: '影响',
         stopPeriod: '停机（本周期）', stopMonth: '停机（本月）',
-        avgRepair: '平均维修（分钟）', repairCount: '维修次数',
+        avgRepair: '响应时长', downtimeMin: '停机时长（分钟）', repairCount: '维修次数',
         mttr: 'MTTR — 平均维修时间（分钟）',
         recordsPerPage: '条/页', activeFilters: '已启用筛选',
         totalLines: '总工序数', totalDowntimeEvents: '总停机次数',
         affectedMachines: '受影响设备数',
         downtimeDistribution: '停机分布', downtimeByReason: '按类别划分的停机时间',
         filtercategory: '类别',
+        reason: '类别', employeeName: '技术员姓名',
         dailyTrend: '每日停机趋势', responseTimeByTech: '技术员响应时间',
         detailByLine: '工序详情', machineDetail: '设备详情',
         detailRecords: '详细记录', searchPlaceholder: '搜索记录…',

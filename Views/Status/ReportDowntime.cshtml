@@ -1094,18 +1094,18 @@
                                 <th onclick="sortDetailTable(1)" style="cursor:pointer;min-width:120px;" data-i18n="report.operation">Line ⇅</th>
                                 <th onclick="sortDetailTable(2)" style="cursor:pointer;min-width:180px;" data-i18n="report.machine">Machine ⇅</th>
                                 <th onclick="sortDetailTable(3)" style="cursor:pointer;min-width:90px;" data-i18n="report.location">Location ⇅</th>
-                                <th onclick="sortDetailTable(4)" style="cursor:pointer;min-width:120px;">Reason ⇅</th>
+                                <th onclick="sortDetailTable(4)" style="cursor:pointer;min-width:120px;" data-i18n="report.reason">Category ⇅</th>
                                 <th style="min-width:90px;">Station</th>
                                 <th style="min-width:160px;">Fix Description</th>
                                 <th style="min-width:140px;">Root Cause</th>
                                 <th onclick="sortDetailTable(8)" style="cursor:pointer;white-space:nowrap;min-width:120px;">Start Time ⇅</th>
                                 <th style="white-space:nowrap;min-width:120px;">Response Time</th>
                                 <th style="white-space:nowrap;min-width:120px;">End Time</th>
-                                <th class="text-center" onclick="sortDetailTable(11)" style="cursor:pointer;white-space:nowrap;min-width:90px;" data-i18n="report.avgRepair">Avg Repair (min) ⇅</th>
-                                <th class="text-center" onclick="sortDetailTable(12)" style="cursor:pointer;white-space:nowrap;min-width:80px;" data-i18n="report.totalMinutes">Total (min) ⇅</th>
+                                <th class="text-center" onclick="sortDetailTable(11)" style="cursor:pointer;white-space:nowrap;min-width:90px;" data-i18n="report.avgRepair">Response Duration ⇅</th>
+                                <th class="text-center" onclick="sortDetailTable(12)" style="cursor:pointer;white-space:nowrap;min-width:80px;" data-i18n="report.downtimeMin">Downtime (min) ⇅</th>
                                 <th style="min-width:140px;">Action</th>
                                 <th style="min-width:110px;">Spare Parts</th>
-                                <th onclick="sortDetailTable(15)" style="cursor:pointer;min-width:120px;">Technician ⇅</th>
+                                <th onclick="sortDetailTable(15)" style="cursor:pointer;min-width:120px;" data-i18n="report.employeeName">Technical Name ⇅</th>
                                 <th class="text-center" style="min-width:80px;" data-i18n="report.effect">Effect</th>
                             </tr>
                         </thead>
@@ -1261,7 +1261,7 @@
                     options: {
                         indexAxis: 'y', responsive: true, maintainAspectRatio: false,
                         plugins: { legend: { display: true, position: 'top' }, tooltip: { callbacks: { label: ctx => { let m=ctx.parsed.x; return [`Duration: ${Math.floor(m/60)}h ${Math.round(m%60)}min`, `${window.i18nT('report.repairCount')||'Times'}: ${issCodeCounts[ctx.dataIndex]||0}`]; } } } },
-                        scales: { x: { beginAtZero: true, title: { display: true, text: window.i18nT('report.totalMinutes') || 'Minutes' } }, y: { title: { display: true, text: 'Reason' } } },
+                        scales: { x: { beginAtZero: true, title: { display: true, text: window.i18nT('report.totalMinutes') || 'Minutes' } }, y: { title: { display: true, text: 'Category' } } },
                         animation: { duration: 1800, easing: 'easeOutQuart' }
                     }
                 });
