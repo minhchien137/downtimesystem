@@ -190,7 +190,7 @@
         confirmDeleteMsg: 'Are you sure you want to delete this item?',
         filterOperationPh: 'Filter by operation…', filterEmpIdPh: 'Search by employee ID…',
         filterAccPh: 'Search by username…', passwordPh: 'Enter password…',
-        newPasswordPh: 'Enter new password…'
+        newPasswordPh: 'Enter new password…', edit : 'Edit', resetPwBtn: 'Reset Password'
       },
       dri: {
         pageTitle: 'DRI Dashboard', subtitle: 'Department Representative Interface',
@@ -399,7 +399,8 @@
         confirmDeleteMsg: '确定要删除此条目吗？',
         filterOperationPh: '按工序筛选…', filterEmpIdPh: '按员工工号搜索…',
         filterAccPh: '按用户名搜索…', passwordPh: '请输入密码…',
-        newPasswordPh: '请输入新密码…'
+        newPasswordPh: '请输入新密码…', edit : '编辑', resetPwBtn: '重置密码'
+        
       },
       dri: {
         pageTitle: 'DRI 看板', subtitle: '部门代表界面',
