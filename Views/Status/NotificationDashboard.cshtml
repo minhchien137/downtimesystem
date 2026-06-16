@@ -1041,12 +1041,13 @@
                         <th>Action</th>
                         <th>Root Cause</th>
                         <th>Spare Parts</th>
+                        <th>Description</th>
                         <th>Time</th>
                         <th>Edit</th>
                     </tr>
                 </thead>
                 <tbody id="teTableBody">
-                    <tr><td colspan="11" class="te-empty">⏳ Loading...</td></tr>
+                    <tr><td colspan="12" class="te-empty">⏳ Loading...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -1090,6 +1091,10 @@
                 <div class="te-form-group">
                     <label>🔧 Spare Parts</label>
                     <input type="text" id="teFieldSpareParts" placeholder="Enter spare parts...">
+                </div>
+                <div class="te-form-group">
+                    <label>📝 Description</label>
+                    <input type="text" id="teFieldDescription" placeholder="Enter description...">
                 </div>
             </div>
         </div>
@@ -2214,7 +2219,7 @@ async function teLoadRecords(page) {
     const url = `${pathBase}/Status/TechGetRecords?page=${tePage}&pageSize=${tePageSize}&state=${encodeURIComponent(state)}&fromDate=${fromDate}`;
 
     document.getElementById('teTableBody').innerHTML =
-        '<tr><td colspan="11" class="te-empty">⏳ Loading...</td></tr>';
+        '<tr><td colspan="12" class="te-empty">⏳ Loading...</td></tr>';
 
     try {
         const res  = await fetch(url);
@@ -2231,14 +2236,14 @@ async function teLoadRecords(page) {
 
     } catch (e) {
         document.getElementById('teTableBody').innerHTML =
-            '<tr><td colspan="11" class="te-empty" style="color:#ef4444;">❌ Error loading data</td></tr>';
+            '<tr><td colspan="12" class="te-empty" style="color:#ef4444;">❌ Error loading data</td></tr>';
     }
 }
 
 function teRenderTable(rows) {
     const tbody = document.getElementById('teTableBody');
     if (!rows || rows.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="11" class="te-empty">📭 No data available</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="12" class="te-empty">📭 No data available</td></tr>';
         return;
     }
 
@@ -2259,6 +2264,7 @@ function teRenderTable(rows) {
             <td style="color:${r.action ? '#0369a1' : '#9ca3af'};">${truncate(r.action, 15)}</td>
             <td style="color:${r.rootCause ? '#0369a1' : '#9ca3af'};">${truncate(r.rootCause, 15)}</td>
             <td style="color:${r.spareParts ? '#0369a1' : '#9ca3af'};">${truncate(r.spareParts, 15)}</td>
+            <td style="color:${r.description ? '#0369a1' : '#9ca3af'};">${truncate(r.description, 20)}</td>
             <td style="font-size:12px;color:#6b7280;">${dt}</td>
             <td>
                 <button class="btn-te-edit" onclick='teOpenModal(${JSON.stringify(r)})'>✏️ Edit</button>
@@ -2322,11 +2328,12 @@ function teOpenModal(record) {
     document.getElementById('teModalSub').textContent =
         `Machine: ${record.machineCode || '-'} · ${record.state || ''} · #${record.id}`;
 
-    // Fill 4 trường
-    document.getElementById('teFieldStation').value   = record.station   || '';
-    document.getElementById('teFieldAction').value    = record.action    || '';
-    document.getElementById('teFieldRootCause').value = record.rootCause || '';
-    document.getElementById('teFieldSpareParts').value= record.spareParts|| '';
+    // Fill 5 trường
+    document.getElementById('teFieldStation').value     = record.station     || '';
+    document.getElementById('teFieldAction').value      = record.action      || '';
+    document.getElementById('teFieldRootCause').value   = record.rootCause   || '';
+    document.getElementById('teFieldSpareParts').value  = record.spareParts  || '';
+    document.getElementById('teFieldDescription').value = record.description || '';
 
     document.getElementById('teModalOverlay').classList.add('open');
     document.getElementById('teFieldStation').focus();
@@ -2349,11 +2356,12 @@ async function teSaveRecord() {
             method : 'POST',
             headers: { 'Content-Type': 'application/json' },
             body   : JSON.stringify({
-                id        : teEditingId,
-                station   : document.getElementById('teFieldStation').value.trim(),
-                action    : document.getElementById('teFieldAction').value.trim(),
-                rootCause : document.getElementById('teFieldRootCause').value.trim(),
-                spareParts: document.getElementById('teFieldSpareParts').value.trim()
+                id         : teEditingId,
+                station    : document.getElementById('teFieldStation').value.trim(),
+                action     : document.getElementById('teFieldAction').value.trim(),
+                rootCause  : document.getElementById('teFieldRootCause').value.trim(),
+                spareParts : document.getElementById('teFieldSpareParts').value.trim(),
+                description: document.getElementById('teFieldDescription').value.trim()
             })
         });
         const data = await res.json();

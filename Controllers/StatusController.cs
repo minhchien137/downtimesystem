@@ -3742,11 +3742,12 @@ namespace MachineStatusUpdate.Controllers
             if (rec == null)
                 return Json(new { success = false, message = "Không tìm thấy record" });
 
-            // CHỈ cho phép sửa 4 trường kỹ thuật
-            rec.Station    = dto.Station    ?? rec.Station;
-            rec.Action     = dto.Action     ?? rec.Action;
-            rec.RootCause  = dto.RootCause  ?? rec.RootCause;
-            rec.SpareParts = dto.SpareParts ?? rec.SpareParts;
+            // CHỈ cho phép sửa 5 trường kỹ thuật
+            rec.Station     = dto.Station     ?? rec.Station;
+            rec.Action      = dto.Action      ?? rec.Action;
+            rec.RootCause   = dto.RootCause   ?? rec.RootCause;
+            rec.SpareParts  = dto.SpareParts  ?? rec.SpareParts;
+            rec.Description = dto.Description ?? rec.Description;
 
             await _context.SaveChangesAsync();
             return Json(new { success = true });
@@ -3760,6 +3761,7 @@ namespace MachineStatusUpdate.Controllers
             public string? Action { get; set; }
             public string? RootCause { get; set; }
             public string? SpareParts { get; set; }
+            public string? Description { get; set; }
         }
 
 
