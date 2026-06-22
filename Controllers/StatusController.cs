@@ -2167,7 +2167,7 @@ namespace MachineStatusUpdate.Controllers
 
                 var runRecords = await _context.SVN_Downtime_Infos_Devel
                     .Where(x => x.State != null && x.State.ToUpper() == "RUN")
-                    .Select(x => new { x.MachineCode, x.Datetime })
+                    .Select(x => new { x.MachineCode, x.Datetime, x.Description })
                     .ToListAsync();
 
                 using var workbook = new XLWorkbook();
@@ -2387,11 +2387,11 @@ namespace MachineStatusUpdate.Controllers
                     var tr = techResps.Where(t => t.DowntimeId == d.Id).FirstOrDefault();
                     DateTime? startDt  = d.Datetime;
                     DateTime? respDt   = tr?.RespondDatetime;
-                    DateTime? endDt    = runRecords
+                    var runRecord = runRecords
                         .Where(rr => rr.MachineCode == d.MachineCode && rr.Datetime.HasValue && rr.Datetime > d.Datetime)
                         .OrderBy(rr => rr.Datetime)
-                        .Select(rr => rr.Datetime)
                         .FirstOrDefault();
+                    DateTime? endDt = runRecord?.Datetime;
 
                     double respDuration = (startDt.HasValue && respDt.HasValue) ? (respDt.Value - startDt.Value).TotalMinutes : 0;
                     double totalDT      = (startDt.HasValue && endDt.HasValue)  ? (endDt.Value  - startDt.Value).TotalMinutes  : 0;
@@ -2476,7 +2476,7 @@ namespace MachineStatusUpdate.Controllers
                     // Repair fields: prefer STOP record, fall back to TechResponse
                     string trDesc = (!string.IsNullOrEmpty(tr?.EstimateTime) && tr.EstimateTime.StartsWith("[TECHDESC]"))
                                     ? tr.EstimateTime.Substring(10).Trim() : "";
-                    string ws3Desc  = !string.IsNullOrWhiteSpace(d.Description) ? d.Description : trDesc;
+                    string ws3Desc  = !string.IsNullOrWhiteSpace(runRecord?.Description) ? runRecord.Description : (!string.IsNullOrWhiteSpace(d.Description) ? d.Description : trDesc);
                     string ws3RC    = !string.IsNullOrWhiteSpace(d.RootCause)   ? d.RootCause   : (tr?.RepairRootCause  ?? "");
                     string ws3Act   = !string.IsNullOrWhiteSpace(d.Action)      ? d.Action      : (tr?.RepairAction     ?? "");
                     string ws3Spare = !string.IsNullOrWhiteSpace(d.SpareParts)  ? d.SpareParts  : (tr?.RepairSpareParts ?? "");
