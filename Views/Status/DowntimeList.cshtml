@@ -12,346 +12,297 @@
 }
 
 <style>
-    /* Base styles */
-    * {
-        box-sizing: border-box;
+    *, *::before, *::after { box-sizing: border-box; }
+
+    :root {
+        --brand:      #dc2626;
+        --brand-dark: #991b1b;
+        --brand-dim:  rgba(220,38,38,.06);
+        --ink:        #09090b;
+        --ink-2:      #3f3f46;
+        --ink-3:      #71717a;
+        --ink-4:      #a1a1aa;
+        --surface:    #ffffff;
+        --base:       #f4f4f5;
+        --border:     #e4e4e7;
+        --border-2:   #d4d4d8;
+        --sh-sm:      0 1px 2px rgba(0,0,0,.05);
+        --sh:         0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+        --r:          8px;
+        --r-lg:       12px;
+    }
+
+    body {
+        font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+        background: var(--base);
+        color: var(--ink);
+        -webkit-font-smoothing: antialiased;
     }
 
     .container {
-        padding: 0 16px;
+        padding: 0 20px;
         max-width: 1400px;
         margin: 0 auto;
     }
 
-    h2 {
-        font-size: 24px;
-        margin-bottom: 20px;
+    /* ── Page header ── */
+    .page-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 24px 0 20px;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+    .page-title {
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--ink);
+        letter-spacing: -.3px;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .page-title::before {
+        content: '';
+        display: inline-block;
+        width: 4px;
+        height: 20px;
+        background: var(--brand);
+        border-radius: 2px;
+        flex-shrink: 0;
     }
 
-    /* Filter bar - Desktop first */
+    /* ── Filter card ── */
+    .filter-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--r-lg);
+        padding: 16px 18px;
+        margin-bottom: 18px;
+        box-shadow: var(--sh-sm);
+    }
     .filter-bar {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
         gap: 12px;
-        margin: 18px 0;
+        align-items: end;
     }
-
     .filter-group {
         display: flex;
         flex-direction: column;
     }
-
     .filter-bar label {
-        font-size: 14px;
-        font-weight: 600;
+        font-size: 11px;
+        font-weight: 700;
         margin-bottom: 6px;
-        color: #374151;
+        color: var(--ink-3);
+        text-transform: uppercase;
+        letter-spacing: .6px;
     }
-
     .filter-bar .form-control,
     .filter-bar select {
-        height: 40px;
-        border: 1px solid #d1d5db;
-        border-radius: 8px;
+        height: 38px;
+        border: 1px solid var(--border-2);
+        border-radius: var(--r);
         padding: 0 12px;
-        font-size: 14px;
+        font-size: 13.5px;
+        background: var(--surface);
+        color: var(--ink);
+        transition: border-color .15s, box-shadow .15s;
     }
-
+    .filter-bar .form-control:focus,
+    .filter-bar select:focus {
+        outline: none;
+        border-color: var(--brand);
+        box-shadow: 0 0 0 3px rgba(220,38,38,.1);
+    }
     .filter-actions {
         display: flex;
         align-items: flex-end;
         gap: 8px;
     }
 
+    /* ── Buttons ── */
     .btn {
         border: 0;
-        border-radius: 10px;
-        padding: 10px 14px;
+        border-radius: var(--r);
+        padding: 9px 14px;
         font-weight: 600;
         cursor: pointer;
-        font-size: 14px;
+        font-size: 13px;
         white-space: nowrap;
-        transition: all 0.2s;
+        transition: all .15s;
         text-decoration: none;
-        display: inline-block;
-        text-align: center;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        line-height: 1;
     }
+    .btn-primary { background: var(--brand); color: #fff; }
+    .btn-primary:hover { background: var(--brand-dark); color: #fff; }
+    .btn-secondary { background: var(--ink-2); color: #fff; }
+    .btn-secondary:hover { background: var(--ink); color: #fff; }
+    .btn-success { background: #16a34a; color: #fff; }
+    .btn-success:hover { background: #15803d; color: #fff; }
 
-    .btn-primary {
-        background: #0d6efd;
-        color: #fff;
-    }
-
-    .btn-primary:hover {
-        background: #0b5ed7;
-    }
-
-    .btn-secondary {
-        background: #e5e7eb;
-        color: #111827;
-    }
-
-    .btn-secondary:hover {
-        background: #d1d5db;
-    }
-
-    .btn-success {
-        background: #22c55e;
-        color: #fff;
-    }
-
-    .btn-success:hover {
-        background: #16a34a;
-    }
-
-    /* Table styles - Desktop */
+    /* ── Table ── */
     .table-wrap {
         overflow: auto;
-        border: 1px solid #e5e7eb;
-        border-radius: 12px;
-        background: #fff;
-        box-shadow: 0 6px 18px rgba(0, 0, 0, .06);
+        border: 1px solid var(--border);
+        border-radius: var(--r-lg);
+        background: var(--surface);
+        box-shadow: var(--sh);
     }
-
     table {
         width: 100%;
         border-collapse: collapse;
         min-width: 900px;
     }
-
-    th,
-    td {
-        border-bottom: 1px solid #f1f5f9;
-        padding: 12px;
-        font-size: 14px;
+    th, td {
+        border-bottom: 1px solid var(--border);
+        padding: 11px 14px;
+        font-size: 13px;
         text-align: left;
     }
-
     th {
-        background: #f8fafc;
+        background: var(--ink);
+        color: #fff;
         font-weight: 700;
         position: sticky;
         top: 0;
         z-index: 10;
+        text-transform: uppercase;
+        font-size: 11px;
+        letter-spacing: .5px;
     }
+    tbody tr:hover td { background: var(--brand-dim); }
+    tbody tr:last-child td { border-bottom: none; }
 
-    tr:hover {
-        background: #f1f9ff;
-    }
+    /* ── State text colors (applied to <td>) ── */
+    .state-stop { color: var(--brand-dark); font-weight: 700; }
+    .state-run  { color: #15803d; font-weight: 700; }
 
-    .state-stop {
-        color: #ef4444;
-        font-weight: 600;
-    }
-
-    .state-run {
-        color: #22c55e;
-        font-weight: 600;
-    }
-
-    /* Card view for mobile - hidden by default */
-    .card-view {
-        display: none;
-    }
-
+    /* ── Mobile card view ── */
+    .card-view { display: none; }
     .downtime-card {
-        background: #fff;
-        border: 1px solid #e5e7eb;
-        border-radius: 12px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--r-lg);
         padding: 16px;
-        margin-bottom: 12px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, .04);
+        margin-bottom: 10px;
+        box-shadow: var(--sh-sm);
     }
-
     .card-header {
         display: flex;
         justify-content: space-between;
-        align-items: start;
-        margin-bottom: 12px;
-        padding-bottom: 12px;
-        border-bottom: 1px solid #f1f5f9;
+        align-items: flex-start;
+        margin-bottom: 10px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--border);
     }
-
     .card-title {
         font-weight: 700;
-        font-size: 16px;
-        color: #111827;
+        font-size: 15px;
+        color: var(--ink);
     }
-
     .card-row {
         display: flex;
         justify-content: space-between;
-        padding: 8px 0;
-        font-size: 14px;
+        padding: 7px 0;
+        font-size: 13px;
+        border-bottom: 1px solid var(--border);
     }
+    .card-row:last-child { border-bottom: none; }
+    .card-label { font-weight: 600; color: var(--ink-3); font-size: 11px; text-transform: uppercase; letter-spacing: .4px; }
+    .card-value { color: var(--ink-2); text-align: right; }
 
-    .card-label {
-        font-weight: 600;
-        color: #6b7280;
-    }
-
-    .card-value {
-        color: #111827;
-        text-align: right;
-    }
-
-    /* Pagination */
+    /* ── Pagination ── */
     .pager {
         display: flex;
-        gap: 12px;
+        gap: 6px;
         justify-content: center;
         align-items: center;
         margin-top: 20px;
         flex-wrap: wrap;
+        padding-bottom: 24px;
     }
-
-    .page-info {
-        font-size: 14px;
-        color: #6b7280;
-        font-weight: 600;
-    }
+    .pager .btn { min-width: 38px; height: 38px; padding: 0 12px; }
+    .page-info { font-size: 13px; color: var(--ink-3); font-weight: 600; }
 
     .no-data {
         text-align: center;
-        padding: 40px 20px;
-        color: #6b7280;
-        font-size: 16px;
+        padding: 48px 20px;
+        color: var(--ink-4);
+        font-size: 14px;
     }
 
-    /* Tablet styles */
+    /* ── Responsive ── */
     @@media (max-width: 1024px) {
-        .filter-bar {
-            grid-template-columns: repeat(2, 1fr);
-        }
-
-        .filter-actions {
-            grid-column: span 2;
-            justify-content: stretch;
-        }
-
-        .filter-actions .btn {
-            flex: 1;
-        }
-
-        table {
-            min-width: 800px;
-        }
-
-        th,
-        td {
-            padding: 10px 8px;
-            font-size: 13px;
-        }
+        .filter-bar { grid-template-columns: repeat(2, 1fr); }
+        .filter-actions { grid-column: span 2; }
+        .filter-actions .btn { flex: 1; }
+        th, td { padding: 10px 10px; }
     }
 
-    /* Mobile styles */
     @@media (max-width: 768px) {
-        .container {
-            padding: 0 12px;
-        }
-
-        h2 {
-            font-size: 20px;
-            margin-bottom: 16px;
-        }
-
-        .filter-bar {
-            grid-template-columns: 1fr;
-            gap: 12px;
-            margin: 12px 0;
-        }
-
-        .filter-actions {
-            grid-column: 1;
-            flex-direction: column;
-        }
-
-        .filter-actions .btn {
-            width: 100%;
-        }
-
-        /* Hide table, show cards on mobile */
-        .table-wrap {
-            display: none;
-        }
-
-        .card-view {
-            display: block;
-        }
-
-        .pager {
-            gap: 8px;
-        }
-
-        .btn {
-            padding: 10px 16px;
-            font-size: 13px;
-        }
-
-        .page-info {
-            width: 100%;
-            text-align: center;
-        }
+        .container { padding: 0 14px; }
+        .filter-bar { grid-template-columns: 1fr; }
+        .filter-actions { grid-column: 1; flex-direction: column; }
+        .filter-actions .btn { width: 100%; }
+        .table-wrap { display: none; }
+        .card-view { display: block; }
+        .pager { gap: 8px; }
+        .page-info { width: 100%; text-align: center; }
     }
 
-    /* Small mobile */
     @@media (max-width: 480px) {
-        h2 {
-            font-size: 18px;
-        }
-
-        .downtime-card {
-            padding: 12px;
-        }
-
-        .card-title {
-            font-size: 14px;
-        }
-
-        .card-row {
-            font-size: 13px;
-        }
-
-        .btn {
-            font-size: 12px;
-            padding: 8px 12px;
-        }
+        .page-title { font-size: 17px; }
+        .downtime-card { padding: 12px; }
+        .card-title { font-size: 14px; }
+        .btn { font-size: 12px; padding: 8px 12px; }
     }
 </style>
 
 <div class="container">
-    <h2>📋 Danh sách Downtime</h2>
+    <div class="page-header">
+        <h2 class="page-title">Lịch sử nhập downtime</h2>
+    </div>
 
-    <form method="get" asp-action="DowntimeList">
-        <div class="filter-bar">
-            <div class="filter-group">
-                <label>From</label>
-                <input type="date" name="fromDate" value="@qFrom" class="form-control" />
+    <div class="filter-card">
+        <form method="get" asp-action="DowntimeList">
+            <div class="filter-bar">
+                <div class="filter-group">
+                    <label>Từ ngày</label>
+                    <input type="date" name="fromDate" value="@qFrom" class="form-control" />
+                </div>
+                <div class="filter-group">
+                    <label>Đến ngày</label>
+                    <input type="date" name="toDate" value="@qTo" class="form-control" />
+                </div>
+                <div class="filter-group">
+                    <label>Operation</label>
+                    <select name="operation" class="form-control">
+                        <option value="">-- Tất cả --</option>
+                        @foreach (var op in ops)
+                        {
+                            <option value="@op" selected="@(op == qOp ? "selected" : null)">@op</option>
+                        }
+                    </select>
+                </div>
+                <div class="filter-actions">
+                    <button type="submit" class="btn btn-primary">Lọc</button>
+                    <a class="btn btn-secondary" href="@Url.Action("DowntimeList", "Status")">Xoá lọc</a>
+                    <a class="btn btn-success"
+                        href="@Url.Action("ExportDowntimeListToExcel", "Status", new { operation = qOp, fromDate = qFrom, toDate = qTo })">
+                        Excel
+                    </a>
+                </div>
             </div>
-            <div class="filter-group">
-                <label>To</label>
-                <input type="date" name="toDate" value="@qTo" class="form-control" />
-            </div>
-            <div class="filter-group">
-                <label>Operation</label>
-                <select name="operation" class="form-control">
-                    <option value="">-- Tất cả --</option>
-                    @foreach (var op in ops)
-                    {
-                        <option value="@op" selected="@(op == qOp ? "selected" : null)">@op</option>
-                    }
-                </select>
-            </div>
-            <div class="filter-actions">
-                <button type="submit" class="btn btn-primary">🔍 Lọc</button>
-                <a class="btn btn-secondary" href="@Url.Action("DowntimeList", "Status")">🔄 Xoá lọc</a>
-                <a class="btn btn-success"
-                    href="@Url.Action("ExportDowntimeListToExcel", "Status", new { operation = qOp, fromDate = qFrom, toDate = qTo })">
-                    📥 Excel
-                </a>
-            </div>
-        </div>
-    </form>
+        </form>
+    </div>
 
     <!-- Desktop/Tablet Table View -->
     <div class="table-wrap">
@@ -401,7 +352,7 @@
                             <td>
                                 @if (!string.IsNullOrEmpty(item.Image))
                                 {
-                                    <a href="@Url.Content(item.Image)" target="_blank">Xem ảnh</a>
+                                    <a href="@Url.Content(item.Image)" target="_blank" style="color:var(--brand);text-decoration:none;">Xem ảnh</a>
                                 }
                                 else
                                 {
@@ -471,9 +422,9 @@
                         <div class="card-row">
                             <span class="card-label">Ảnh:</span>
                             <span class="card-value">
-                                <a href="@Url.Content(item.Image)" target="_blank" style="color: #0d6efd; text-decoration: none;">
-                                    📷 Xem ảnh
-                                </a>
+                                <a href="@Url.Content(item.Image)" target="_blank" style="color: var(--brand); text-decoration: none; font-size:13px;">
+                                        Xem ảnh
+                                    </a>
                             </span>
                         </div>
                     }

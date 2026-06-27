@@ -9,18 +9,25 @@
 <!-- ====== CSS (self-contained giống style Create) ====== -->
 <style>
     :root {
-        --primary: #0d6efd;
-        --danger: #fa6d6d;
+        --primary: #dc2626;
+        --brand-dark: #991b1b;
+        --danger: #dc2626;
         --ok: #22c55e;
         --warn: #f59e0b;
-        --border: #e5e7eb;
-        --text: #111827;
-        --muted: #6b7280;
+        --border: #e4e4e7;
+        --border-2: #d4d4d8;
+        --text: #09090b;
+        --ink-2: #3f3f46;
+        --ink-3: #71717a;
+        --muted: #71717a;
         --bg: #ffffff;
+        --base: #f4f4f5;
     }
 
     body {
-        font-family: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+        font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+        background: var(--base);
+        -webkit-font-smoothing: antialiased;
     }
 
     .status-form-container {
@@ -29,26 +36,41 @@
         background: var(--bg);
         border: 1px solid var(--border);
         border-radius: 12px;
-        box-shadow: 0 8px 30px rgba(0, 0, 0, .06);
+        box-shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
         overflow: hidden;
+        border-top: 3px solid var(--primary);
     }
 
     .form-header {
-        padding: 18px 22px;
-        background: linear-gradient(0deg, #f7fbff, #ffffff);
+        padding: 16px 22px;
+        background: var(--bg);
         border-bottom: 1px solid var(--border);
     }
 
     .form-title {
         margin: 0;
+        font-size: 18px;
         font-weight: 700;
-        color: var(--text)
+        letter-spacing: -.2px;
+        color: var(--text);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .form-title::before {
+        content: '';
+        display: inline-block;
+        width: 3px;
+        height: 18px;
+        background: var(--primary);
+        border-radius: 2px;
+        flex-shrink: 0;
     }
 
     .form-sub {
-        margin: 4px 0 0;
+        margin: 4px 0 0 13px;
         color: var(--muted);
-        font-size: 14px;
+        font-size: 13px;
     }
 
     .form-grid {
@@ -68,9 +90,12 @@
     }
 
     .form-label {
-        font-weight: 600;
+        font-size: 11px;
+        font-weight: 700;
         margin-bottom: 6px;
-        color: var(--text)
+        color: var(--ink-3);
+        text-transform: uppercase;
+        letter-spacing: .6px;
     }
 
     .form-control,
@@ -89,8 +114,8 @@
     select:focus,
     textarea:focus {
         outline: none;
-        border-color: #82d7ff;
-        box-shadow: 0 0 0 3px rgba(130, 215, 255, .25)
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(220, 38, 38, .12);
     }
 
     textarea {
@@ -246,22 +271,28 @@
     }
 
     .btn-yes {
-        background: var(--primary);
+        background: #c41e1e;
         color: #fff;
         border: 0;
         border-radius: 10px;
         padding: 10px 14px;
-        cursor: pointer
+        cursor: pointer;
+        transition: background 0.2s;
     }
 
+    .btn-yes:hover { background: #8b0000; }
+
     .btn-no {
-        background: #e5e7eb;
-        color: #111827;
+        background: #3d3d3d;
+        color: #fff;
         border: 0;
         border-radius: 10px;
         padding: 10px 14px;
-        cursor: pointer
+        cursor: pointer;
+        transition: background 0.2s;
     }
+
+    .btn-no:hover { background: #1a1a1a; }
 
     /* Validation summary */
     .text-danger {
@@ -295,7 +326,7 @@
     .image-upload-area {
         border: 2px dashed var(--border);
         border-radius: 12px;
-        background: linear-gradient(0deg, #f9fbff, #ffffff);
+        background: var(--base);
         min-height: 160px;
         display: flex;
         align-items: center;
@@ -308,8 +339,8 @@
     }
 
     .image-upload-area:hover {
-        border-color: #82d7ff;
-        box-shadow: 0 4px 18px rgba(0, 0, 0, .06);
+        border-color: var(--primary);
+        box-shadow: 0 4px 18px rgba(220, 38, 38, .08);
     }
 
     .image-upload-area:active {
@@ -318,8 +349,8 @@
 
     .image-upload-area.dragover {
         border-color: var(--primary);
-        background: rgba(13, 110, 253, .04);
-        box-shadow: 0 6px 22px rgba(13, 110, 253, .12);
+        background: rgba(196, 30, 30, .04);
+        box-shadow: 0 6px 22px rgba(196, 30, 30, .12);
     }
 
     .image-upload-area .upload-text {
