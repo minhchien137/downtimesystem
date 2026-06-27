@@ -206,7 +206,7 @@
 <body>
     <div class="container-fluid mt-3">
         <div class="page-header">
-            <h1><i class="fas fa-chart-line"></i> Báo Cáo Downtime Theo Operation và Lỗi</h1>
+            <h1><i class="fas fa-chart-line"></i> Báo Cáo Downtime</h1>
         </div>
 
         @if (!string.IsNullOrEmpty(ViewBag.ErrorMessage))
@@ -826,6 +826,7 @@
         const operationCtx = document.getElementById('operationChart').getContext('2d');
         new Chart(operationCtx, {
             type: 'bar',
+            plugins: [ChartDataLabels],
             data: {
                 labels: finalLabels,
                 datasets: [{
@@ -860,6 +861,21 @@
                                 let mins = Math.round(minutes % 60);
                                 return `${hours}h ${mins}m (${minutes.toFixed(1)} phút)`;
                             }
+                        }
+                    },
+                    datalabels: {
+                        anchor: 'center',
+                        align: 'center',
+                        color: '#fff',
+                        font: {
+                            weight: 'bold',
+                            size: 12
+                        },
+                        formatter: function(value) {
+                            if (!value) return '';
+                            let hours = Math.floor(value / 60);
+                            let mins = Math.round(value % 60);
+                            return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
                         }
                     }
                 },
@@ -999,6 +1015,7 @@
                 if (issCodeLabels && issCodeLabels.length > 0 && issCodeMinutes && issCodeMinutes.length > 0) {
                     new Chart(issCodeCtx, {
                         type: 'bar',
+                        plugins: [ChartDataLabels],
                         data: {
                             labels: issCodeLabels,
                             datasets: [{
@@ -1038,6 +1055,21 @@
                                                 `Số lần: ${count}`
                                             ];
                                         }
+                                    }
+                                },
+                                datalabels: {
+                                    anchor: 'center',
+                                    align: 'center',
+                                    color: '#fff',
+                                    font: {
+                                        weight: 'bold',
+                                        size: 12
+                                    },
+                                    formatter: function(value) {
+                                        if (!value) return '';
+                                        let hours = Math.floor(value / 60);
+                                        let mins = Math.round(value % 60);
+                                        return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
                                     }
                                 }
                             },

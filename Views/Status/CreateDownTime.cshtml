@@ -4,6 +4,8 @@
     var ops = (IEnumerable<string>)ViewBag.OperationOptions ?? Enumerable.Empty<string>();
 }
 
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css" />
+
 <!-- ====== CSS (self-contained giống style Create) ====== -->
 <style>
     :root {
@@ -453,8 +455,7 @@
             <!-- SVN Code -->
             <div class="form-group">
                 <label class="form-label" for="SVNCode">SVN Code</label>
-                <input asp-for="Code" type="text" id="SVNCode" name="Code" class="form-control"
-                    placeholder="Nhập mã SVN..." required />
+                <select id="SVNCode" name="Code" class="form-control" required></select>
                 <span asp-validation-for="Code" class="text-danger"></span>
             </div>
 
@@ -551,6 +552,7 @@
         </div>
     </form>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
 <script>
     "use strict";
 
@@ -586,6 +588,38 @@
     const timeLabel = document.getElementById('timeLabel');
     const svnCodeEl = document.getElementById('SVNCode');
     const descEl = document.getElementById('Description');
+
+    /* ============ Tom Select cho SVN Code ============ */
+    let svnTomSelect = null;
+    (async () => {
+        let existingCodes = [];
+        try {
+            const res = await fetch('/Status/GetSvnCodeOptions');
+            existingCodes = await res.json();
+        } catch (_) {}
+
+        svnTomSelect = new TomSelect('#SVNCode', {
+            create: true,
+            createOnBlur: true,
+            placeholder: 'Chọn hoặc nhập SVN Code...',
+            maxOptions: 200,
+            options: existingCodes.map(c => ({ value: c, text: c })),
+            onItemAdd: function(value) {
+                const normalized = value.toUpperCase().replace(/\s/g, '');
+                if (normalized !== value) {
+                    this.removeItem(value, true);
+                    if (!this.options[normalized]) this.addOption({ value: normalized, text: normalized });
+                    this.addItem(normalized, true);
+                }
+            },
+            render: {
+                option_create: function(data) {
+                    const normalized = data.input.toUpperCase().replace(/\s/g, '');
+                    return `<div class="create">Thêm <strong>${normalized}</strong>&hellip;</div>`;
+                }
+            }
+        });
+    })();
 
     const btnRun = document.getElementById('btnRun');
     const btnStop = document.getElementById('btnStop');
@@ -729,7 +763,7 @@
         if (autoRunTrack) autoRunTrack.classList.remove('on');
         if (autoRunDescWrap) autoRunDescWrap.style.display = 'none';
         if (autoRunDescInput) autoRunDescInput.value = '';
-        if (svnCodeEl) svnCodeEl.value = '';
+        if (svnTomSelect) svnTomSelect.clear(); else if (svnCodeEl) svnCodeEl.value = '';
         if (descEl) descEl.value = '';
         removeImageDT();
         hideButtons();
@@ -873,7 +907,7 @@
 
         if (!svnCode) {
             showToast('Vui lòng nhập SVN Code trước khi gửi!', 'error', 2400);
-            svnCodeEl?.focus();
+            if (svnTomSelect) svnTomSelect.focus(); else svnCodeEl?.focus();
             return;
         }
 

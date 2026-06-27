@@ -924,6 +924,20 @@ namespace MachineStatusUpdate.Controllers
         /*============================================================ Downtime ========================================================================**/
 
 
+        /* API trả về danh sách SVN Code đã nhập (distinct) */
+        [HttpGet]
+        public async Task<IActionResult> GetSvnCodeOptions()
+        {
+            var codes = await _context.SVN_Downtime_Infos
+                .AsNoTracking()
+                .Where(x => x.SVNCode != null && x.SVNCode != "")
+                .Select(x => x.SVNCode)
+                .Distinct()
+                .OrderBy(x => x)
+                .ToListAsync();
+            return Json(codes);
+        }
+
         /* Hàm GET Nhập Downtime */
         [HttpGet]
         public async Task<IActionResult> CreateDownTime()
@@ -935,7 +949,7 @@ namespace MachineStatusUpdate.Controllers
                 && x.Operation != null 
                 && x.Operation != ""
                 && !x.Operation.StartsWith("Sakura")
-                
+                && !x.Operation.Contains("(SM)")
                 )
                 .Select(x => x.Operation)
                 .Distinct()
@@ -1220,6 +1234,9 @@ namespace MachineStatusUpdate.Controllers
         public async Task<IActionResult> CreateDownTime(SVN_Downtime_Info model, IFormFile? imageFile)
         {
             // ===== 1) Chuẩn hoá/điền mặc định =====
+            if (!string.IsNullOrWhiteSpace(model.SVNCode))
+                model.SVNCode = model.SVNCode.ToUpper().Replace(" ", "");
+
             if (string.IsNullOrWhiteSpace(model.Code))
                 model.Code = model.Operation ?? string.Empty;
 
@@ -1307,7 +1324,7 @@ namespace MachineStatusUpdate.Controllers
             var today = DateTime.Now.ToString("yyyyMMdd");
             ViewBag.OperationOptions = await _context.SVN_targets
                 .AsNoTracking()
-                .Where(x => x.Date_time == today && x.Operation != null && x.Operation != "")
+                .Where(x => x.Date_time == today && x.Operation != null && x.Operation != "" && !x.Operation.Contains("(SM)"))
                 .Select(x => x.Operation)
                 .Distinct()
                 .OrderBy(x => x)
