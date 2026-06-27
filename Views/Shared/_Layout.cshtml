@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -8,11 +8,19 @@
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/MachineStatusUpdate.styles.css" asp-append-version="true" />
+    <style>
+        .navbar-brand-logo { height: 38px; width: auto; }
+        .navbar-sigma {
+            background: #ffffff;
+            border-bottom: 1px solid #e4e4e7;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        }
+    </style>
 </head>
 
 <body>
     <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
+        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light navbar-sigma mb-3">
             <div class="container-fluid">
 
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse"
@@ -23,38 +31,38 @@
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
                         @* <li class="nav-item">
-                            <a class="nav-link text-dark custom-highlight" asp-area="" asp-controller="Status"
+                            <a class="nav-link custom-highlight" asp-area="" asp-controller="Status"
                                 asp-action="Create">📝 Nhập Trạng Thái</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark custom-highlight" asp-area="" asp-controller="Status"
+                            <a class="nav-link custom-highlight" asp-area="" asp-controller="Status"
                                 asp-action="Result">📈 Xem lịch sử</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark custom-highlight" asp-area="" asp-controller="Status"
+                            <a class="nav-link custom-highlight" asp-area="" asp-controller="Status"
                                 asp-action="DowntimeDetailReport">📋 Detail Machine Status</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark custom-highlight" asp-area="" asp-controller="Status"
+                            <a class="nav-link custom-highlight" asp-area="" asp-controller="Status"
                                 asp-action="StatusUpdateReport">📊 Summary Machine Status</a>
                         </li> *@
                         <li class="nav-item">
-                            <a class="nav-link text-dark custom-highlight" asp-area="" asp-controller="Status"
+                            <a class="nav-link custom-highlight" asp-area="" asp-controller="Status"
                                 asp-action="CreateDownTime">📝 Nhập Downtime</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark custom-highlight" asp-area="" asp-controller="Status"
+                            <a class="nav-link custom-highlight" asp-area="" asp-controller="Status"
                                 asp-action="DowntimeList">📈 Lịch sử Downtime</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark custom-highlight" asp-area="" asp-controller="Status"
+                            <a class="nav-link custom-highlight" asp-area="" asp-controller="Status"
                                 asp-action="ReportDowntime">📊 Báo cáo Downtime</a>
                         </li>
                     </ul>
                 </div>
 
                 <div style="position:absolute; right:15px; top:25px; transform:translateY(-50%);">
-                    <img src="~/images/logo.png" alt="Logo" style="height:40px; width:auto;" />
+                    <img src="~/images/logo.png" alt="Logo" class="navbar-brand-logo" />
                 </div>
 
             </div>
@@ -66,7 +74,7 @@
         </main>
     </div>
 
-    <footer class="border-top footer text-muted">
+    <footer class="border-top footer text-muted" style="border-top-color: #e0e0e0 !important;">
         <div class="container">
         </div>
     </footer>
